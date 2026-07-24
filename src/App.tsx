@@ -66,11 +66,20 @@ export default function App() {
     return null;
   });
 
-  // Parse direct Deceased payload from URL if present (e.g. ?data=...)
-  const [urlDeceasedFromPayload] = useState<Deceased | null>(() => {
+  // Parse direct Deceased payload from URL if present (e.g. ?data=... in search or hash)
+  const [urlDeceasedFromPayload, setUrlDeceasedFromPayload] = useState<Deceased | null>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      const dataStr = params.get('data');
+      let dataStr = params.get('data') || params.get('payload') || params.get('card');
+
+      if (!dataStr && window.location.hash) {
+        const hash = window.location.hash;
+        const hashMatch = hash.match(/[?&](?:data|payload|card)=([^&]+)/i) || hash.match(/(?:data|payload|card)=([^&]+)/i);
+        if (hashMatch && hashMatch[1]) {
+          dataStr = hashMatch[1];
+        }
+      }
+
       if (dataStr) {
         return decodeDeceasedFromUrlPayload(dataStr);
       }
@@ -80,9 +89,13 @@ export default function App() {
     return null;
   });
 
-  // Automatically save URL payload deceased into masterList and localStorage
+  const [fetchingRemoteDeceased, setFetchingRemoteDeceased] = useState<boolean>(false);
+  const [remoteDeceasedNotFound, setRemoteDeceasedNotFound] = useState<boolean>(false);
+
+  // Automatically save URL payload deceased into masterList, localStorage, and cloud server database
   useEffect(() => {
     if (urlDeceasedFromPayload) {
+      // 1. Sync to local state & local storage
       setMasterList(prev => {
         const exists = prev.some(d => Number(d.id) === Number(urlDeceasedFromPayload.id));
         if (!exists) {
@@ -96,8 +109,55 @@ export default function App() {
         }
         return prev;
       });
+
+      // 2. Sync to cloud server database so other devices can query it by ID too!
+      if (!(window as any).__OFFLINE_DATABASE_DATA__) {
+        fetch('/api/deceased', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(urlDeceasedFromPayload)
+        }).catch(e => console.error("Cloud database sync error:", e));
+      }
     }
   }, [urlDeceasedFromPayload]);
+
+  // If urlDeceasedId is accessed directly (e.g. /m/12345) and card is not in local list, fetch from server API
+  useEffect(() => {
+    if (urlDeceasedId && !urlDeceasedFromPayload) {
+      const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId));
+      if (!alreadyInMaster && !remoteDeceasedNotFound && !fetchingRemoteDeceased) {
+        setFetchingRemoteDeceased(true);
+        fetch(`/api/deceased/${urlDeceasedId}`)
+          .then(async (res) => {
+            if (res.ok) {
+              const record = await res.json();
+              if (record && record.id && record.name) {
+                setMasterList(prev => {
+                  const exists = prev.some(d => Number(d.id) === Number(record.id));
+                  if (!exists) {
+                    const updated = [record, ...prev];
+                    try {
+                      localStorage.setItem('eternal_db', JSON.stringify(updated));
+                    } catch (e) {}
+                    return updated;
+                  }
+                  return prev;
+                });
+                return;
+              }
+            }
+            setRemoteDeceasedNotFound(true);
+          })
+          .catch((err) => {
+            console.error("Failed to fetch remote deceased record:", err);
+            setRemoteDeceasedNotFound(true);
+          })
+          .finally(() => {
+            setFetchingRemoteDeceased(false);
+          });
+      }
+    }
+  }, [urlDeceasedId, urlDeceasedFromPayload, masterList, remoteDeceasedNotFound, fetchingRemoteDeceased]);
 
   // Load database from Server API on mount (collaborative persistence)
   useEffect(() => {
@@ -558,28 +618,39 @@ export default function App() {
                       urlDeceasedFromPayload;
 
     if (urlDeceased) {
+      // Auto-sync address bar URL so copying from address bar copies the complete payload link
+      const currentPayload = encodeDeceasedToUrlPayload(urlDeceased);
+      const targetUrl = `/m/${urlDeceased.id}?data=${currentPayload}${lang !== 'he' ? `&lang=${lang}` : ''}`;
+      if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== targetUrl) {
+        window.history.replaceState({}, document.title, targetUrl);
+      }
+
       return (
         <DeceasedMemorialPage 
           deceased={urlDeceased} 
           lang={lang} 
           onSetLang={(newLang) => {
             setLang(newLang);
-            const currentPayload = encodeDeceasedToUrlPayload(urlDeceased!);
-            const newUrl = `/m/${urlDeceased!.id}?data=${currentPayload}&lang=${newLang}`;
+            const updatedPayload = encodeDeceasedToUrlPayload(urlDeceased!);
+            const newUrl = `/m/${urlDeceased!.id}?data=${updatedPayload}&lang=${newLang}`;
             window.history.replaceState({}, document.title, newUrl);
           }} 
           onExit={() => {
             setUrlDeceasedId(null);
+            setUrlDeceasedFromPayload(null);
             window.history.replaceState({}, document.title, '/');
           }} 
         />
       );
     }
-    if (displayedList.length === 0 && masterList.length === 0 && !urlDeceasedFromPayload) {
+
+    if (fetchingRemoteDeceased || (displayedList.length === 0 && masterList.length === 0 && !remoteDeceasedNotFound)) {
       return (
         <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-3">
           <div className="w-8 h-8 border-4 border-[#c8a96e] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xs text-[#c8a96e] font-medium font-sans">טוען דף הנצחה אישי...</p>
+          <p className="text-xs text-[#c8a96e] font-medium font-sans">
+            {lang === 'he' ? 'טוען דף הנצחה אישי משרת הענן והקישור...' : lang === 'ru' ? 'Загрузка поминальной страницы из облачной базы данных...' : 'Loading memorial page from cloud server & link...'}
+          </p>
         </div>
       );
     }
@@ -587,16 +658,21 @@ export default function App() {
     // Fallback if deceased ID is invalid or deleted
     return (
       <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-4 p-4 text-center">
-        <p className="text-base text-amber-400 font-bold">לא נמצא דף הנצחה עבור כרטיס זה.</p>
-        <p className="text-xs text-gray-400">יתכן שהכרטיס אינו קיים במערכת או שהקישור שונה.</p>
+        <p className="text-base text-amber-400 font-bold">
+          {lang === 'he' ? 'לא נמצא דף הנצחה עבור כרטיס זה.' : lang === 'ru' ? 'Страница памяти не найдена.' : 'No memorial page found for this card.'}
+        </p>
+        <p className="text-xs text-gray-400">
+          {lang === 'he' ? 'יתכן שהכרטיס אינו קיים במערכת או שהקישור שונה.' : lang === 'ru' ? 'Возможно, запись не существует или ссылка была изменена.' : 'The card may not exist in the system or the link was altered.'}
+        </p>
         <button 
           onClick={() => {
             setUrlDeceasedId(null);
+            setUrlDeceasedFromPayload(null);
             window.history.replaceState({}, document.title, '/');
           }}
           className="px-4 py-2 bg-[#c8a96e] hover:bg-[#b8952e] text-black text-xs font-bold rounded-xl transition-all cursor-pointer"
         >
-          חזרה למערכת ההנצחה הכללית ←
+          {lang === 'he' ? 'חזרה למערכת ההנצחה הכללית ←' : lang === 'ru' ? 'Вернуться в главный раздел ←' : 'Return to main memorial system ←'}
         </button>
       </div>
     );
