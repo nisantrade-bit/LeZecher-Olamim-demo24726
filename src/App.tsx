@@ -16,7 +16,7 @@ import { Quick30Grid } from './components/Quick30Grid';
 import { MemorialDetailsModal } from './components/MemorialDetailsModal';
 import { Flame, Calendar, BookOpen, LayoutGrid, FileDown, Globe, Sparkles, AlertTriangle } from 'lucide-react';
 import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
-import { decodeDeceasedFromUrlPayload } from './utils/shareUtils';
+import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
 import { translateDeceasedListClientSide } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
 import { motion } from 'motion/react';
@@ -549,16 +549,13 @@ export default function App() {
   const t = translations[lang];
   const isRtl = lang === 'he';
 
-  // Render standalone memorial page if a specific deceased link is accessed
-  if (urlDeceasedId) {
-    let urlDeceased = displayedList.find(d => Number(d.id) === urlDeceasedId);
-    if (!urlDeceased) {
-      // Fallback to masterList so the page never "disappears"
-      urlDeceased = masterList.find(d => Number(d.id) === urlDeceasedId);
-    }
-    if (!urlDeceased && urlDeceasedFromPayload && Number(urlDeceasedFromPayload.id) === urlDeceasedId) {
-      urlDeceased = urlDeceasedFromPayload;
-    }
+  // Render standalone memorial page if a specific deceased link is accessed or payload is provided
+  if (urlDeceasedId || urlDeceasedFromPayload) {
+    const targetId = urlDeceasedId || (urlDeceasedFromPayload ? Number(urlDeceasedFromPayload.id) : null);
+    
+    let urlDeceased = (targetId ? displayedList.find(d => Number(d.id) === targetId) : null) ||
+                      (targetId ? masterList.find(d => Number(d.id) === targetId) : null) ||
+                      urlDeceasedFromPayload;
 
     if (urlDeceased) {
       return (
@@ -567,7 +564,8 @@ export default function App() {
           lang={lang} 
           onSetLang={(newLang) => {
             setLang(newLang);
-            const newUrl = `/m/${urlDeceasedId}?lang=${newLang}`;
+            const currentPayload = encodeDeceasedToUrlPayload(urlDeceased!);
+            const newUrl = `/m/${urlDeceased!.id}?data=${currentPayload}&lang=${newLang}`;
             window.history.replaceState({}, document.title, newUrl);
           }} 
           onExit={() => {
@@ -577,7 +575,6 @@ export default function App() {
         />
       );
     }
-
     if (displayedList.length === 0 && masterList.length === 0 && !urlDeceasedFromPayload) {
       return (
         <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-3">
