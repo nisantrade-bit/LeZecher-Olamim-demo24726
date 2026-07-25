@@ -1,36 +1,7 @@
-import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
-
-// מנגנון קידוד ופענוח נתונים לתוך ה-URL
-const encodeDataToURL = (data: object): string => {
-  try {
-    const jsonString = JSON.stringify(data);
-    return encodeURIComponent(btoa(unescape(encodeURI(jsonString))));
-  } catch (error) {
-    console.error("Error encoding data", error);
-    return "";
-  }
-};
-
-const decodeDataFromURL = (encodedData: string): any => {
-  try {
-    const jsonString = decodeURIComponent(escape(atob(decodeURIComponent(encodedData))));
-    return JSON.parse(jsonString);
-  } catch (error) {
-    console.error("Error decoding data", error);
-    return null;
-  }
-};
-
-interface CardData {
-  title: string;
-  name: string;
-  dates: string;
-  description: string;
-  quote: string;
-}
+import React, { useState, useEffect } from 'react';
 
 export default function App() {
-  const [cardData, setCardData] = useState<CardData>({
+  const [cardData, setCardData] = useState({
     title: '',
     name: '',
     dates: '',
@@ -38,32 +9,39 @@ export default function App() {
     quote: ''
   });
 
-  const [shareUrl, setShareUrl] = useState<string>('');
-  const [copied, setCopied] = useState<boolean>(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const encodedCard = params.get('card');
     if (encodedCard) {
-      const decoded = decodeDataFromURL(encodedCard);
-      if (decoded) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(encodedCard)))));
         setCardData(decoded);
+      } catch (e) {
+        console.error(e);
       }
     }
   }, []);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setCardData({
       ...cardData,
       [e.target.name]: e.target.value
     });
   };
 
-  const generateLink = (e: FormEvent) => {
+  const generateLink = (e: React.FormEvent) => {
     e.preventDefault();
-    const encoded = encodeDataToURL(cardData);
-    const fullUrl = `${window.location.origin}${window.location.pathname}?card=${encoded}`;
-    setShareUrl(fullUrl);
+    try {
+      const jsonString = JSON.stringify(cardData);
+      const encoded = encodeURIComponent(btoa(unescape(encodeURI(jsonString))));
+      const fullUrl = `${window.location.origin}${window.location.pathname}?card=${encoded}`;
+      setShareUrl(fullUrl);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const copyToClipboard = () => {
@@ -75,37 +53,37 @@ export default function App() {
   const isViewingMode = new URLSearchParams(window.location.search).has('card');
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
+    <div style={{ maxWidth: '650px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif', direction: 'rtl', textAlign: 'right', color: '#333' }}>
+      <header style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
         <h1>🕯️ דף הנצחה וזיכרון</h1>
       </header>
 
       {isViewingMode ? (
-        <main style={styles.cardDisplay}>
-          <h2 style={styles.cardTitle}>{cardData.title || 'לזכר ולעילוי נשמת'}</h2>
-          <h1 style={styles.name}>{cardData.name || 'שם פלוני בן פלוני'}</h1>
-          <p style={styles.dates}>{cardData.dates}</p>
-          <div style={styles.divider}></div>
-          <p style={styles.description}>{cardData.description}</p>
+        <main style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '12px', boxShadow: '0 6px 18px rgba(0,0,0,0.08)', border: '1px solid #eaeaea', textAlign: 'center' }}>
+          <h2 style={{ color: '#666', fontSize: '18px', margin: '0 0 10px 0' }}>{cardData.title || 'לזכר ולעילוי נשמת'}</h2>
+          <h1 style={{ color: '#111', fontSize: '32px', margin: '0 0 10px 0' }}>{cardData.name || 'שם הנפטר/ת'}</h1>
+          <p style={{ color: '#888', fontSize: '16px', marginBottom: '20px' }}>{cardData.dates}</p>
+          <div style={{ height: '2px', backgroundColor: '#222', width: '60px', margin: '0 auto 25px auto' }}></div>
+          <p style={{ fontSize: '18px', lineHeight: '1.6', whiteSpace: 'pre-wrap', textAlign: 'right', marginBottom: '25px' }}>{cardData.description}</p>
           {cardData.quote && (
-            <blockquote style={styles.quote}>
+            <blockquote style={{ fontStyle: 'italic', color: '#555', fontSize: '16px', borderRight: '3px solid #1b365d', paddingRight: '15px', margin: '20px 0', textAlign: 'right' }}>
               "{cardData.quote}"
             </blockquote>
           )}
-          <div style={styles.footerActions}>
+          <div style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
             <button 
               onClick={() => window.location.href = window.location.pathname}
-              style={styles.buttonSecondary}
+              style={{ padding: '10px 18px', backgroundColor: '#6c757d', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}
             >
               ➕ צור כרטיס הנצחה חדש
             </button>
           </div>
         </main>
       ) : (
-        <main style={styles.formContainer}>
+        <main style={{ backgroundColor: '#f9f9f9', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
           <h2>יצירת כרטיס הנצחה חדש</h2>
-          <form onSubmit={generateLink} style={styles.form}>
-            <label style={styles.label}>
+          <form onSubmit={generateLink} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontWeight: 'bold', fontSize: '14px' }}>
               כותרת (למשל: לזכר, לעילוי נשמת):
               <input 
                 type="text" 
@@ -113,11 +91,11 @@ export default function App() {
                 value={cardData.title} 
                 onChange={handleChange} 
                 placeholder="לזכר ולעילוי נשמת..." 
-                style={styles.input}
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px' }}
               />
             </label>
 
-            <label style={styles.label}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontWeight: 'bold', fontSize: '14px' }}>
               שם הנפטר/ת:
               <input 
                 type="text" 
@@ -126,11 +104,11 @@ export default function App() {
                 onChange={handleChange} 
                 required 
                 placeholder="ישראל ישראלי ז״ל" 
-                style={styles.input}
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px' }}
               />
             </label>
 
-            <label style={styles.label}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontWeight: 'bold', fontSize: '14px' }}>
               תאריכים / תאריך פטירה:
               <input 
                 type="text" 
@@ -138,11 +116,11 @@ export default function App() {
                 value={cardData.dates} 
                 onChange={handleChange} 
                 placeholder="תשפ״ד - תשפ״ה / 2024" 
-                style={styles.input}
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px' }}
               />
             </label>
 
-            <label style={styles.label}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontWeight: 'bold', fontSize: '14px' }}>
               דברי זיכרון / תיאור:
               <textarea 
                 name="description" 
@@ -150,11 +128,11 @@ export default function App() {
                 onChange={handleChange} 
                 rows={5} 
                 placeholder="סיפור חיים, דברים לזכרו..." 
-                style={styles.textarea}
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px', resize: 'vertical' }}
               />
             </label>
 
-            <label style={styles.label}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontWeight: 'bold', fontSize: '14px' }}>
               ציטוט / פסוק לזכרו:
               <input 
                 type="text" 
@@ -162,20 +140,20 @@ export default function App() {
                 value={cardData.quote} 
                 onChange={handleChange} 
                 placeholder="״איש חסד ורב פעלים...״" 
-                style={styles.input}
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px' }}
               />
             </label>
 
-            <button type="submit" style={styles.buttonPrimary}>
+            <button type="submit" style={{ padding: '12px', backgroundColor: '#1b365d', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '16px', cursor: 'pointer', marginTop: '10px', fontWeight: 'bold' }}>
               🔗 צור קישור לשיתוף
             </button>
           </form>
 
           {shareUrl && (
-            <div style={styles.shareBox}>
+            <div style={{ marginTop: '25px', padding: '15px', backgroundColor: '#e9f5ff', borderRadius: '8px', border: '1px solid #b8daff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <p><strong>הקישור המוכן לשיתוף:</strong></p>
-              <input type="text" readOnly value={shareUrl} style={styles.shareInput} />
-              <button onClick={copyToClipboard} style={styles.buttonSuccess}>
+              <input type="text" readOnly value={shareUrl} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '13px', direction: 'ltr' }} />
+              <button onClick={copyToClipboard} style={{ padding: '10px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '15px', cursor: 'pointer', marginTop: '8px', fontWeight: 'bold' }}>
                 {copied ? '✅ הקישור הועתק!' : '📋 העתק קישור לשיתוף'}
               </button>
             </div>
@@ -185,151 +163,3 @@ export default function App() {
     </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    maxWidth: '650px',
-    margin: '0 auto',
-    padding: '20px',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-    direction: 'rtl',
-    textAlign: 'right',
-    color: '#333'
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '30px',
-    borderBottom: '2px solid #eee',
-    paddingBottom: '10px'
-  },
-  formContainer: {
-    backgroundColor: '#f9f9f9',
-    padding: '25px',
-    borderRadius: '12px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '15px'
-  },
-  label: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '5px',
-    fontWeight: 'bold',
-    fontSize: '14px'
-  },
-  input: {
-    padding: '10px',
-    borderRadius: '6px',
-    border: '1px solid #ccc',
-    fontSize: '16px'
-  },
-  textarea: {
-    padding: '10px',
-    borderRadius: '6px',
-    border: '1px solid #ccc',
-    fontSize: '16px',
-    resize: 'vertical'
-  },
-  buttonPrimary: {
-    padding: '12px',
-    backgroundColor: '#1b365d',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '16px',
-    cursor: 'pointer',
-    marginTop: '10px',
-    fontWeight: 'bold'
-  },
-  buttonSecondary: {
-    padding: '10px 18px',
-    backgroundColor: '#6c757d',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '14px',
-    cursor: 'pointer',
-    marginTop: '20px'
-  },
-  buttonSuccess: {
-    padding: '10px',
-    backgroundColor: '#28a745',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '15px',
-    cursor: 'pointer',
-    marginTop: '8px',
-    fontWeight: 'bold'
-  },
-  shareBox: {
-    marginTop: '25px',
-    padding: '15px',
-    backgroundColor: '#e9f5ff',
-    borderRadius: '8px',
-    border: '1px solid #b8daff',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px'
-  },
-  shareInput: {
-    padding: '8px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    fontSize: '13px',
-    direction: 'ltr'
-  },
-  cardDisplay: {
-    backgroundColor: '#fff',
-    padding: '30px',
-    borderRadius: '12px',
-    boxShadow: '0 6px 18px rgba(0,0,0,0.08)',
-    border: '1px solid #eaeaea',
-    textAlign: 'center'
-  },
-  cardTitle: {
-    color: '#666',
-    fontSize: '18px',
-    margin: '0 0 10px 0'
-  },
-  name: {
-    color: '#111',
-    fontSize: '32px',
-    margin: '0 0 10px 0'
-  },
-  dates: {
-    color: '#888',
-    fontSize: '16px',
-    marginBottom: '20px'
-  },
-  divider: {
-    height: '2px',
-    backgroundColor: '#222',
-    width: '60px',
-    margin: '0 auto 25px auto'
-  },
-  description: {
-    fontSize: '18px',
-    lineHeight: '1.6',
-    whiteSpace: 'pre-wrap',
-    textAlign: 'right',
-    marginBottom: '25px'
-  },
-  quote: {
-    fontStyle: 'italic',
-    color: '#555',
-    fontSize: '16px',
-    borderRight: '3px solid #1b365d',
-    paddingRight: '15px',
-    margin: '20px 0',
-    textAlign: 'right'
-  },
-  footerActions: {
-    marginTop: '30px',
-    borderTop: '1px solid #eee',
-    paddingTop: '15px'
-  }
-};
