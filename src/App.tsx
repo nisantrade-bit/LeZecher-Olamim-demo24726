@@ -365,7 +365,8 @@ export default function App() {
         } else {
           throw new Error("Invalid translation response structure");
         }
-      } catch (err: any) {
+      } catch (err) {
+        console.error("Translation API error, falling back to client-side transliteration:", err);
         const fallbackTranslated = translateDeceasedListClientSide(masterList, lang);
         setDisplayedList(fallbackTranslated);
         try {
@@ -374,7 +375,7 @@ export default function App() {
         } catch (e) {
           console.error("Storage access error:", e);
         }
-      } finally {
+      } font-sans finally {
         setTranslating(false);
       }
     };
@@ -532,20 +533,6 @@ export default function App() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDuplicatesManager, setShowDuplicatesManager] = useState(false);
 
-  // Auto-deduplicate master list helper
-  const updateMasterListClean = (rawList: Deceased[]) => {
-    const cleanList = deduplicateSingleList(rawList);
-    setMasterList(cleanList);
-    try {
-      localStorage.setItem('eternal_db', JSON.stringify(cleanList));
-      localStorage.removeItem('eternal_db_translated_he');
-      localStorage.removeItem('eternal_db_translated_en');
-      localStorage.removeItem('eternal_db_translated_ru');
-    } catch (e) {
-      console.error("Storage access error:", e);
-    }
-    return cleanList;
-  };
   const getDuplicateGroups = () => {
     const groupsMap: { [key: string]: Deceased[] } = {};
     masterList.forEach(item => {
@@ -1079,7 +1066,8 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowDuplicatesManager(false)}
-                className="absolute top-4 left-4 text-gray-400 hover:text-white text-xl font-bold leading-none"
+                aria-label="Close"
+                className="absolute top-4 left-4 text-gray-400 hover:text-white text-xl font-bold leading-none cursor-pointer"
               >
                 ×
               </button>
