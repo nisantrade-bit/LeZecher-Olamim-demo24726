@@ -631,16 +631,16 @@ export default function App() {
 
   // Render standalone memorial page if a specific deceased link is accessed or payload is provided
   if (urlDeceasedId || urlDeceasedFromPayload) {
-    const targetId = urlDeceasedId || (urlDeceasedFromPayload ? Number(urlDeceasedFromPayload.id) : null);
-    
-    let urlDeceased = (targetId ? displayedList.find(d => Number(d.id) === targetId) : null) ||
-                      (targetId ? masterList.find(d => Number(d.id) === targetId) : null) ||
-                      urlDeceasedFromPayload;
+    let urlDeceased: Deceased | null = urlDeceasedFromPayload;
+    if (!urlDeceased && urlDeceasedId) {
+      urlDeceased = masterList.find(d => Number(d.id) === Number(urlDeceasedId)) ||
+                    displayedList.find(d => Number(d.id) === Number(urlDeceasedId)) || null;
+    }
 
     if (urlDeceased) {
       // Auto-sync address bar URL so copying from address bar copies the complete payload link
       const currentPayload = encodeDeceasedToUrlPayload(urlDeceased);
-      const targetUrl = `${window.location.pathname}?data=${currentPayload}${lang !== 'he' ? `&lang=${lang}` : ''}`;
+      const targetUrl = `/?data=${currentPayload}${lang !== 'he' ? `&lang=${lang}` : ''}`;
       if (typeof window !== 'undefined' && (window.location.pathname + window.location.search) !== targetUrl) {
         window.history.replaceState({}, document.title, targetUrl);
       }
@@ -652,7 +652,7 @@ export default function App() {
           onSetLang={(newLang) => {
             setLang(newLang);
             const updatedPayload = encodeDeceasedToUrlPayload(urlDeceased!);
-            const newUrl = `${window.location.pathname}?data=${updatedPayload}&lang=${newLang}`;
+            const newUrl = `/?data=${updatedPayload}&lang=${newLang}`;
             window.history.replaceState({}, document.title, newUrl);
           }} 
           onExit={() => {
