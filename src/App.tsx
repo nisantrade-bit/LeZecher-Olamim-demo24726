@@ -17,9 +17,16 @@ import { MemorialDetailsModal } from './components/MemorialDetailsModal';
 import { Flame, Calendar, BookOpen, LayoutGrid, FileDown, Globe, Sparkles, AlertTriangle } from 'lucide-react';
 import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
 import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
-import { translateDeceasedListClientSide } from './utils/transliteration';
+import { translateDeceasedListClientSide, translateDeceasedListClientSize } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
+
+// Local helper to enrich single deceased item translations without importing internal functions from utils
+const enrichDeceasedTranslations = (item: Deceased): Deceased => {
+  if (!item) return item;
+  const list = translateDeceasedListClientSide([item], 'he');
+  return list && list.length > 0 ? list[0] : item;
+};
 
 export default function App() {
   const [lang, setLang] = useState<Language>(() => {
@@ -95,14 +102,15 @@ export default function App() {
   // Automatically save URL payload deceased into masterList, localStorage, and cloud server database
   useEffect(() => {
     if (urlDeceasedFromPayload) {
+      const enrichedPayload = enrichDeceasedTranslations(urlDeceasedFromPayload);
       // 0. Ensure no remote error state
       setRemoteDeceasedNotFound(false);
-      setSelectedDeceased(urlDeceasedFromPayload);
+      setSelectedDeceased(enrichedPayload);
 
       // 1. Sync to local state & local storage (overwrites any old cached state with same ID)
       setMasterList(prev => {
-        const filtered = prev.filter(d => Number(d.id) !== Number(urlDeceasedFromPayload.id));
-        const updated = [urlDeceasedFromPayload, ...filtered];
+        const filtered = prev.filter(d => Number(d.id) !== Number(enrichedPayload.id));
+        const updated = [enrichedPayload, ...filtered];
         try {
           localStorage.setItem('eternal_db', JSON.stringify(updated));
         } catch (e) {
@@ -116,7 +124,7 @@ export default function App() {
         fetch('/api/deceased', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(urlDeceasedFromPayload)
+          body: JSON.stringify(enrichedPayload)
         }).catch(e => console.error("Cloud database sync error:", e));
       }
     }
@@ -164,121 +172,114 @@ export default function App() {
   const mergeWithUrlPayload = (list: Deceased[]): Deceased[] => {
     let clean = deduplicateSingleList(list);
     if (urlDeceasedFromPayload) {
-      clean = clean.filter(d => Number(d.id) !== Number(urlDeceasedFromPayload.id));
-      clean = [urlDeceasedFromPayload, ...clean];
+      const enrichedPayload = enrichDeceasedTranslations(urlDeceasedFromPayload);
+      clean = smartMergeDeceasedLists(clean, [enrichedPayload]);
     }
     return clean;
   };
 
-  // Load database from Server API on mount (collaborative persistence)
+  // Load database from Server API & LocalStorage on mount (collaborative persistence)
   useEffect(() => {
     const loadDatabase = async () => {
+      // 1. Read existing local storage records first so no local data is ever lost
+      let localRecords: Deceased[] = [];
+      try {
+        const stored = localStorage.getItem('eternal_db');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            localRecords = parsed;
+          }
+        }
+      } catch (e) {
+        console.error("Storage access error:", e);
+      }
+
       // Standalone Offline mode check
       if ((window as any).__OFFLINE_DATABASE_DATA__) {
         const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
         console.log("Running in standalone offline mode, pre-populated database data loaded:", offlineData);
-        let stored = null;
+        let merged = smartMergeDeceasedLists(localRecords, Array.isArray(offlineData) ? offlineData : []);
+        merged = mergeWithUrlPayload(merged);
+        const finalData = deduplicateSingleList(merged);
+        setMasterList(finalData);
         try {
-          stored = localStorage.getItem('eternal_db');
-        } catch (e) {
-          console.error("Storage access error:", e);
-        }
-        if (stored) {
-          try {
-            const clean = mergeWithUrlPayload(JSON.parse(stored));
-            setMasterList(clean);
-            localStorage.setItem('eternal_db', JSON.stringify(clean));
-          } catch (err) {
-            const clean = mergeWithUrlPayload(offlineData);
-            setMasterList(clean);
-            localStorage.setItem('eternal_db', JSON.stringify(clean));
-          }
-        } else {
-          const clean = mergeWithUrlPayload(offlineData);
-          setMasterList(clean);
-          try {
-            localStorage.setItem('eternal_db', JSON.stringify(clean));
-          } catch (e) {
-            console.error("Storage access error:", e);
-          }
-        }
+          localStorage.setItem('eternal_db', JSON.stringify(finalData));
+        } catch (e) {}
         return;
       }
 
+      // 2. Fetch server records
+      let serverRecords: Deceased[] = [];
       try {
         const response = await fetch('/api/deceased');
         if (response.ok) {
           const data = await response.json();
-          const cleanData = mergeWithUrlPayload(data);
-          setMasterList(cleanData);
-          try {
-            localStorage.setItem('eternal_db', JSON.stringify(cleanData));
-          } catch (e) {
-            console.error("Storage access error:", e);
+          if (Array.isArray(data)) {
+            serverRecords = data;
           }
-          return;
         }
       } catch (err) {
-        console.error("Failed to load database from server, using local storage fallback:", err);
+        console.error("Failed to load database from server:", err);
       }
 
-      // Local storage fallback
-      let stored = null;
-      try {
-        stored = localStorage.getItem('eternal_db');
-      } catch (e) {
-        console.error("Storage access error:", e);
-      }
-      
-      if (stored) {
-        try {
-          const cleanData = mergeWithUrlPayload(JSON.parse(stored));
-          setMasterList(cleanData);
-          localStorage.setItem('eternal_db', JSON.stringify(cleanData));
-        } catch (err) {
-          console.error("Error loading eternal_db", err);
-        }
-      } else {
+      // 3. Smart-merge localRecords + serverRecords + urlDeceasedFromPayload
+      let combined = smartMergeDeceasedLists(localRecords, serverRecords);
+      combined = mergeWithUrlPayload(combined);
+
+      // 4. Seed fallback if database is completely empty
+      if (combined.length === 0) {
         const todayHeb = getHebrewDate(new Date());
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowHeb = getHebrewDate(tomorrow);
 
-        const seedData: Deceased[] = [
+        combined = [
           {
             id: 1718882041001,
             name: "אברהם אבינו",
             gender: "male",
             fatherName: "תרח",
-            motherName: "אמתלאי",
+            motherName: "אמתלאי בת כרנבו",
             day: todayHeb.day,
             month: todayHeb.normalizedMonth,
-            contactPhone: "052-1234567",
-            notes: "אבי האומה העברית, איש החסד והאמונה. נפטר בשיבה טובה ומנוחתו במערת המכפלה בחברון."
+            contactPhone: "050-0000000",
+            notes: "אב האומה, איש החסד"
           },
           {
             id: 1718882041002,
             name: "שרה אמנו",
             gender: "female",
             fatherName: "הרן",
-            motherName: "מלכה",
+            motherName: "",
             day: tomorrowHeb.day,
             month: tomorrowHeb.normalizedMonth,
-            contactPhone: "050-9876543",
-            notes: "אמינו הראשונה, סמל לצניעות, חסד והכנסת אורחים. נפטרה בקרית ארבע היא חברון."
+            contactPhone: "050-0000001",
+            notes: "אם האומה, אשת אברהם אבינו"
           }
         ];
-        const cleanData = mergeWithUrlPayload(seedData);
-        setMasterList(cleanData);
-        try {
-          localStorage.setItem('eternal_db', JSON.stringify(cleanData));
-        } catch (e) {
-          console.error("Storage access error:", e);
-        }
+      }
+
+      const finalMaster = deduplicateSingleList(combined);
+      setMasterList(finalMaster);
+      try {
+        localStorage.setItem('eternal_db', JSON.stringify(finalMaster));
+      } catch (e) {
+        console.error("Storage access error:", e);
+      }
+
+      // 5. Sync any local records to server database so server has everything too
+      if (finalMaster.length > 0) {
+        fetch('/api/deceased/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(finalMaster)
+        }).catch(e => console.error("Cloud database sync error:", e));
       }
     };
+
     loadDatabase();
-  }, [urlDeceasedFromPayload]);
+  }, []);
 
   // Language translation handler
   const handleLanguageChange = (targetLang: Language) => {
@@ -412,7 +413,8 @@ export default function App() {
   }, [displayedList, selectedDeceased]);
 
   // Save or update deceased record with backend sync
-  const handleSaveDeceased = async (deceased: Deceased) => {
+  const handleSaveDeceased = async (deceasedInput: Deceased) => {
+    const deceased = enrichDeceasedTranslations(deceasedInput);
     let updated: Deceased[] = [];
     const exists = masterList.some(d => d.id === deceased.id);
 
@@ -493,8 +495,11 @@ export default function App() {
 
   // Bulk import deceased records with smart deduplication & backend sync
   const handleImportDeceased = async (newList: Deceased[]) => {
-    // 1. Smart merge with existing masterList to prevent duplicates across files
-    const merged = smartMergeDeceasedLists(masterList, newList);
+    // 1. Enrich incoming items with multi-language translations
+    const enrichedList = newList.map(item => enrichDeceasedTranslations(item));
+
+    // 2. Smart merge with existing masterList to prevent duplicates across files
+    const merged = smartMergeDeceasedLists(masterList, enrichedList);
     const updated = deduplicateSingleList(merged);
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
@@ -502,7 +507,7 @@ export default function App() {
         await fetch('/api/deceased/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newList)
+          body: JSON.stringify(enrichedList)
         });
       } catch (e) {
         console.error("Failed to import records to server database:", e);
