@@ -19,6 +19,7 @@ import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
 import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
 import { translateDeceasedListClientSide } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
+import INITIAL_DECEASED_DATABASE from './data/initialDatabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Helper to enrich single deceased item with multi-language fields
@@ -107,9 +108,10 @@ export default function App() {
       setRemoteDeceasedNotFound(false);
       setSelectedDeceased(enrichedPayload);
 
-      // Add/merge to local database without clearing existing records
+      // Add/merge to local database without clearing existing 50+ records
       setMasterList(prev => {
-        const merged = smartMergeDeceasedLists(prev, [enrichedPayload]);
+        const base = prev.length > 0 ? prev : INITIAL_DECEASED_DATABASE;
+        const merged = smartMergeDeceasedLists(base, [enrichedPayload]);
         const finalData = deduplicateSingleList(merged);
         try {
           localStorage.setItem('eternal_db', JSON.stringify(finalData));
@@ -143,7 +145,8 @@ export default function App() {
               if (record && record.id && record.name) {
                 const enriched = enrichDeceasedTranslations(record);
                 setMasterList(prev => {
-                  const merged = smartMergeDeceasedLists(prev, [enriched]);
+                  const base = prev.length > 0 ? prev : INITIAL_DECEASED_DATABASE;
+                  const merged = smartMergeDeceasedLists(base, [enriched]);
                   const finalData = deduplicateSingleList(merged);
                   try {
                     localStorage.setItem('eternal_db', JSON.stringify(finalData));
@@ -176,7 +179,7 @@ export default function App() {
     return clean;
   };
 
-  // Load database on mount from LocalStorage & Server API (safe dual persistence)
+  // Load database on mount from Initial Seed + LocalStorage + Server API (guarantees zero data loss)
   useEffect(() => {
     const loadDatabase = async () => {
       // 1. Read existing local storage records first
@@ -196,7 +199,8 @@ export default function App() {
       // Standalone Offline mode check
       if ((window as any).__OFFLINE_DATABASE_DATA__) {
         const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
-        let merged = smartMergeDeceasedLists(localRecords, Array.isArray(offlineData) ? offlineData : []);
+        let merged = smartMergeDeceasedLists(INITIAL_DECEASED_DATABASE, localRecords);
+        merged = smartMergeDeceasedLists(merged, Array.isArray(offlineData) ? offlineData : []);
         merged = mergeWithUrlPayload(merged);
         const finalData = deduplicateSingleList(merged);
         setMasterList(finalData);
@@ -220,42 +224,10 @@ export default function App() {
         console.error("Failed to load database from server:", err);
       }
 
-      // 3. Smart-merge localRecords + serverRecords + urlDeceasedFromPayload
-      let combined = smartMergeDeceasedLists(localRecords, serverRecords);
+      // 3. Smart-merge base INITIAL_DECEASED_DATABASE (50 items) + localRecords + serverRecords + urlDeceasedFromPayload
+      let combined = smartMergeDeceasedLists(INITIAL_DECEASED_DATABASE, localRecords);
+      combined = smartMergeDeceasedLists(combined, serverRecords);
       combined = mergeWithUrlPayload(combined);
-
-      // 4. Seed fallback if database is completely empty
-      if (combined.length === 0) {
-        const todayHeb = getHebrewDate(new Date());
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowHeb = getHebrewDate(tomorrow);
-
-        combined = [
-          {
-            id: 1718882041001,
-            name: "אברהם אבינו",
-            gender: "male",
-            fatherName: "תרח",
-            motherName: "אמתלאי בת כרנבו",
-            day: todayHeb.day,
-            month: todayHeb.normalizedMonth,
-            contactPhone: "050-0000000",
-            notes: "אב האומה, איש החסד"
-          },
-          {
-            id: 1718882041002,
-            name: "שרה אמנו",
-            gender: "female",
-            fatherName: "הרן",
-            motherName: "",
-            day: tomorrowHeb.day,
-            month: tomorrowHeb.normalizedMonth,
-            contactPhone: "050-0000001",
-            notes: "אם האומה, אשת אברהם אבינו"
-          }
-        ];
-      }
 
       const finalMaster = deduplicateSingleList(combined);
       setMasterList(finalMaster);
