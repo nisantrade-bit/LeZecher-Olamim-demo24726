@@ -17,7 +17,7 @@ import { MemorialDetailsModal } from './components/MemorialDetailsModal';
 import { Flame, Calendar, BookOpen, LayoutGrid, FileDown, Globe, Sparkles, AlertTriangle } from 'lucide-react';
 import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
 import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
-import { translateDeceasedListClientSide } from './utils/transliteration';
+import { translateDeceasedListClientSide, enrichDeceasedTranslations } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
 import { motion } from 'motion/react';
 
@@ -95,14 +95,15 @@ export default function App() {
   // Automatically save URL payload deceased into masterList, localStorage, and cloud server database
   useEffect(() => {
     if (urlDeceasedFromPayload) {
+      const enrichedPayload = enrichDeceasedTranslations(urlDeceasedFromPayload);
       // 0. Ensure no remote error state
       setRemoteDeceasedNotFound(false);
-      setSelectedDeceased(urlDeceasedFromPayload);
+      setSelectedDeceased(enrichedPayload);
 
       // 1. Sync to local state & local storage (overwrites any old cached state with same ID)
       setMasterList(prev => {
-        const filtered = prev.filter(d => Number(d.id) !== Number(urlDeceasedFromPayload.id));
-        const updated = [urlDeceasedFromPayload, ...filtered];
+        const filtered = prev.filter(d => Number(d.id) !== Number(enrichedPayload.id));
+        const updated = [enrichedPayload, ...filtered];
         try {
           localStorage.setItem('eternal_db', JSON.stringify(updated));
         } catch (e) {
@@ -116,7 +117,7 @@ export default function App() {
         fetch('/api/deceased', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(urlDeceasedFromPayload)
+          body: JSON.stringify(enrichedPayload)
         }).catch(e => console.error("Cloud database sync error:", e));
       }
     }
@@ -493,16 +494,11 @@ export default function App() {
 
   // Bulk import deceased records with smart deduplication & backend sync
   const handleImportDeceased = async (newList: Deceased[]) => {
-    // 1. Convert incoming records to canonical Hebrew if needed
-    let hebrewImportList = newList;
-    try {
-      hebrewImportList = translateDeceasedListClientSide(newList, 'he');
-    } catch (e) {
-      console.error("Client side translation error during import:", e);
-    }
+    // 1. Enrich incoming records so all multi-language fields are preserved or auto-populated
+    const enrichedList = newList.map(item => enrichDeceasedTranslations(item));
 
     // 2. Smart merge with existing masterList to prevent duplicates across files
-    const merged = smartMergeDeceasedLists(masterList, hebrewImportList);
+    const merged = smartMergeDeceasedLists(masterList, enrichedList);
     const updated = deduplicateSingleList(merged);
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
@@ -510,7 +506,7 @@ export default function App() {
         await fetch('/api/deceased/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(hebrewImportList)
+          body: JSON.stringify(enrichedList)
         });
       } catch (e) {
         console.error("Failed to import records to server database:", e);
