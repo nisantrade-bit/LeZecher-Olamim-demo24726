@@ -95,6 +95,10 @@ export default function App() {
   // Automatically save URL payload deceased into masterList, localStorage, and cloud server database
   useEffect(() => {
     if (urlDeceasedFromPayload) {
+      // 0. Ensure no remote error state
+      setRemoteDeceasedNotFound(false);
+      setSelectedDeceased(urlDeceasedFromPayload);
+
       // 1. Sync to local state & local storage (overwrites any old cached state with same ID)
       setMasterList(prev => {
         const filtered = prev.filter(d => Number(d.id) !== Number(urlDeceasedFromPayload.id));
