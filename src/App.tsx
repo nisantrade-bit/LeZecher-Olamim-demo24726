@@ -19,7 +19,6 @@ import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
 import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
 import { translateDeceasedListClientSide } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
-import INITIAL_DECEASED_DATABASE from './data/initialDatabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Helper to enrich single deceased item with multi-language fields
@@ -110,8 +109,7 @@ export default function App() {
 
       // Add/merge to local database without clearing existing 50+ records
       setMasterList(prev => {
-        const base = prev.length > 0 ? prev : INITIAL_DECEASED_DATABASE;
-        const merged = smartMergeDeceasedLists(base, [enrichedPayload]);
+        const merged = smartMergeDeceasedLists(prev, [enrichedPayload]);
         const finalData = deduplicateSingleList(merged);
         try {
           localStorage.setItem('eternal_db', JSON.stringify(finalData));
@@ -145,8 +143,7 @@ export default function App() {
               if (record && record.id && record.name) {
                 const enriched = enrichDeceasedTranslations(record);
                 setMasterList(prev => {
-                  const base = prev.length > 0 ? prev : INITIAL_DECEASED_DATABASE;
-                  const merged = smartMergeDeceasedLists(base, [enriched]);
+                  const merged = smartMergeDeceasedLists(prev, [enriched]);
                   const finalData = deduplicateSingleList(merged);
                   try {
                     localStorage.setItem('eternal_db', JSON.stringify(finalData));
@@ -199,8 +196,7 @@ export default function App() {
       // Standalone Offline mode check
       if ((window as any).__OFFLINE_DATABASE_DATA__) {
         const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
-        let merged = smartMergeDeceasedLists(INITIAL_DECEASED_DATABASE, localRecords);
-        merged = smartMergeDeceasedLists(merged, Array.isArray(offlineData) ? offlineData : []);
+        let merged = smartMergeDeceasedLists(localRecords, Array.isArray(offlineData) ? offlineData : []);
         merged = mergeWithUrlPayload(merged);
         const finalData = deduplicateSingleList(merged);
         setMasterList(finalData);
@@ -224,9 +220,8 @@ export default function App() {
         console.error("Failed to load database from server:", err);
       }
 
-      // 3. Smart-merge base INITIAL_DECEASED_DATABASE (50 items) + localRecords + serverRecords + urlDeceasedFromPayload
-      let combined = smartMergeDeceasedLists(INITIAL_DECEASED_DATABASE, localRecords);
-      combined = smartMergeDeceasedLists(combined, serverRecords);
+      // 3. Smart-merge localRecords + serverRecords + urlDeceasedFromPayload
+      let combined = smartMergeDeceasedLists(localRecords, serverRecords);
       combined = mergeWithUrlPayload(combined);
 
       const finalMaster = deduplicateSingleList(combined);
