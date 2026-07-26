@@ -95,19 +95,16 @@ export default function App() {
   // Automatically save URL payload deceased into masterList, localStorage, and cloud server database
   useEffect(() => {
     if (urlDeceasedFromPayload) {
-      // 1. Sync to local state & local storage
+      // 1. Sync to local state & local storage (overwrites any old cached state with same ID)
       setMasterList(prev => {
-        const exists = prev.some(d => Number(d.id) === Number(urlDeceasedFromPayload.id));
-        if (!exists) {
-          const updated = [urlDeceasedFromPayload, ...prev];
-          try {
-            localStorage.setItem('eternal_db', JSON.stringify(updated));
-          } catch (e) {
-            console.error("Storage access error:", e);
-          }
-          return updated;
+        const filtered = prev.filter(d => Number(d.id) !== Number(urlDeceasedFromPayload.id));
+        const updated = [urlDeceasedFromPayload, ...filtered];
+        try {
+          localStorage.setItem('eternal_db', JSON.stringify(updated));
+        } catch (e) {
+          console.error("Storage access error:", e);
         }
-        return prev;
+        return updated;
       });
 
       // 2. Sync to cloud server database so other devices can query it by ID too!
@@ -163,10 +160,8 @@ export default function App() {
   const mergeWithUrlPayload = (list: Deceased[]): Deceased[] => {
     let clean = deduplicateSingleList(list);
     if (urlDeceasedFromPayload) {
-      const exists = clean.some(d => Number(d.id) === Number(urlDeceasedFromPayload.id));
-      if (!exists) {
-        clean = [urlDeceasedFromPayload, ...clean];
-      }
+      clean = clean.filter(d => Number(d.id) !== Number(urlDeceasedFromPayload.id));
+      clean = [urlDeceasedFromPayload, ...clean];
     }
     return clean;
   };
@@ -631,16 +626,16 @@ export default function App() {
 
   // Render standalone memorial page if a specific deceased link is accessed or payload is provided
   if (urlDeceasedId || urlDeceasedFromPayload) {
-    const targetId = urlDeceasedId || (urlDeceasedFromPayload ? Number(urlDeceasedFromPayload.id) : null);
-    
-    let urlDeceased = (targetId ? displayedList.find(d => Number(d.id) === targetId) : null) ||
-                      (targetId ? masterList.find(d => Number(d.id) === targetId) : null) ||
-                      urlDeceasedFromPayload;
+    let urlDeceased: Deceased | null = urlDeceasedFromPayload;
+    if (!urlDeceased && urlDeceasedId) {
+      urlDeceased = masterList.find(d => Number(d.id) === Number(urlDeceasedId)) ||
+                    displayedList.find(d => Number(d.id) === Number(urlDeceasedId)) || null;
+    }
 
     if (urlDeceased) {
       // Auto-sync address bar URL so copying from address bar copies the complete payload link
       const currentPayload = encodeDeceasedToUrlPayload(urlDeceased);
-      const targetUrl = `${window.location.pathname}?data=${currentPayload}${lang !== 'he' ? `&lang=${lang}` : ''}`;
+      const targetUrl = `/?data=${currentPayload}${lang !== 'he' ? `&lang=${lang}` : ''}`;
       if (typeof window !== 'undefined' && (window.location.pathname + window.location.search) !== targetUrl) {
         window.history.replaceState({}, document.title, targetUrl);
       }
@@ -652,7 +647,7 @@ export default function App() {
           onSetLang={(newLang) => {
             setLang(newLang);
             const updatedPayload = encodeDeceasedToUrlPayload(urlDeceased!);
-            const newUrl = `${window.location.pathname}?data=${updatedPayload}&lang=${newLang}`;
+            const newUrl = `/?data=${updatedPayload}&lang=${newLang}`;
             window.history.replaceState({}, document.title, newUrl);
           }} 
           onExit={() => {
