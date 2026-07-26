@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Deceased, Language } from './types';
 import { translations } from './utils/translations';
-import { getHebrewDate, HEBREW_MONTHS_HE } from './utils/hebrewDate';
+import { getHebrewDate } from './utils/hebrewDate';
 import { BulletinBoard } from './components/BulletinBoard';
 import { MemorialForm } from './components/MemorialForm';
 import { BulkImport } from './components/BulkImport';
@@ -17,14 +17,14 @@ import { MemorialDetailsModal } from './components/MemorialDetailsModal';
 import { Flame, Calendar, BookOpen, LayoutGrid, FileDown, Globe, Sparkles, AlertTriangle } from 'lucide-react';
 import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
 import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
-import { translateDeceasedListClientSide, translateDeceasedListClientSize } from './utils/transliteration';
+import { translateDeceasedListClientSize } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// Local helper to enrich single deceased item translations without importing internal functions from utils
+// Helper to enrich single deceased item with multi-language fields
 const enrichDeceasedTranslations = (item: Deceased): Deceased => {
   if (!item) return item;
-  const list = translateDeceasedListClientSide([item], 'he');
+  const list = translateDeceasedListClientSize([item], 'he');
   return list && list.length > 0 ? list[0] : item;
 };
 
@@ -37,6 +37,7 @@ export default function App() {
     }
     return 'he'; // Default to Hebrew
   });
+
   const [activeTab, setActiveTab] = useState<'calendar' | 'book' | 'grid' | 'import'>('calendar');
   const [masterList, setMasterList] = useState<Deceased[]>([]);
   const [displayedList, setDisplayedList] = useState<Deceased[]>([]);
@@ -73,15 +74,15 @@ export default function App() {
     return null;
   });
 
-  // Parse direct Deceased payload from URL if present (e.g. ?data=... in search or hash)
+  // Parse direct Deceased payload from URL if present (?data=..., ?p=..., ?payload=..., ?card=...)
   const [urlDeceasedFromPayload, setUrlDeceasedFromPayload] = useState<Deceased | null>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      let dataStr = params.get('data') || params.get('payload') || params.get('card');
+      let dataStr = params.get('data') || params.get('p') || params.get('payload') || params.get('card') || params.get('d');
 
       if (!dataStr && window.location.hash) {
         const hash = window.location.hash;
-        const hashMatch = hash.match(/[?&](?:data|payload|card)=([^&]+)/i) || hash.match(/(?:data|payload|card)=([^&]+)/i);
+        const hashMatch = hash.match(/[?&](?:data|p|payload|card|d)=([^&]+)/i) || hash.match(/(?:data|p|payload|card|d)=([^&]+)/i);
         if (hashMatch && hashMatch[1]) {
           dataStr = hashMatch[1];
         }
@@ -99,27 +100,26 @@ export default function App() {
   const [fetchingRemoteDeceased, setFetchingRemoteDeceased] = useState<boolean>(false);
   const [remoteDeceasedNotFound, setRemoteDeceasedNotFound] = useState<boolean>(false);
 
-  // Automatically save URL payload deceased into masterList, localStorage, and cloud server database
+  // Merge urlDeceasedFromPayload safely into existing masterList, LocalStorage, and server
   useEffect(() => {
     if (urlDeceasedFromPayload) {
       const enrichedPayload = enrichDeceasedTranslations(urlDeceasedFromPayload);
-      // 0. Ensure no remote error state
       setRemoteDeceasedNotFound(false);
       setSelectedDeceased(enrichedPayload);
 
-      // 1. Sync to local state & local storage (overwrites any old cached state with same ID)
+      // Add/merge to local database without clearing existing records
       setMasterList(prev => {
-        const filtered = prev.filter(d => Number(d.id) !== Number(enrichedPayload.id));
-        const updated = [enrichedPayload, ...filtered];
+        const merged = smartMergeDeceasedLists(prev, [enrichedPayload]);
+        const finalData = deduplicateSingleList(merged);
         try {
-          localStorage.setItem('eternal_db', JSON.stringify(updated));
+          localStorage.setItem('eternal_db', JSON.stringify(finalData));
         } catch (e) {
           console.error("Storage access error:", e);
         }
-        return updated;
+        return finalData;
       });
 
-      // 2. Sync to cloud server database so other devices can query it by ID too!
+      // Sync to cloud server database
       if (!(window as any).__OFFLINE_DATABASE_DATA__) {
         fetch('/api/deceased', {
           method: 'POST',
@@ -141,16 +141,14 @@ export default function App() {
             if (res.ok) {
               const record = await res.json();
               if (record && record.id && record.name) {
+                const enriched = enrichDeceasedTranslations(record);
                 setMasterList(prev => {
-                  const exists = prev.some(d => Number(d.id) === Number(record.id));
-                  if (!exists) {
-                    const updated = [record, ...prev];
-                    try {
-                      localStorage.setItem('eternal_db', JSON.stringify(updated));
-                    } catch (e) {}
-                    return updated;
-                  }
-                  return prev;
+                  const merged = smartMergeDeceasedLists(prev, [enriched]);
+                  const finalData = deduplicateSingleList(merged);
+                  try {
+                    localStorage.setItem('eternal_db', JSON.stringify(finalData));
+                  } catch (e) {}
+                  return finalData;
                 });
                 return;
               }
@@ -178,10 +176,10 @@ export default function App() {
     return clean;
   };
 
-  // Load database from Server API & LocalStorage on mount (collaborative persistence)
+  // Load database on mount from LocalStorage & Server API (safe dual persistence)
   useEffect(() => {
     const loadDatabase = async () => {
-      // 1. Read existing local storage records first so no local data is ever lost
+      // 1. Read existing local storage records first
       let localRecords: Deceased[] = [];
       try {
         const stored = localStorage.getItem('eternal_db');
@@ -198,7 +196,6 @@ export default function App() {
       // Standalone Offline mode check
       if ((window as any).__OFFLINE_DATABASE_DATA__) {
         const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
-        console.log("Running in standalone offline mode, pre-populated database data loaded:", offlineData);
         let merged = smartMergeDeceasedLists(localRecords, Array.isArray(offlineData) ? offlineData : []);
         merged = mergeWithUrlPayload(merged);
         const finalData = deduplicateSingleList(merged);
@@ -358,7 +355,7 @@ export default function App() {
         }
       }
 
-      // 2. Perform high-precision translation via API (with fallback if needed)
+      // 2. Perform translation via API (with client-side fallback)
       setTranslating(true);
       try {
         const response = await fetch('/api/translate', {
@@ -373,8 +370,7 @@ export default function App() {
 
         const data = await response.json();
         if (data.translatedList && Array.isArray(data.translatedList) && data.translatedList.length > 0) {
-          // Guarantee 100% target script transliteration/translation
-          const fullyTranslated = translateDeceasedListClientSide(data.translatedList, lang);
+          const fullyTranslated = translateDeceasedListClientSize(data.translatedList, lang);
           setDisplayedList(fullyTranslated);
           try {
             localStorage.setItem(`eternal_db_translated_${lang}`, JSON.stringify(fullyTranslated));
@@ -386,7 +382,7 @@ export default function App() {
           throw new Error("Invalid translation response structure");
         }
       } catch (err: any) {
-        const fallbackTranslated = translateDeceasedListClientSide(masterList, lang);
+        const fallbackTranslated = translateDeceasedListClientSize(masterList, lang);
         setDisplayedList(fallbackTranslated);
         try {
           localStorage.setItem(`eternal_db_translated_${lang}`, JSON.stringify(fallbackTranslated));
@@ -436,7 +432,7 @@ export default function App() {
       }
     }
 
-    // Clear caches to force re-translation for ALL languages
+    // Clear caches
     try {
       ['he', 'en', 'ru'].forEach(l => {
         localStorage.removeItem(`eternal_db_translated_${l}`);
@@ -472,7 +468,7 @@ export default function App() {
       }
     }
 
-    // Clear caches for ALL languages
+    // Clear caches
     try {
       ['he', 'en', 'ru'].forEach(l => {
         localStorage.removeItem(`eternal_db_translated_${l}`);
@@ -495,10 +491,7 @@ export default function App() {
 
   // Bulk import deceased records with smart deduplication & backend sync
   const handleImportDeceased = async (newList: Deceased[]) => {
-    // 1. Enrich incoming items with multi-language translations
     const enrichedList = newList.map(item => enrichDeceasedTranslations(item));
-
-    // 2. Smart merge with existing masterList to prevent duplicates across files
     const merged = smartMergeDeceasedLists(masterList, enrichedList);
     const updated = deduplicateSingleList(merged);
 
@@ -548,20 +541,6 @@ export default function App() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDuplicatesManager, setShowDuplicatesManager] = useState(false);
 
-  // Auto-deduplicate master list helper
-  const updateMasterListClean = (rawList: Deceased[]) => {
-    const cleanList = deduplicateSingleList(rawList);
-    setMasterList(cleanList);
-    try {
-      localStorage.setItem('eternal_db', JSON.stringify(cleanList));
-      localStorage.removeItem('eternal_db_translated_he');
-      localStorage.removeItem('eternal_db_translated_en');
-      localStorage.removeItem('eternal_db_translated_ru');
-    } catch (e) {
-      console.error("Storage access error:", e);
-    }
-    return cleanList;
-  };
   const getDuplicateGroups = () => {
     const groupsMap: { [key: string]: Deceased[] } = {};
     masterList.forEach(item => {
@@ -588,10 +567,7 @@ export default function App() {
   };
 
   const handleResolveDuplicateGroup = async (groupItems: Deceased[]) => {
-    // Keep the first item, delete all other items
-    const toKeep = groupItems[0];
     const toDelete = groupItems.slice(1);
-    
     for (const item of toDelete) {
       await handleDeleteDeceased(item.id);
     }
@@ -620,6 +596,15 @@ export default function App() {
       console.error("Storage access error:", e);
     }
     setShowResetConfirm(false);
+  };
+
+  const handleExitMemorialPage = () => {
+    setUrlDeceasedId(null);
+    setUrlDeceasedFromPayload(null);
+    setSelectedDeceased(null);
+    if (typeof window !== 'undefined' && window.history) {
+      window.history.pushState({}, document.title, window.location.pathname || '/');
+    }
   };
 
   const t = translations[lang];
@@ -651,11 +636,7 @@ export default function App() {
             const newUrl = `/?data=${updatedPayload}&lang=${newLang}`;
             window.history.replaceState({}, document.title, newUrl);
           }} 
-          onExit={() => {
-            setUrlDeceasedId(null);
-            setUrlDeceasedFromPayload(null);
-            window.history.replaceState({}, document.title, '/');
-          }} 
+          onExit={handleExitMemorialPage} 
         />
       );
     }
@@ -681,11 +662,7 @@ export default function App() {
           {lang === 'he' ? 'יתכן שהכרטיס אינו קיים במערכת או שהקישור שונה.' : lang === 'ru' ? 'Возможно, запись не существует или ссылка была изменена.' : 'The card may not exist in the system or the link was altered.'}
         </p>
         <button 
-          onClick={() => {
-            setUrlDeceasedId(null);
-            setUrlDeceasedFromPayload(null);
-            window.history.replaceState({}, document.title, '/');
-          }}
+          onClick={handleExitMemorialPage}
           className="px-4 py-2 bg-[#c8a96e] hover:bg-[#b8952e] text-black text-xs font-bold rounded-xl transition-all cursor-pointer"
         >
           {lang === 'he' ? 'חזרה למערכת ההנצחה הכללית ←' : lang === 'ru' ? 'Вернуться в главный раздел ←' : 'Return to main memorial system ←'}
@@ -1032,7 +1009,7 @@ export default function App() {
           />
         )}
 
-        {/* Dedicated Editing Modal Overlay to avoid getting "thrown out" */}
+        {/* Dedicated Editing Modal Overlay */}
         {editingDeceased && (
           <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-[#131a26] border-2 border-[#c8a96e] rounded-2xl w-full max-w-xl shadow-2xl relative">
