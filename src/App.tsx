@@ -17,9 +17,16 @@ import { MemorialDetailsModal } from './components/MemorialDetailsModal';
 import { Flame, Calendar, BookOpen, LayoutGrid, FileDown, Globe, Sparkles, AlertTriangle } from 'lucide-react';
 import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
 import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
-import { translateDeceasedListClientSide, enrichDeceasedTranslations } from './utils/transliteration';
+import { translateDeceasedListClientSide, translateDeceasedListClientSize } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
+
+// Local helper to enrich single deceased item translations without importing internal functions from utils
+const enrichDeceasedTranslations = (item: Deceased): Deceased => {
+  if (!item) return item;
+  const list = translateDeceasedListClientSide([item], 'he');
+  return list && list.length > 0 ? list[0] : item;
+};
 
 export default function App() {
   const [lang, setLang] = useState<Language>(() => {
