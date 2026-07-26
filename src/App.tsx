@@ -17,14 +17,14 @@ import { MemorialDetailsModal } from './components/MemorialDetailsModal';
 import { Flame, Calendar, BookOpen, LayoutGrid, FileDown, Globe, Sparkles, AlertTriangle } from 'lucide-react';
 import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
 import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
-import { translateDeceasedListClientSize } from './utils/transliteration';
+import { translateDeceasedListClientSide } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Helper to enrich single deceased item with multi-language fields
 const enrichDeceasedTranslations = (item: Deceased): Deceased => {
   if (!item) return item;
-  const list = translateDeceasedListClientSize([item], 'he');
+  const list = translateDeceasedListClientSide([item], 'he');
   return list && list.length > 0 ? list[0] : item;
 };
 
@@ -370,7 +370,7 @@ export default function App() {
 
         const data = await response.json();
         if (data.translatedList && Array.isArray(data.translatedList) && data.translatedList.length > 0) {
-          const fullyTranslated = translateDeceasedListClientSize(data.translatedList, lang);
+          const fullyTranslated = translateDeceasedListClientSide(data.translatedList, lang);
           setDisplayedList(fullyTranslated);
           try {
             localStorage.setItem(`eternal_db_translated_${lang}`, JSON.stringify(fullyTranslated));
@@ -382,7 +382,7 @@ export default function App() {
           throw new Error("Invalid translation response structure");
         }
       } catch (err: any) {
-        const fallbackTranslated = translateDeceasedListClientSize(masterList, lang);
+        const fallbackTranslated = translateDeceasedListClientSide(masterList, lang);
         setDisplayedList(fallbackTranslated);
         try {
           localStorage.setItem(`eternal_db_translated_${lang}`, JSON.stringify(fallbackTranslated));
