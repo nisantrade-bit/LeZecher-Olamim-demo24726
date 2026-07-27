@@ -147,6 +147,7 @@ export default function App() {
         try {
           const { error } = await safeUpsert([enrichedPayload]);
           if (error) {
+            console.error("Supabase Fetch Error:", error);
             if (isMissingTableError(error)) {
               setSupabaseTableMissing(true);
               console.warn("Supabase notice: 'deceased' table is missing in schema cache. Using local/server database fallback.");
@@ -155,7 +156,7 @@ export default function App() {
             }
           }
         } catch (e) {
-          console.warn("Supabase sync notice:", e);
+          console.error("Supabase Fetch Error:", e);
         }
       })();
 
@@ -179,6 +180,13 @@ export default function App() {
         const fetchRemote = async () => {
           try {
             const { data, error } = await safeEq('id', urlDeceasedId, 'deceased', true);
+            if (error) {
+              console.error("Supabase Fetch Error:", error);
+              if (isMissingTableError(error)) {
+                setSupabaseTableMissing(true);
+                console.warn("Supabase notice: 'deceased' table missing in schema cache, using server API fallback.");
+              }
+            }
             if (!error && data && data.id && data.name) {
               const enriched = enrichDeceasedTranslations(data as Deceased);
               setMasterList(prev => {
@@ -192,9 +200,6 @@ export default function App() {
               });
               setFetchingRemoteDeceased(false);
               return;
-            } else if (error && isMissingTableError(error)) {
-              setSupabaseTableMissing(true);
-              console.warn("Supabase notice: 'deceased' table missing in schema cache, using server API fallback.");
             }
 
             // Fallback to Express server API
@@ -273,18 +278,19 @@ export default function App() {
       let supabaseRecords: Deceased[] = [];
       try {
         const { data, error } = await safeSelect('deceased');
-        if (!error && Array.isArray(data) && data.length > 0) {
-          supabaseRecords = filterOutMockRecords(data as Deceased[]);
-        } else if (error) {
+        if (error) {
+          console.error("Supabase Fetch Error:", error);
           if (isMissingTableError(error)) {
             setSupabaseTableMissing(true);
             console.warn("Supabase notice: 'public.deceased' table is not created yet in schema cache. Using local server & storage seamlessly.");
           } else {
-            console.error("Supabase select error:", error.message);
+            console.error("Supabase select error:", error.message || error);
           }
+        } else if (Array.isArray(data) && data.length > 0) {
+          supabaseRecords = filterOutMockRecords(data as Deceased[]);
         }
       } catch (err) {
-        console.warn("Failed to load database from Supabase:", err);
+        console.error("Supabase Fetch Error:", err);
       }
 
       // 3. Fallback to Express server API if Supabase returned no data
@@ -322,15 +328,16 @@ export default function App() {
         try {
           const { error } = await safeUpsert(finalMaster);
           if (error) {
+            console.error("Supabase Fetch Error:", error);
             if (isMissingTableError(error)) {
               setSupabaseTableMissing(true);
               console.warn("Supabase notice: 'public.deceased' table not yet created. Master list synced to local server database.");
             } else {
-              console.error("Supabase initial sync error:", error.message);
+              console.error("Supabase initial sync error:", error.message || error);
             }
           }
         } catch (e) {
-          console.warn("Supabase sync notice:", e);
+          console.error("Supabase Fetch Error:", e);
         }
 
         fetch('/api/deceased/import', {
@@ -490,15 +497,16 @@ export default function App() {
     try {
       const { error } = await safeUpsert([deceased]);
       if (error) {
+        console.error("Supabase Fetch Error:", error);
         if (isMissingTableError(error)) {
           setSupabaseTableMissing(true);
           console.warn("Supabase notice: 'deceased' table missing. Record saved to local database.");
         } else {
-          console.error("Supabase save error:", error.message);
+          console.error("Supabase save error:", error.message || error);
         }
       }
     } catch (e) {
-      console.warn("Failed to save record to Supabase:", e);
+      console.error("Supabase Fetch Error:", e);
     }
 
     // Sync to backup server API
@@ -544,15 +552,16 @@ export default function App() {
     try {
       const { error } = await safeDelete('id', id);
       if (error) {
+        console.error("Supabase Fetch Error:", error);
         if (isMissingTableError(error)) {
           setSupabaseTableMissing(true);
           console.warn("Supabase notice: 'deceased' table missing. Removed from local database.");
         } else {
-          console.error("Supabase delete error:", error.message);
+          console.error("Supabase delete error:", error.message || error);
         }
       }
     } catch (e) {
-      console.warn("Failed to delete record from Supabase:", e);
+      console.error("Supabase Fetch Error:", e);
     }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
@@ -596,15 +605,16 @@ export default function App() {
     try {
       const { error } = await safeUpsert(enrichedList);
       if (error) {
+        console.error("Supabase Fetch Error:", error);
         if (isMissingTableError(error)) {
           setSupabaseTableMissing(true);
           console.warn("Supabase notice: 'deceased' table missing. Imported to local database.");
         } else {
-          console.error("Supabase bulk import error:", error.message);
+          console.error("Supabase bulk import error:", error.message || error);
         }
       }
     } catch (e) {
-      console.warn("Failed to import records to Supabase:", e);
+      console.error("Supabase Fetch Error:", e);
     }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
@@ -688,11 +698,14 @@ export default function App() {
   const handleResetDatabase = async () => {
     try {
       const { error } = await safeDeleteAll('deceased');
-      if (error && isMissingTableError(error)) {
-        setSupabaseTableMissing(true);
+      if (error) {
+        console.error("Supabase Fetch Error:", error);
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+        }
       }
     } catch (err) {
-      console.warn("Failed to reset database on Supabase:", err);
+      console.error("Supabase Fetch Error:", err);
     }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
