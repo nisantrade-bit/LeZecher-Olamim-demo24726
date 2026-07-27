@@ -22,8 +22,8 @@ import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplic
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-import { supabase } from './utils/supabase';
-export { supabase };
+import { supabase, isMissingTableError, SUPABASE_SETUP_SQL } from './utils/supabase';
+export { supabase, isMissingTableError, SUPABASE_SETUP_SQL };
 
 const SEED_DATABASE: Deceased[] = (INITIAL_DATABASE || []) as unknown as Deceased[];
 
@@ -105,6 +105,9 @@ export default function App() {
 
   const [fetchingRemoteDeceased, setFetchingRemoteDeceased] = useState<boolean>(false);
   const [remoteDeceasedNotFound, setRemoteDeceasedNotFound] = useState<boolean>(false);
+  const [supabaseTableMissing, setSupabaseTableMissing] = useState<boolean>(false);
+  const [showSqlSetupModal, setShowSqlSetupModal] = useState<boolean>(false);
+  const [sqlCopied, setSqlCopied] = useState<boolean>(false);
 
   // Merge urlDeceasedFromPayload safely into existing masterList, LocalStorage, Supabase and server
   useEffect(() => {
@@ -130,9 +133,16 @@ export default function App() {
       (async () => {
         try {
           const { error } = await supabase.from('deceased').upsert([enrichedPayload]);
-          if (error) console.error("Supabase upsert error on URL payload:", error);
+          if (error) {
+            if (isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'deceased' table is missing in schema cache. Using local/server database fallback.");
+            } else {
+              console.error("Supabase upsert error on URL payload:", error);
+            }
+          }
         } catch (e) {
-          console.error("Supabase sync error:", e);
+          console.warn("Supabase sync notice:", e);
         }
       })();
 
@@ -169,6 +179,9 @@ export default function App() {
               });
               setFetchingRemoteDeceased(false);
               return;
+            } else if (error && isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'deceased' table missing in schema cache, using server API fallback.");
             }
 
             // Fallback to Express server API
@@ -250,10 +263,15 @@ export default function App() {
         if (!error && Array.isArray(data) && data.length > 0) {
           supabaseRecords = data as Deceased[];
         } else if (error) {
-          console.error("Supabase select error:", error.message);
+          if (isMissingTableError(error)) {
+            setSupabaseTableMissing(true);
+            console.warn("Supabase notice: 'public.deceased' table is not created yet in schema cache. Using local server & storage seamlessly.");
+          } else {
+            console.error("Supabase select error:", error.message);
+          }
         }
       } catch (err) {
-        console.error("Failed to load database from Supabase:", err);
+        console.warn("Failed to load database from Supabase:", err);
       }
 
       // 3. Fallback to Express server API if Supabase returned no data
@@ -290,9 +308,16 @@ export default function App() {
       if (finalMaster.length > 0) {
         try {
           const { error } = await supabase.from('deceased').upsert(finalMaster);
-          if (error) console.error("Supabase initial sync error:", error.message);
+          if (error) {
+            if (isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'public.deceased' table not yet created. Master list synced to local server database.");
+            } else {
+              console.error("Supabase initial sync error:", error.message);
+            }
+          }
         } catch (e) {
-          console.error("Supabase sync error:", e);
+          console.warn("Supabase sync notice:", e);
         }
 
         fetch('/api/deceased/import', {
@@ -451,9 +476,16 @@ export default function App() {
     // Save directly to Supabase
     try {
       const { error } = await supabase.from('deceased').upsert([deceased]);
-      if (error) console.error("Supabase save error:", error.message);
+      if (error) {
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Record saved to local database.");
+        } else {
+          console.error("Supabase save error:", error.message);
+        }
+      }
     } catch (e) {
-      console.error("Failed to save record to Supabase:", e);
+      console.warn("Failed to save record to Supabase:", e);
     }
 
     // Sync to backup server API
@@ -498,9 +530,16 @@ export default function App() {
     // Delete from Supabase
     try {
       const { error } = await supabase.from('deceased').delete().eq('id', id);
-      if (error) console.error("Supabase delete error:", error.message);
+      if (error) {
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Removed from local database.");
+        } else {
+          console.error("Supabase delete error:", error.message);
+        }
+      }
     } catch (e) {
-      console.error("Failed to delete record from Supabase:", e);
+      console.warn("Failed to delete record from Supabase:", e);
     }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
@@ -543,9 +582,16 @@ export default function App() {
     // Bulk upsert to Supabase
     try {
       const { error } = await supabase.from('deceased').upsert(enrichedList);
-      if (error) console.error("Supabase bulk import error:", error.message);
+      if (error) {
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Imported to local database.");
+        } else {
+          console.error("Supabase bulk import error:", error.message);
+        }
+      }
     } catch (e) {
-      console.error("Failed to import records to Supabase:", e);
+      console.warn("Failed to import records to Supabase:", e);
     }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
@@ -628,9 +674,12 @@ export default function App() {
 
   const handleResetDatabase = async () => {
     try {
-      await supabase.from('deceased').delete().neq('id', 0);
+      const { error } = await supabase.from('deceased').delete().neq('id', 0);
+      if (error && isMissingTableError(error)) {
+        setSupabaseTableMissing(true);
+      }
     } catch (err) {
-      console.error("Failed to reset database on Supabase:", err);
+      console.warn("Failed to reset database on Supabase:", err);
     }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
@@ -1178,6 +1227,42 @@ export default function App() {
                   className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
                 >
                   {lang === 'he' ? 'סגור' : lang === 'ru' ? 'Закрыть' : 'Close'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Supabase SQL Setup Modal */}
+        {(showSqlSetupModal || supabaseTableMissing) && (
+          <div className="fixed bottom-4 left-4 z-50 font-sans max-w-sm w-full">
+            <div className="bg-[#131a26] border border-[#c8a96e]/40 p-3.5 rounded-2xl shadow-2xl space-y-2 text-right">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                  Supabase Status
+                </span>
+                <button 
+                  onClick={() => { setSupabaseTableMissing(false); setShowSqlSetupModal(false); }}
+                  className="text-gray-400 hover:text-white text-xs px-1 font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-gray-300 leading-snug">
+                {lang === 'he' 
+                  ? 'טבלת public.deceased עדיין לא נוצרה במסד הנתונים Supabase. המערכת פועלת באופן מלא דרך השרת המקומי.'
+                  : 'The public.deceased table is not yet created in Supabase. System is running seamlessly via local database.'}
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(SUPABASE_SETUP_SQL);
+                    setSqlCopied(true);
+                    setTimeout(() => setSqlCopied(false), 3000);
+                  }}
+                  className="w-full py-1.5 px-3 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-bold text-xs rounded-xl transition-all shadow cursor-pointer text-center"
+                >
+                  {sqlCopied ? '✓ קוד ה-SQL הועתק!' : 'העתק SQL ליצירת הטבלה ב-Supabase'}
                 </button>
               </div>
             </div>
