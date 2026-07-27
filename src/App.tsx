@@ -4,7 +4,6 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { Deceased, Language } from './types';
 import { translations } from './utils/translations';
 import { getHebrewDate } from './utils/hebrewDate';
@@ -23,10 +22,8 @@ import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplic
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-// Initialize Supabase Client
-const SUPABASE_URL = 'https://aoendfkvzsywrykmcloy.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj';
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabase } from './utils/supabase';
+export { supabase };
 
 const SEED_DATABASE: Deceased[] = (INITIAL_DATABASE || []) as unknown as Deceased[];
 
