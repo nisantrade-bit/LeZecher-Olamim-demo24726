@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion } from "framer-motion";
 import { Deceased, Language } from '../types';
 import { translations, formatParentRelation } from '../utils/translations';
 import { translateText } from '../utils/transliteration';
