@@ -19,8 +19,13 @@ import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
 import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
 import { translateDeceasedListClientSide } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
-import INITIAL_DECEASED_DATABASE from './data/initialDatabase';
 import { motion, AnimatePresence } from 'framer-motion';
+import INITIAL_DATABASE from '../database.json';
+
+import { supabase, isMissingTableError, SUPABASE_SETUP_SQL } from './utils/supabase';
+export { supabase, isMissingTableError, SUPABASE_SETUP_SQL };
+
+const SEED_DATABASE: Deceased[] = (INITIAL_DATABASE || []) as unknown as Deceased[];
 
 // Helper to enrich single deceased item with multi-language fields
 const enrichDeceasedTranslations = (item: Deceased): Deceased => {
@@ -100,17 +105,20 @@ export default function App() {
 
   const [fetchingRemoteDeceased, setFetchingRemoteDeceased] = useState<boolean>(false);
   const [remoteDeceasedNotFound, setRemoteDeceasedNotFound] = useState<boolean>(false);
+  const [supabaseTableMissing, setSupabaseTableMissing] = useState<boolean>(false);
+  const [showSqlSetupModal, setShowSqlSetupModal] = useState<boolean>(false);
+  const [sqlCopied, setSqlCopied] = useState<boolean>(false);
 
-  // Merge urlDeceasedFromPayload safely into existing masterList, LocalStorage, and server
+  // Merge urlDeceasedFromPayload safely into existing masterList, LocalStorage, Supabase and server
   useEffect(() => {
     if (urlDeceasedFromPayload) {
       const enrichedPayload = enrichDeceasedTranslations(urlDeceasedFromPayload);
       setRemoteDeceasedNotFound(false);
       setSelectedDeceased(enrichedPayload);
 
-      // Add/merge to local database without clearing existing 50+ records
+      // Add/merge to local database without clearing existing records
       setMasterList(prev => {
-        const base = prev.length > 0 ? prev : INITIAL_DECEASED_DATABASE;
+        const base = prev.length > 0 ? prev : SEED_DATABASE;
         const merged = smartMergeDeceasedLists(base, [enrichedPayload]);
         const finalData = deduplicateSingleList(merged);
         try {
@@ -121,7 +129,24 @@ export default function App() {
         return finalData;
       });
 
-      // Sync to cloud server database
+      // Upsert into Supabase database
+      (async () => {
+        try {
+          const { error } = await supabase.from('deceased').upsert([enrichedPayload]);
+          if (error) {
+            if (isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'deceased' table is missing in schema cache. Using local/server database fallback.");
+            } else {
+              console.error("Supabase upsert error on URL payload:", error);
+            }
+          }
+        } catch (e) {
+          console.warn("Supabase sync notice:", e);
+        }
+      })();
+
+      // Sync to cloud server API database as backup
       if (!(window as any).__OFFLINE_DATABASE_DATA__) {
         fetch('/api/deceased', {
           method: 'POST',
@@ -132,20 +157,41 @@ export default function App() {
     }
   }, [urlDeceasedFromPayload]);
 
-  // If urlDeceasedId is accessed directly (e.g. /m/12345) and card is not in local list, fetch from server API
+  // If urlDeceasedId is accessed directly (e.g. /m/12345) and card is not in local list, fetch from Supabase or server API
   useEffect(() => {
     if (urlDeceasedId && !urlDeceasedFromPayload) {
       const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId));
       if (!alreadyInMaster && !remoteDeceasedNotFound && !fetchingRemoteDeceased) {
         setFetchingRemoteDeceased(true);
-        fetch(`/api/deceased/${urlDeceasedId}`)
-          .then(async (res) => {
+        const fetchRemote = async () => {
+          try {
+            const { data, error } = await supabase.from('deceased').select('*').eq('id', urlDeceasedId).single();
+            if (!error && data && data.id && data.name) {
+              const enriched = enrichDeceasedTranslations(data as Deceased);
+              setMasterList(prev => {
+                const base = prev.length > 0 ? prev : SEED_DATABASE;
+                const merged = smartMergeDeceasedLists(base, [enriched]);
+                const finalData = deduplicateSingleList(merged);
+                try {
+                  localStorage.setItem('eternal_db', JSON.stringify(finalData));
+                } catch (e) {}
+                return finalData;
+              });
+              setFetchingRemoteDeceased(false);
+              return;
+            } else if (error && isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'deceased' table missing in schema cache, using server API fallback.");
+            }
+
+            // Fallback to Express server API
+            const res = await fetch(`/api/deceased/${urlDeceasedId}`);
             if (res.ok) {
               const record = await res.json();
               if (record && record.id && record.name) {
                 const enriched = enrichDeceasedTranslations(record);
                 setMasterList(prev => {
-                  const base = prev.length > 0 ? prev : INITIAL_DECEASED_DATABASE;
+                  const base = prev.length > 0 ? prev : SEED_DATABASE;
                   const merged = smartMergeDeceasedLists(base, [enriched]);
                   const finalData = deduplicateSingleList(merged);
                   try {
@@ -157,14 +203,14 @@ export default function App() {
               }
             }
             setRemoteDeceasedNotFound(true);
-          })
-          .catch((err) => {
+          } catch (err) {
             console.error("Failed to fetch remote deceased record:", err);
             setRemoteDeceasedNotFound(true);
-          })
-          .finally(() => {
+          } finally {
             setFetchingRemoteDeceased(false);
-          });
+          }
+        };
+        fetchRemote();
       }
     }
   }, [urlDeceasedId, urlDeceasedFromPayload, masterList, remoteDeceasedNotFound, fetchingRemoteDeceased]);
@@ -179,7 +225,7 @@ export default function App() {
     return clean;
   };
 
-  // Load database on mount from Initial Seed + LocalStorage + Server API (guarantees zero data loss)
+  // Load database on mount directly from Supabase, with local storage & fallback merging
   useEffect(() => {
     const loadDatabase = async () => {
       // 1. Read existing local storage records first
@@ -199,7 +245,7 @@ export default function App() {
       // Standalone Offline mode check
       if ((window as any).__OFFLINE_DATABASE_DATA__) {
         const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
-        let merged = smartMergeDeceasedLists(INITIAL_DECEASED_DATABASE, localRecords);
+        let merged = smartMergeDeceasedLists(SEED_DATABASE, localRecords);
         merged = smartMergeDeceasedLists(merged, Array.isArray(offlineData) ? offlineData : []);
         merged = mergeWithUrlPayload(merged);
         const finalData = deduplicateSingleList(merged);
@@ -210,22 +256,43 @@ export default function App() {
         return;
       }
 
-      // 2. Fetch server records
-      let serverRecords: Deceased[] = [];
+      // 2. Fetch directly from Supabase 'deceased' table
+      let supabaseRecords: Deceased[] = [];
       try {
-        const response = await fetch('/api/deceased');
-        if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data)) {
-            serverRecords = data;
+        const { data, error } = await supabase.from('deceased').select('*');
+        if (!error && Array.isArray(data) && data.length > 0) {
+          supabaseRecords = data as Deceased[];
+        } else if (error) {
+          if (isMissingTableError(error)) {
+            setSupabaseTableMissing(true);
+            console.warn("Supabase notice: 'public.deceased' table is not created yet in schema cache. Using local server & storage seamlessly.");
+          } else {
+            console.error("Supabase select error:", error.message);
           }
         }
       } catch (err) {
-        console.error("Failed to load database from server:", err);
+        console.warn("Failed to load database from Supabase:", err);
       }
 
-      // 3. Smart-merge base INITIAL_DECEASED_DATABASE (50 items) + localRecords + serverRecords + urlDeceasedFromPayload
-      let combined = smartMergeDeceasedLists(INITIAL_DECEASED_DATABASE, localRecords);
+      // 3. Fallback to Express server API if Supabase returned no data
+      let serverRecords: Deceased[] = [];
+      if (supabaseRecords.length === 0) {
+        try {
+          const response = await fetch('/api/deceased');
+          if (response.ok) {
+            const data = await response.json();
+            if (Array.isArray(data)) {
+              serverRecords = data;
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load database from server:", err);
+        }
+      }
+
+      // 4. Smart-merge SEED_DATABASE + supabaseRecords + localRecords + serverRecords + urlDeceasedFromPayload
+      let combined = smartMergeDeceasedLists(SEED_DATABASE, supabaseRecords);
+      combined = smartMergeDeceasedLists(combined, localRecords);
       combined = smartMergeDeceasedLists(combined, serverRecords);
       combined = mergeWithUrlPayload(combined);
 
@@ -237,8 +304,22 @@ export default function App() {
         console.error("Storage access error:", e);
       }
 
-      // 5. Sync any local records to server database so server has everything too
+      // 5. Sync merged master list into Supabase so table is populated and up to date
       if (finalMaster.length > 0) {
+        try {
+          const { error } = await supabase.from('deceased').upsert(finalMaster);
+          if (error) {
+            if (isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'public.deceased' table not yet created. Master list synced to local server database.");
+            } else {
+              console.error("Supabase initial sync error:", error.message);
+            }
+          }
+        } catch (e) {
+          console.warn("Supabase sync notice:", e);
+        }
+
         fetch('/api/deceased/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -380,7 +461,7 @@ export default function App() {
     }
   }, [displayedList, selectedDeceased]);
 
-  // Save or update deceased record with backend sync
+  // Save or update deceased record in Supabase & LocalStorage
   const handleSaveDeceased = async (deceasedInput: Deceased) => {
     const deceased = enrichDeceasedTranslations(deceasedInput);
     let updated: Deceased[] = [];
@@ -392,6 +473,22 @@ export default function App() {
       updated = [...masterList, deceased];
     }
 
+    // Save directly to Supabase
+    try {
+      const { error } = await supabase.from('deceased').upsert([deceased]);
+      if (error) {
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Record saved to local database.");
+        } else {
+          console.error("Supabase save error:", error.message);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to save record to Supabase:", e);
+    }
+
+    // Sync to backup server API
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
         await fetch('/api/deceased', {
@@ -426,9 +523,24 @@ export default function App() {
     }
   };
 
-  // Delete a deceased record with backend sync
+  // Delete a deceased record from Supabase & LocalStorage
   const handleDeleteDeceased = async (id: number) => {
     const updated = masterList.filter(d => d.id !== id);
+
+    // Delete from Supabase
+    try {
+      const { error } = await supabase.from('deceased').delete().eq('id', id);
+      if (error) {
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Removed from local database.");
+        } else {
+          console.error("Supabase delete error:", error.message);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to delete record from Supabase:", e);
+    }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
@@ -461,11 +573,26 @@ export default function App() {
     }
   };
 
-  // Bulk import deceased records with smart deduplication & backend sync
+  // Bulk import deceased records with smart deduplication & Supabase sync
   const handleImportDeceased = async (newList: Deceased[]) => {
     const enrichedList = newList.map(item => enrichDeceasedTranslations(item));
     const merged = smartMergeDeceasedLists(masterList, enrichedList);
     const updated = deduplicateSingleList(merged);
+
+    // Bulk upsert to Supabase
+    try {
+      const { error } = await supabase.from('deceased').upsert(enrichedList);
+      if (error) {
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Imported to local database.");
+        } else {
+          console.error("Supabase bulk import error:", error.message);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to import records to Supabase:", e);
+    }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
@@ -546,6 +673,15 @@ export default function App() {
   };
 
   const handleResetDatabase = async () => {
+    try {
+      const { error } = await supabase.from('deceased').delete().neq('id', 0);
+      if (error && isMissingTableError(error)) {
+        setSupabaseTableMissing(true);
+      }
+    } catch (err) {
+      console.warn("Failed to reset database on Supabase:", err);
+    }
+
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
         await fetch('/api/deceased', {
@@ -1069,34 +1205,26 @@ export default function App() {
                       <h4 className="text-base font-semibold text-white">
                         {group.name}
                       </h4>
-                      <p className="text-xs text-[#c8a96e] font-mono">
-                        {group.day} {group.month}
+                      <p className="text-xs text-[#c8a96e]">
+                        {group.day} ב{group.month} • {group.items.length} כרטיסים כפולים
                       </p>
-                      <div className="text-[11px] text-gray-400">
-                        {lang === 'he' 
-                          ? `נמצאו ${group.items.length} כרטיסים זהים בשם ובתאריך.` 
-                          : lang === 'ru'
-                            ? `Найдено ${group.items.length} дублирующих записей.`
-                            : `Found ${group.items.length} duplicate records.`}
-                      </div>
                     </div>
-
                     <button
                       type="button"
                       onClick={() => handleResolveDuplicateGroup(group.items)}
-                      className="px-4 py-2 bg-gradient-to-r from-[#c8a96e] to-[#b8952e] hover:from-[#b8952e] hover:to-[#a07f24] text-black font-bold text-xs rounded-xl transition-all shadow-lg hover:shadow-[#c8a96e]/10 cursor-pointer"
+                      className="px-4 py-2 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-semibold text-xs rounded-xl transition-all shadow cursor-pointer self-end md:self-auto"
                     >
-                      {lang === 'he' ? 'מזג והשאר רק אחד' : lang === 'ru' ? 'Оставить только одного' : 'Merge & Keep One'}
+                      {lang === 'he' ? 'מזג והשאר כרטיס יחיד' : lang === 'ru' ? 'Объединить записи' : 'Merge & Keep Single Record'}
                     </button>
                   </div>
                 ))}
               </div>
 
-              <div className="flex justify-end pt-4 border-t border-[#c8a96e]/10">
+              <div className="pt-4 border-t border-[#c8a96e]/20 flex justify-end">
                 <button
                   type="button"
                   onClick={() => setShowDuplicatesManager(false)}
-                  className="px-5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold rounded-xl text-xs transition-all cursor-pointer"
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
                 >
                   {lang === 'he' ? 'סגור' : lang === 'ru' ? 'Закрыть' : 'Close'}
                 </button>
@@ -1104,6 +1232,43 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* Supabase SQL Setup Modal */}
+        {(showSqlSetupModal || supabaseTableMissing) && (
+          <div className="fixed bottom-4 left-4 z-50 font-sans max-w-sm w-full">
+            <div className="bg-[#131a26] border border-[#c8a96e]/40 p-3.5 rounded-2xl shadow-2xl space-y-2 text-right">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                  Supabase Status
+                </span>
+                <button 
+                  onClick={() => { setSupabaseTableMissing(false); setShowSqlSetupModal(false); }}
+                  className="text-gray-400 hover:text-white text-xs px-1 font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-gray-300 leading-snug">
+                {lang === 'he' 
+                  ? 'טבלת public.deceased עדיין לא נוצרה במסד הנתונים Supabase. המערכת פועלת באופן מלא דרך השרת המקומי.'
+                  : 'The public.deceased table is not yet created in Supabase. System is running seamlessly via local database.'}
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(SUPABASE_SETUP_SQL);
+                    setSqlCopied(true);
+                    setTimeout(() => setSqlCopied(false), 3000);
+                  }}
+                  className="w-full py-1.5 px-3 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-bold text-xs rounded-xl transition-all shadow cursor-pointer text-center"
+                >
+                  {sqlCopied ? '✓ קוד ה-SQL הועתק!' : 'העתק SQL ליצירת הטבלה ב-Supabase'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
