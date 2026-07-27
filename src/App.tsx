@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { Deceased, Language } from './types';
 import { translations } from './utils/translations';
 import { getHebrewDate } from './utils/hebrewDate';
@@ -20,6 +21,14 @@ import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './util
 import { translateDeceasedListClientSide } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
 import { motion, AnimatePresence } from 'framer-motion';
+import INITIAL_DATABASE from '../database.json';
+
+// Initialize Supabase Client
+const SUPABASE_URL = 'https://aoendfkvzsywrykmcloy.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj';
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const SEED_DATABASE: Deceased[] = (INITIAL_DATABASE || []) as unknown as Deceased[];
 
 // Helper to enrich single deceased item with multi-language fields
 const enrichDeceasedTranslations = (item: Deceased): Deceased => {
@@ -100,16 +109,17 @@ export default function App() {
   const [fetchingRemoteDeceased, setFetchingRemoteDeceased] = useState<boolean>(false);
   const [remoteDeceasedNotFound, setRemoteDeceasedNotFound] = useState<boolean>(false);
 
-  // Merge urlDeceasedFromPayload safely into existing masterList, LocalStorage, and server
+  // Merge urlDeceasedFromPayload safely into existing masterList, LocalStorage, Supabase and server
   useEffect(() => {
     if (urlDeceasedFromPayload) {
       const enrichedPayload = enrichDeceasedTranslations(urlDeceasedFromPayload);
       setRemoteDeceasedNotFound(false);
       setSelectedDeceased(enrichedPayload);
 
-      // Add/merge to local database without clearing existing 50+ records
+      // Add/merge to local database without clearing existing records
       setMasterList(prev => {
-        const merged = smartMergeDeceasedLists(prev, [enrichedPayload]);
+        const base = prev.length > 0 ? prev : SEED_DATABASE;
+        const merged = smartMergeDeceasedLists(base, [enrichedPayload]);
         const finalData = deduplicateSingleList(merged);
         try {
           localStorage.setItem('eternal_db', JSON.stringify(finalData));
@@ -119,7 +129,17 @@ export default function App() {
         return finalData;
       });
 
-      // Sync to cloud server database
+      // Upsert into Supabase database
+      (async () => {
+        try {
+          const { error } = await supabase.from('deceased').upsert([enrichedPayload]);
+          if (error) console.error("Supabase upsert error on URL payload:", error);
+        } catch (e) {
+          console.error("Supabase sync error:", e);
+        }
+      })();
+
+      // Sync to cloud server API database as backup
       if (!(window as any).__OFFLINE_DATABASE_DATA__) {
         fetch('/api/deceased', {
           method: 'POST',
@@ -130,20 +150,39 @@ export default function App() {
     }
   }, [urlDeceasedFromPayload]);
 
-  // If urlDeceasedId is accessed directly (e.g. /m/12345) and card is not in local list, fetch from server API
+  // If urlDeceasedId is accessed directly (e.g. /m/12345) and card is not in local list, fetch from Supabase or server API
   useEffect(() => {
     if (urlDeceasedId && !urlDeceasedFromPayload) {
       const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId));
       if (!alreadyInMaster && !remoteDeceasedNotFound && !fetchingRemoteDeceased) {
         setFetchingRemoteDeceased(true);
-        fetch(`/api/deceased/${urlDeceasedId}`)
-          .then(async (res) => {
+        const fetchRemote = async () => {
+          try {
+            const { data, error } = await supabase.from('deceased').select('*').eq('id', urlDeceasedId).single();
+            if (!error && data && data.id && data.name) {
+              const enriched = enrichDeceasedTranslations(data as Deceased);
+              setMasterList(prev => {
+                const base = prev.length > 0 ? prev : SEED_DATABASE;
+                const merged = smartMergeDeceasedLists(base, [enriched]);
+                const finalData = deduplicateSingleList(merged);
+                try {
+                  localStorage.setItem('eternal_db', JSON.stringify(finalData));
+                } catch (e) {}
+                return finalData;
+              });
+              setFetchingRemoteDeceased(false);
+              return;
+            }
+
+            // Fallback to Express server API
+            const res = await fetch(`/api/deceased/${urlDeceasedId}`);
             if (res.ok) {
               const record = await res.json();
               if (record && record.id && record.name) {
                 const enriched = enrichDeceasedTranslations(record);
                 setMasterList(prev => {
-                  const merged = smartMergeDeceasedLists(prev, [enriched]);
+                  const base = prev.length > 0 ? prev : SEED_DATABASE;
+                  const merged = smartMergeDeceasedLists(base, [enriched]);
                   const finalData = deduplicateSingleList(merged);
                   try {
                     localStorage.setItem('eternal_db', JSON.stringify(finalData));
@@ -154,14 +193,14 @@ export default function App() {
               }
             }
             setRemoteDeceasedNotFound(true);
-          })
-          .catch((err) => {
+          } catch (err) {
             console.error("Failed to fetch remote deceased record:", err);
             setRemoteDeceasedNotFound(true);
-          })
-          .finally(() => {
+          } finally {
             setFetchingRemoteDeceased(false);
-          });
+          }
+        };
+        fetchRemote();
       }
     }
   }, [urlDeceasedId, urlDeceasedFromPayload, masterList, remoteDeceasedNotFound, fetchingRemoteDeceased]);
@@ -176,7 +215,7 @@ export default function App() {
     return clean;
   };
 
-  // Load database on mount from Initial Seed + LocalStorage + Server API (guarantees zero data loss)
+  // Load database on mount directly from Supabase, with local storage & fallback merging
   useEffect(() => {
     const loadDatabase = async () => {
       // 1. Read existing local storage records first
@@ -196,7 +235,8 @@ export default function App() {
       // Standalone Offline mode check
       if ((window as any).__OFFLINE_DATABASE_DATA__) {
         const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
-        let merged = smartMergeDeceasedLists(localRecords, Array.isArray(offlineData) ? offlineData : []);
+        let merged = smartMergeDeceasedLists(SEED_DATABASE, localRecords);
+        merged = smartMergeDeceasedLists(merged, Array.isArray(offlineData) ? offlineData : []);
         merged = mergeWithUrlPayload(merged);
         const finalData = deduplicateSingleList(merged);
         setMasterList(finalData);
@@ -206,22 +246,39 @@ export default function App() {
         return;
       }
 
-      // 2. Fetch server records
-      let serverRecords: Deceased[] = [];
+      // 2. Fetch directly from Supabase 'deceased' table
+      let supabaseRecords: Deceased[] = [];
       try {
-        const response = await fetch('/api/deceased');
-        if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data)) {
-            serverRecords = data;
-          }
+        const { data, error } = await supabase.from('deceased').select('*');
+        if (!error && Array.isArray(data) && data.length > 0) {
+          supabaseRecords = data as Deceased[];
+        } else if (error) {
+          console.error("Supabase select error:", error.message);
         }
       } catch (err) {
-        console.error("Failed to load database from server:", err);
+        console.error("Failed to load database from Supabase:", err);
       }
 
-      // 3. Smart-merge localRecords + serverRecords + urlDeceasedFromPayload
-      let combined = smartMergeDeceasedLists(localRecords, serverRecords);
+      // 3. Fallback to Express server API if Supabase returned no data
+      let serverRecords: Deceased[] = [];
+      if (supabaseRecords.length === 0) {
+        try {
+          const response = await fetch('/api/deceased');
+          if (response.ok) {
+            const data = await response.json();
+            if (Array.isArray(data)) {
+              serverRecords = data;
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load database from server:", err);
+        }
+      }
+
+      // 4. Smart-merge SEED_DATABASE + supabaseRecords + localRecords + serverRecords + urlDeceasedFromPayload
+      let combined = smartMergeDeceasedLists(SEED_DATABASE, supabaseRecords);
+      combined = smartMergeDeceasedLists(combined, localRecords);
+      combined = smartMergeDeceasedLists(combined, serverRecords);
       combined = mergeWithUrlPayload(combined);
 
       const finalMaster = deduplicateSingleList(combined);
@@ -232,8 +289,15 @@ export default function App() {
         console.error("Storage access error:", e);
       }
 
-      // 5. Sync any local records to server database so server has everything too
+      // 5. Sync merged master list into Supabase so table is populated and up to date
       if (finalMaster.length > 0) {
+        try {
+          const { error } = await supabase.from('deceased').upsert(finalMaster);
+          if (error) console.error("Supabase initial sync error:", error.message);
+        } catch (e) {
+          console.error("Supabase sync error:", e);
+        }
+
         fetch('/api/deceased/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -375,7 +439,7 @@ export default function App() {
     }
   }, [displayedList, selectedDeceased]);
 
-  // Save or update deceased record with backend sync
+  // Save or update deceased record in Supabase & LocalStorage
   const handleSaveDeceased = async (deceasedInput: Deceased) => {
     const deceased = enrichDeceasedTranslations(deceasedInput);
     let updated: Deceased[] = [];
@@ -387,6 +451,15 @@ export default function App() {
       updated = [...masterList, deceased];
     }
 
+    // Save directly to Supabase
+    try {
+      const { error } = await supabase.from('deceased').upsert([deceased]);
+      if (error) console.error("Supabase save error:", error.message);
+    } catch (e) {
+      console.error("Failed to save record to Supabase:", e);
+    }
+
+    // Sync to backup server API
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
         await fetch('/api/deceased', {
@@ -421,9 +494,17 @@ export default function App() {
     }
   };
 
-  // Delete a deceased record with backend sync
+  // Delete a deceased record from Supabase & LocalStorage
   const handleDeleteDeceased = async (id: number) => {
     const updated = masterList.filter(d => d.id !== id);
+
+    // Delete from Supabase
+    try {
+      const { error } = await supabase.from('deceased').delete().eq('id', id);
+      if (error) console.error("Supabase delete error:", error.message);
+    } catch (e) {
+      console.error("Failed to delete record from Supabase:", e);
+    }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
@@ -456,11 +537,19 @@ export default function App() {
     }
   };
 
-  // Bulk import deceased records with smart deduplication & backend sync
+  // Bulk import deceased records with smart deduplication & Supabase sync
   const handleImportDeceased = async (newList: Deceased[]) => {
     const enrichedList = newList.map(item => enrichDeceasedTranslations(item));
     const merged = smartMergeDeceasedLists(masterList, enrichedList);
     const updated = deduplicateSingleList(merged);
+
+    // Bulk upsert to Supabase
+    try {
+      const { error } = await supabase.from('deceased').upsert(enrichedList);
+      if (error) console.error("Supabase bulk import error:", error.message);
+    } catch (e) {
+      console.error("Failed to import records to Supabase:", e);
+    }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
@@ -541,6 +630,12 @@ export default function App() {
   };
 
   const handleResetDatabase = async () => {
+    try {
+      await supabase.from('deceased').delete().neq('id', 0);
+    } catch (err) {
+      console.error("Failed to reset database on Supabase:", err);
+    }
+
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
         await fetch('/api/deceased', {
@@ -1064,34 +1159,26 @@ export default function App() {
                       <h4 className="text-base font-semibold text-white">
                         {group.name}
                       </h4>
-                      <p className="text-xs text-[#c8a96e] font-mono">
-                        {group.day} {group.month}
+                      <p className="text-xs text-[#c8a96e]">
+                        {group.day} ב{group.month} • {group.items.length} כרטיסים כפולים
                       </p>
-                      <div className="text-[11px] text-gray-400">
-                        {lang === 'he' 
-                          ? `נמצאו ${group.items.length} כרטיסים זהים בשם ובתאריך.` 
-                          : lang === 'ru'
-                            ? `Найдено ${group.items.length} дублирующих записей.`
-                            : `Found ${group.items.length} duplicate records.`}
-                      </div>
                     </div>
-
                     <button
                       type="button"
                       onClick={() => handleResolveDuplicateGroup(group.items)}
-                      className="px-4 py-2 bg-gradient-to-r from-[#c8a96e] to-[#b8952e] hover:from-[#b8952e] hover:to-[#a07f24] text-black font-bold text-xs rounded-xl transition-all shadow-lg hover:shadow-[#c8a96e]/10 cursor-pointer"
+                      className="px-4 py-2 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-semibold text-xs rounded-xl transition-all shadow cursor-pointer self-end md:self-auto"
                     >
-                      {lang === 'he' ? 'מזג והשאר רק אחד' : lang === 'ru' ? 'Оставить только одного' : 'Merge & Keep One'}
+                      {lang === 'he' ? 'מזג והשאר כרטיס יחיד' : lang === 'ru' ? 'Объединить записи' : 'Merge & Keep Single Record'}
                     </button>
                   </div>
                 ))}
               </div>
 
-              <div className="flex justify-end pt-4 border-t border-[#c8a96e]/10">
+              <div className="pt-4 border-t border-[#c8a96e]/20 flex justify-end">
                 <button
                   type="button"
                   onClick={() => setShowDuplicatesManager(false)}
-                  className="px-5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold rounded-xl text-xs transition-all cursor-pointer"
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
                 >
                   {lang === 'he' ? 'סגור' : lang === 'ru' ? 'Закрыть' : 'Close'}
                 </button>
@@ -1099,6 +1186,7 @@ export default function App() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
