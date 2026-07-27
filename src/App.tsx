@@ -22,10 +22,23 @@ import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplic
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete } from './utils/supabase';
-export { supabase, isMissingTableError, SUPABASE_SETUP_SQL };
+import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert } from './utils/supabase';
+export { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert };
 
 const SEED_DATABASE: Deceased[] = (INITIAL_DATABASE || []) as unknown as Deceased[];
+
+const MOCK_IDS = new Set([1718882041001, 1718882041002, 1718882041003, 1718882041004, 1718882041005, 1718882041006]);
+const MOCK_NAMES = new Set(["אברהם אבינו", "שרה אמנו", "יוסף בן יעקב", "לאה אמנו", "אלעזר בן אהרן", "מרים הנביאה"]);
+
+function filterOutMockRecords(list: Deceased[]): Deceased[] {
+  if (!Array.isArray(list)) return [];
+  return list.filter(item => {
+    if (!item) return false;
+    if (MOCK_IDS.has(Number(item.id))) return false;
+    if (MOCK_NAMES.has(item.name?.trim())) return false;
+    return true;
+  });
+}
 
 // Helper to enrich single deceased item with multi-language fields
 const enrichDeceasedTranslations = (item: Deceased): Deceased => {
@@ -248,7 +261,7 @@ export default function App() {
         let merged = smartMergeDeceasedLists(SEED_DATABASE, localRecords);
         merged = smartMergeDeceasedLists(merged, Array.isArray(offlineData) ? offlineData : []);
         merged = mergeWithUrlPayload(merged);
-        const finalData = deduplicateSingleList(merged);
+        const finalData = filterOutMockRecords(deduplicateSingleList(merged));
         setMasterList(finalData);
         try {
           localStorage.setItem('eternal_db', JSON.stringify(finalData));
@@ -259,9 +272,9 @@ export default function App() {
       // 2. Fetch directly from Supabase 'deceased' table
       let supabaseRecords: Deceased[] = [];
       try {
-        const { data, error } = await supabase.from('deceased').select('*');
+        const { data, error } = await safeSelect('deceased');
         if (!error && Array.isArray(data) && data.length > 0) {
-          supabaseRecords = data as Deceased[];
+          supabaseRecords = filterOutMockRecords(data as Deceased[]);
         } else if (error) {
           if (isMissingTableError(error)) {
             setSupabaseTableMissing(true);
@@ -282,7 +295,7 @@ export default function App() {
           if (response.ok) {
             const data = await response.json();
             if (Array.isArray(data)) {
-              serverRecords = data;
+              serverRecords = filterOutMockRecords(data);
             }
           }
         } catch (err) {
@@ -296,7 +309,7 @@ export default function App() {
       combined = smartMergeDeceasedLists(combined, serverRecords);
       combined = mergeWithUrlPayload(combined);
 
-      const finalMaster = deduplicateSingleList(combined);
+      const finalMaster = filterOutMockRecords(deduplicateSingleList(combined));
       setMasterList(finalMaster);
       try {
         localStorage.setItem('eternal_db', JSON.stringify(finalMaster));
