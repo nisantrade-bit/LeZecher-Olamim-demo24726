@@ -22,8 +22,8 @@ import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplic
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert } from './utils/supabase';
-export { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert };
+import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord } from './utils/supabase';
+export { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord };
 
 const SEED_DATABASE: Deceased[] = (INITIAL_DATABASE || []) as unknown as Deceased[];
 
@@ -687,7 +687,7 @@ export default function App() {
 
   const handleResetDatabase = async () => {
     try {
-      const { error } = await supabase.from('deceased').delete().neq('id', 0);
+      const { error } = await safeDeleteAll('deceased');
       if (error && isMissingTableError(error)) {
         setSupabaseTableMissing(true);
       }
