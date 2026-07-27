@@ -22,7 +22,7 @@ import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplic
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-import { supabase, isMissingTableError, SUPABASE_SETUP_SQL } from './utils/supabase';
+import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete } from './utils/supabase';
 export { supabase, isMissingTableError, SUPABASE_SETUP_SQL };
 
 const SEED_DATABASE: Deceased[] = (INITIAL_DATABASE || []) as unknown as Deceased[];
@@ -132,7 +132,7 @@ export default function App() {
       // Upsert into Supabase database
       (async () => {
         try {
-          const { error } = await supabase.from('deceased').upsert([enrichedPayload]);
+          const { error } = await safeUpsert([enrichedPayload]);
           if (error) {
             if (isMissingTableError(error)) {
               setSupabaseTableMissing(true);
@@ -165,7 +165,7 @@ export default function App() {
         setFetchingRemoteDeceased(true);
         const fetchRemote = async () => {
           try {
-            const { data, error } = await supabase.from('deceased').select('*').eq('id', urlDeceasedId).single();
+            const { data, error } = await safeEq('id', urlDeceasedId, 'deceased', true);
             if (!error && data && data.id && data.name) {
               const enriched = enrichDeceasedTranslations(data as Deceased);
               setMasterList(prev => {
@@ -307,7 +307,7 @@ export default function App() {
       // 5. Sync merged master list into Supabase so table is populated and up to date
       if (finalMaster.length > 0) {
         try {
-          const { error } = await supabase.from('deceased').upsert(finalMaster);
+          const { error } = await safeUpsert(finalMaster);
           if (error) {
             if (isMissingTableError(error)) {
               setSupabaseTableMissing(true);
@@ -475,7 +475,7 @@ export default function App() {
 
     // Save directly to Supabase
     try {
-      const { error } = await supabase.from('deceased').upsert([deceased]);
+      const { error } = await safeUpsert([deceased]);
       if (error) {
         if (isMissingTableError(error)) {
           setSupabaseTableMissing(true);
@@ -529,7 +529,7 @@ export default function App() {
 
     // Delete from Supabase
     try {
-      const { error } = await supabase.from('deceased').delete().eq('id', id);
+      const { error } = await safeDelete('id', id);
       if (error) {
         if (isMissingTableError(error)) {
           setSupabaseTableMissing(true);
@@ -581,7 +581,7 @@ export default function App() {
 
     // Bulk upsert to Supabase
     try {
-      const { error } = await supabase.from('deceased').upsert(enrichedList);
+      const { error } = await safeUpsert(enrichedList);
       if (error) {
         if (isMissingTableError(error)) {
           setSupabaseTableMissing(true);
