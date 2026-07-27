@@ -47,7 +47,68 @@ const enrichDeceasedTranslations = (item: Deceased): Deceased => {
   return list && list.length > 0 ? list[0] : item;
 };
 
-export default function App() {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  declare props: ErrorBoundaryProps;
+  state: ErrorBoundaryState = {
+    hasError: false,
+    error: null
+  };
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("App Runtime Error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-6 p-6 text-center" dir="rtl">
+          <div className="w-16 h-16 rounded-full bg-red-950/40 border border-red-500/40 flex items-center justify-center text-red-400">
+            <AlertTriangle className="w-8 h-8 animate-pulse" />
+          </div>
+          <div className="space-y-2 max-w-md">
+            <h2 className="text-xl font-serif font-bold text-[#c8a96e]">
+              אירעה שגיאה בטעינת האפליקציה
+            </h2>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              התרחשה שגיאת הרצה בלתי צפויה. נסה לרענן את הדף כדי לטעון מחדש את המערכת.
+            </p>
+            {this.state.error?.message && (
+              <div className="mt-3 p-3 bg-red-950/20 border border-red-500/20 rounded-xl text-[11px] text-red-300 font-mono text-right overflow-x-auto">
+                {this.state.error.message}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2.5 bg-[#c8a96e] hover:bg-[#b8952e] text-black text-xs font-bold rounded-xl transition-all shadow-lg cursor-pointer flex items-center gap-2"
+          >
+            <span>רענן דף</span>
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function MainAppContent() {
   const [lang, setLang] = useState<Language>(() => {
     const params = new URLSearchParams(window.location.search);
     const urlLang = params.get('lang');
@@ -246,105 +307,110 @@ export default function App() {
   // Load database on mount directly from Supabase, with local storage & fallback merging
   useEffect(() => {
     const loadDatabase = async () => {
-      // 1. Read existing local storage records first
-      let localRecords: Deceased[] = [];
       try {
-        const stored = localStorage.getItem('eternal_db');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            localRecords = parsed;
-          }
-        }
-      } catch (e) {
-        console.error("Storage access error:", e);
-      }
-
-      // Standalone Offline mode check
-      if ((window as any).__OFFLINE_DATABASE_DATA__) {
-        const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
-        let merged = smartMergeDeceasedLists(SEED_DATABASE, localRecords);
-        merged = smartMergeDeceasedLists(merged, Array.isArray(offlineData) ? offlineData : []);
-        merged = mergeWithUrlPayload(merged);
-        const finalData = filterOutMockRecords(deduplicateSingleList(merged));
-        setMasterList(finalData);
+        // 1. Read existing local storage records first
+        let localRecords: Deceased[] = [];
         try {
-          localStorage.setItem('eternal_db', JSON.stringify(finalData));
-        } catch (e) {}
-        return;
-      }
-
-      // 2. Fetch directly from Supabase 'deceased' table
-      let supabaseRecords: Deceased[] = [];
-      try {
-        const { data, error } = await safeSelect('deceased');
-        if (error) {
-          console.error("Supabase Fetch Error:", error);
-          if (isMissingTableError(error)) {
-            setSupabaseTableMissing(true);
-            console.warn("Supabase notice: 'public.deceased' table is not created yet in schema cache. Using local server & storage seamlessly.");
-          } else {
-            console.error("Supabase select error:", error.message || error);
-          }
-        } else if (Array.isArray(data) && data.length > 0) {
-          supabaseRecords = filterOutMockRecords(data as Deceased[]);
-        }
-      } catch (err) {
-        console.error("Supabase Fetch Error:", err);
-      }
-
-      // 3. Fallback to Express server API if Supabase returned no data
-      let serverRecords: Deceased[] = [];
-      if (supabaseRecords.length === 0) {
-        try {
-          const response = await fetch('/api/deceased');
-          if (response.ok) {
-            const data = await response.json();
-            if (Array.isArray(data)) {
-              serverRecords = filterOutMockRecords(data);
+          const stored = localStorage.getItem('eternal_db');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              localRecords = parsed;
             }
           }
-        } catch (err) {
-          console.error("Failed to load database from server:", err);
+        } catch (e) {
+          console.error("Storage access error:", e);
         }
-      }
 
-      // 4. Smart-merge SEED_DATABASE + supabaseRecords + localRecords + serverRecords + urlDeceasedFromPayload
-      let combined = smartMergeDeceasedLists(SEED_DATABASE, supabaseRecords);
-      combined = smartMergeDeceasedLists(combined, localRecords);
-      combined = smartMergeDeceasedLists(combined, serverRecords);
-      combined = mergeWithUrlPayload(combined);
+        // Standalone Offline mode check
+        if ((window as any).__OFFLINE_DATABASE_DATA__) {
+          const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
+          let merged = smartMergeDeceasedLists(SEED_DATABASE, localRecords);
+          merged = smartMergeDeceasedLists(merged, Array.isArray(offlineData) ? offlineData : []);
+          merged = mergeWithUrlPayload(merged);
+          const finalData = filterOutMockRecords(deduplicateSingleList(merged));
+          setMasterList(finalData);
+          try {
+            localStorage.setItem('eternal_db', JSON.stringify(finalData));
+          } catch (e) {}
+          return;
+        }
 
-      const finalMaster = filterOutMockRecords(deduplicateSingleList(combined));
-      setMasterList(finalMaster);
-      try {
-        localStorage.setItem('eternal_db', JSON.stringify(finalMaster));
-      } catch (e) {
-        console.error("Storage access error:", e);
-      }
-
-      // 5. Sync merged master list into Supabase so table is populated and up to date
-      if (finalMaster.length > 0) {
+        // 2. Fetch directly from Supabase 'deceased' table
+        let supabaseRecords: Deceased[] = [];
         try {
-          const { error } = await safeUpsert(finalMaster);
+          const { data, error } = await safeSelect('deceased');
           if (error) {
             console.error("Supabase Fetch Error:", error);
             if (isMissingTableError(error)) {
               setSupabaseTableMissing(true);
-              console.warn("Supabase notice: 'public.deceased' table not yet created. Master list synced to local server database.");
+              console.warn("Supabase notice: 'public.deceased' table is not created yet in schema cache. Using local server & storage seamlessly.");
             } else {
-              console.error("Supabase initial sync error:", error.message || error);
+              console.error("Supabase select error:", error.message || error);
             }
+          } else if (Array.isArray(data) && data.length > 0) {
+            supabaseRecords = filterOutMockRecords(data as Deceased[]);
           }
-        } catch (e) {
-          console.error("Supabase Fetch Error:", e);
+        } catch (err) {
+          console.error("Supabase Fetch Error:", err);
         }
 
-        fetch('/api/deceased/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(finalMaster)
-        }).catch(e => console.error("Cloud database sync error:", e));
+        // 3. Fallback to Express server API if Supabase returned no data
+        let serverRecords: Deceased[] = [];
+        if (supabaseRecords.length === 0) {
+          try {
+            const response = await fetch('/api/deceased');
+            if (response.ok) {
+              const data = await response.json();
+              if (Array.isArray(data)) {
+                serverRecords = filterOutMockRecords(data);
+              }
+            }
+          } catch (err) {
+            console.error("Failed to load database from server:", err);
+          }
+        }
+
+        // 4. Smart-merge SEED_DATABASE + supabaseRecords + localRecords + serverRecords + urlDeceasedFromPayload
+        let combined = smartMergeDeceasedLists(SEED_DATABASE, supabaseRecords);
+        combined = smartMergeDeceasedLists(combined, localRecords);
+        combined = smartMergeDeceasedLists(combined, serverRecords);
+        combined = mergeWithUrlPayload(combined);
+
+        const finalMaster = filterOutMockRecords(deduplicateSingleList(combined));
+        setMasterList(finalMaster);
+        try {
+          localStorage.setItem('eternal_db', JSON.stringify(finalMaster));
+        } catch (e) {
+          console.error("Storage access error:", e);
+        }
+
+        // 5. Sync merged master list into Supabase so table is populated and up to date
+        if (finalMaster.length > 0) {
+          try {
+            const { error } = await safeUpsert(finalMaster);
+            if (error) {
+              console.error("Supabase Fetch Error:", error);
+              if (isMissingTableError(error)) {
+                setSupabaseTableMissing(true);
+                console.warn("Supabase notice: 'public.deceased' table not yet created. Master list synced to local server database.");
+              } else {
+                console.error("Supabase initial sync error:", error.message || error);
+              }
+            }
+          } catch (e) {
+            console.error("Supabase Fetch Error:", e);
+          }
+
+          fetch('/api/deceased/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(finalMaster)
+          }).catch(e => console.error("Cloud database sync error:", e));
+        }
+      } catch (err) {
+        console.error("App Runtime Error:", err);
+        setMasterList(filterOutMockRecords(SEED_DATABASE));
       }
     };
 
@@ -1297,5 +1363,13 @@ export default function App() {
 
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <MainAppContent />
+    </ErrorBoundary>
   );
 }
