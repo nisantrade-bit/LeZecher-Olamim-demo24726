@@ -426,3 +426,4 @@ CREATE POLICY "Allow public insert on deceased" ON public.deceased FOR INSERT WI
 CREATE POLICY "Allow public update on deceased" ON public.deceased FOR UPDATE USING (true);
 CREATE POLICY "Allow public delete on deceased" ON public.deceased FOR DELETE USING (true);
 `.trim();
+export default App;
