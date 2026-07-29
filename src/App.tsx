@@ -840,7 +840,8 @@ function MainAppContent() {
     setUrlDeceasedFromPayload(null);
     setSelectedDeceased(null);
     if (typeof window !== 'undefined' && window.history) {
-      window.history.pushState({}, document.title, window.location.pathname || '/');
+      const targetUrl = lang !== 'he' ? `/?lang=${lang}` : '/';
+      window.history.pushState({}, document.title, targetUrl);
     }
   };
 
