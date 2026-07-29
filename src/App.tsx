@@ -995,19 +995,6 @@ function MainAppContent() {
                 Русский
               </button>
             </div>
-
-            {/* Standalone Single File Download Button */}
-            <a
-              href="/index_single.html"
-              download="index.html"
-              className="flex items-center gap-2 bg-gradient-to-r from-amber-600/20 to-amber-700/20 hover:from-amber-600/30 hover:to-amber-700/30 text-[#c8a96e] border border-[#c8a96e]/30 px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-md font-sans"
-              title={lang === 'he' ? 'הורד גרסת קובץ בודד ללא צורך באינטרנט' : lang === 'ru' ? 'Скачать автономную версию' : 'Download standalone offline version'}
-            >
-              <FileDown className="w-3.5 h-3.5" />
-              <span>
-                {lang === 'he' ? 'הורד קובץ INDEX.HTML עצמאי' : lang === 'ru' ? 'Скачать файл INDEX.HTML' : 'Download Standalone INDEX.HTML'}
-              </span>
-            </a>
           </div>
         </header>
 
