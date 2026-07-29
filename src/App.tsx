@@ -1064,11 +1064,11 @@ function MainAppContent() {
               <div>
                 <p className="font-semibold text-white text-xs sm:text-sm">
                   {notifPermission === 'granted'
-                    ? (lang === 'he' ? `התראות יארצייט פעילות בנייד (${upcomingNotices.length} אזכרות קרובות ב-3 הימים הקרובים)` : `Mobile Yahrzeit Notifications Active (${upcomingNotices.length} upcoming)`)
-                    : (lang === 'he' ? 'קבל התראות לנייד על אזכרות קרובות ב-3 הימים הקרובים' : 'Get mobile push notifications for upcoming Yahrzeits')}
+                    ? (lang === 'he' ? `התראות יארצייט פעילות בנייד (${upcomingNotices.length} אזכרות קרובות ב-3 הימים הקרובים)` : lang === 'ru' ? `Уведомления о Йארцайтах активны (${upcomingNotices.length} ближайших)` : `Mobile Yahrzeit Notifications Active (${upcomingNotices.length} upcoming)`)
+                    : (lang === 'he' ? 'קבל התראות לנייד על אזכרות קרובות ב-3 הימים הקרובים' : lang === 'ru' ? 'Получать уведомления о приближающихся Йארцайтах' : 'Get mobile push notifications for upcoming Yahrzeits')}
                 </p>
                 <p className="text-[11px] text-gray-400 mt-0.5">
-                  {lang === 'he' ? 'המערכת תשלח תזכורת אוטומטית למכשירך לקראת יום האזכרה' : 'Automatic push notifications directly on your phone or computer'}
+                  {lang === 'he' ? 'המערכת תשלח תזכורת אוטומטית למכשירך לקראת יום האזכרה' : lang === 'ru' ? 'Система автоматически отправит напоминание на ваше устройство' : 'Automatic push notifications directly on your phone or computer'}
                 </p>
               </div>
             </div>
@@ -1078,12 +1078,12 @@ function MainAppContent() {
                   onClick={handleEnableNotifications}
                   className="px-3.5 py-1.5 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-bold text-xs rounded-lg transition-all shadow cursor-pointer whitespace-nowrap"
                 >
-                  {lang === 'he' ? 'הפעל התראות כעת' : 'Enable Notifications'}
+                  {lang === 'he' ? 'הפעל התראות כעת' : lang === 'ru' ? 'Включить уведомления' : 'Enable Notifications'}
                 </button>
               ) : (
                 <span className="px-2.5 py-1 bg-green-500/20 text-green-300 border border-green-500/30 font-bold text-[11px] rounded-lg flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
-                  {lang === 'he' ? 'פעיל' : 'Active'}
+                  {lang === 'he' ? 'פעיל' : lang === 'ru' ? 'Активно' : 'Active'}
                 </span>
               )}
               <button
