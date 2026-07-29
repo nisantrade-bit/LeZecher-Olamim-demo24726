@@ -7,13 +7,9 @@ export interface UpcomingYahrzeitNotice {
   dateString: string;
 }
 
-/**
- * מביא את הציון/אזכרות הקרובות מתוך רשימת הנפטרים
- */
 export function getUpcomingYahrzeits(deceasedList: any[] = []): UpcomingYahrzeitNotice[] {
   if (!Array.isArray(deceasedList)) return [];
 
-  // לוגיקת סינון אוטומטית לאזכרות ב-30 הימים הקרובים
   return deceasedList
     .slice(0, 5)
     .map((item, index) => ({
@@ -24,9 +20,6 @@ export function getUpcomingYahrzeits(deceasedList: any[] = []): UpcomingYahrzeit
     }));
 }
 
-/**
- * מבקש הרשאת התראות מהדפדפן/מכשיר
- */
 export async function requestNotificationPermission(): Promise<boolean> {
   if (!('Notification' in window)) {
     console.warn('הדפדפן אינו תומך בהתראות');
@@ -46,22 +39,32 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 /**
- * שולח התראה על אזכרה קרובה
+ * שולח התראה בצורה בטוחה התואמת גם למכשירי מובייל (Android / Chrome)
  */
-export function sendYahrzeitNotification(title: string, body?: string) {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.showNotification(title, {
+export async function sendYahrzeitNotification(title: string, body?: string) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    return;
+  }
+
+  try {
+    // 1. ניסיון שליחה דרך Service Worker (חובה במובייל!)
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.ready;
+      if (registration && registration.showNotification) {
+        await registration.showNotification(title, {
           body,
           icon: '/pwa-192x192.png',
           badge: '/pwa-192x192.png',
           dir: 'rtl',
           lang: 'he',
         });
-      });
-    } else {
-      new Notification(title, { body });
+        return;
+      }
     }
+
+    // 2. גיבוי למחשב נייח בלבד (Desktop)
+    new Notification(title, { body });
+  } catch (error) {
+    console.error('שגיאה בשליחת התראה:', error);
   }
 }
