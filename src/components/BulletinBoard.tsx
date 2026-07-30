@@ -10,7 +10,7 @@ import { translations, formatParentRelation } from '../utils/translations';
 import { translateText } from '../utils/transliteration';
 import { getHebrewDate, isYahrzeitMatch, HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, normalizeMonthName, getYahrzeitEveDate } from '../utils/hebrewDate';
 import { Bell, Heart, Share2, BookOpen, Calendar, MessageCircle, Info, MapPin, Flame, Sparkles, Clock } from 'lucide-react';
-import { getTorahPortionDetails } from '../utils/torahPortionHelper';
+import { getTorahPortionDetails, getLocalizedEventName } from '../utils/torahPortionHelper';
 import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
 import { DedicatedStudyModal } from './DedicatedStudyModal';
 
@@ -25,40 +25,45 @@ const CITIES = [
   { id: 703448, nameHe: "קייב", nameEn: "Киев", nameRu: "Киев" }
 ];
 
-const RealisticFlame = ({ size = "normal", showWax = true }: { size?: "normal" | "large"; showWax?: boolean }) => {
+const RealisticFlame = ({ size = "normal", showWax = true, isLit = true }: { size?: "normal" | "large"; showWax?: boolean; isLit?: boolean }) => {
   const isLarge = size === "large";
+  const actuallyLit = isLit && !showWax;
   return (
     <div className={`relative ${isLarge ? 'w-8 h-9' : 'w-6 h-7'} flex flex-col items-center justify-end shrink-0 select-none pointer-events-none`}>
-      {/* Radiant ambient glow */}
-      <div className={`absolute ${isLarge ? 'top-0 w-9 h-9 blur-md bg-amber-400/80' : 'top-0 w-5 h-5 blur-sm bg-amber-500/50'} rounded-full animate-pulse`}></div>
+      {/* Radiant ambient glow - ONLY when lit */}
+      {actuallyLit && (
+        <div className={`absolute ${isLarge ? 'top-0 w-9 h-9 blur-md bg-amber-400/80' : 'top-0 w-5 h-5 blur-sm bg-amber-500/50'} rounded-full animate-pulse`}></div>
+      )}
       
-      {/* Animated flame body */}
-      <motion.div 
-        className={`relative ${isLarge ? 'w-4 h-7' : 'w-2.5 h-4'} bg-gradient-to-t from-amber-600 via-amber-400 to-yellow-100 rounded-full blur-[0.3px] shadow-[0_0_16px_#f59e0b,0_0_28px_#ff9900,0_0_38px_#ffaa00] origin-bottom z-10`}
-        animate={{
-          scaleY: [1, 1.25, 0.88, 1.18, 1],
-          scaleX: [1, 0.82, 1.18, 0.88, 1],
-          rotate: [0, -3.5, 3.5, -1.5, 0],
-          x: [0, -0.6, 0.6, -0.6, 0]
-        }}
-        transition={{
-          duration: 1.2,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      >
-        <div className={`absolute bottom-0.5 left-0.5 ${isLarge ? 'w-1.5 h-3.5' : 'w-0.5 h-1.5'} bg-white rounded-full opacity-95 shadow-[0_0_8px_#fff]`}></div>
-        <div className={`absolute bottom-0 left-0.5 ${isLarge ? 'w-1 h-2' : 'w-0.5 h-1'} bg-blue-500 rounded-full opacity-80`}></div>
-      </motion.div>
+      {/* Animated flame body - ONLY when lit */}
+      {actuallyLit && (
+        <motion.div 
+          className={`relative ${isLarge ? 'w-4 h-7' : 'w-2.5 h-4'} bg-gradient-to-t from-amber-600 via-amber-400 to-yellow-100 rounded-full blur-[0.3px] shadow-[0_0_16px_#f59e0b,0_0_28px_#ff9900,0_0_38px_#ffaa00] origin-bottom z-10`}
+          animate={{
+            scaleY: [1, 1.25, 0.88, 1.18, 1],
+            scaleX: [1, 0.82, 1.18, 0.88, 1],
+            rotate: [0, -3.5, 3.5, -1.5, 0],
+            x: [0, -0.6, 0.6, -0.6, 0]
+          }}
+          transition={{
+            duration: 1.2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        >
+          <div className={`absolute bottom-0.5 left-0.5 ${isLarge ? 'w-1.5 h-3.5' : 'w-0.5 h-1.5'} bg-white rounded-full opacity-95 shadow-[0_0_8px_#fff]`}></div>
+          <div className={`absolute bottom-0 left-0.5 ${isLarge ? 'w-1 h-2' : 'w-0.5 h-1'} bg-blue-500 rounded-full opacity-80`}></div>
+        </motion.div>
+      )}
 
       {/* Small Wax Candle Body - ONLY rendered when showWax is true (OFF / Unlit state) */}
-      {showWax && (
-        <div className="relative flex flex-col items-center shrink-0 -mt-0.5 z-0">
-          {/* Wick */}
-          <div className="w-0.5 h-1 bg-gray-900 rounded-t"></div>
+      {!actuallyLit && (
+        <div className="relative flex flex-col items-center shrink-0 z-0">
+          {/* Unlit Wick */}
+          <div className="w-0.5 h-2 bg-gray-500 rounded-t"></div>
           {/* Candle wax pillar */}
-          <div className="w-3.5 h-3 bg-gradient-to-t from-amber-800 via-amber-600 to-amber-500/90 rounded-sm shadow-inner border border-amber-400/50 relative overflow-hidden">
-            <div className="absolute top-0 left-0.5 w-1 h-1.5 bg-amber-300/40 rounded-full"></div>
+          <div className="w-4 h-3.5 bg-gradient-to-t from-amber-900 via-amber-800 to-amber-700/90 rounded-sm shadow-inner border border-amber-600/50 relative overflow-hidden">
+            <div className="absolute top-0 left-0.5 w-1 h-1.5 bg-amber-400/30 rounded-full"></div>
           </div>
         </div>
       )}
@@ -489,7 +494,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                 <span className="text-gray-400 block text-[10px] uppercase font-bold">{bt.parasha}</span>
                 <span className="font-extrabold text-white">
                   {currentParashaItem 
-                    ? (lang === 'he' ? currentParashaItem.hebrew : currentParashaItem.title) 
+                    ? (lang === 'he' ? currentParashaItem.hebrew : getLocalizedEventName(currentParashaItem.title, currentParashaItem.hebrew, lang)) 
                     : (lang === 'he' ? "טוען..." : "Loading...")}
                 </span>
               </div>
@@ -546,7 +551,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                   <div className="flex flex-wrap items-center gap-2 mt-1">
                     {weeklyEventsWithTimes.map((ev, i) => (
                       <div key={`hdr-ev-${i}`} className="flex flex-wrap items-center gap-1.5 bg-gradient-to-r from-amber-950/80 via-black to-amber-950/80 px-2.5 py-1 rounded-lg border border-amber-400/50 shadow-md">
-                        <span className="text-amber-200 font-serif font-bold text-xs">{lang === 'he' ? ev.hebrew : ev.title}:</span>
+                        <span className="text-amber-200 font-serif font-bold text-xs">{lang === 'he' ? ev.hebrew : getLocalizedEventName(ev.title, ev.hebrew, lang)}:</span>
                         <span className="text-amber-300 font-mono text-xs font-black bg-amber-500/20 px-2 py-0.5 rounded border border-amber-400/30">
                           {lang === 'he' ? 'כניסה בערב' : lang === 'ru' ? 'Вход вечером' : 'Eve Entry'}: 🕯️ {ev.entryTime || '--:--'}
                         </span>
@@ -592,7 +597,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                   
                   const precedingShabbat = getPrecedingShabbatParasha(event.gregorianDate);
                   const parashaLabel = precedingShabbat 
-                    ? (lang === 'he' ? precedingShabbat.hebrew : precedingShabbat.title)
+                    ? (lang === 'he' ? precedingShabbat.hebrew : getLocalizedEventName(precedingShabbat.title, precedingShabbat.hebrew, lang))
                     : null;
 
                   const isCandleLit = !!litCandles[event.deceased.id];
@@ -723,7 +728,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                   
                   const precedingShabbat = getPrecedingShabbatParasha(event.gregorianDate);
                   const parashaLabel = precedingShabbat 
-                    ? (lang === 'he' ? precedingShabbat.hebrew : precedingShabbat.title)
+                    ? (lang === 'he' ? precedingShabbat.hebrew : getLocalizedEventName(precedingShabbat.title, precedingShabbat.hebrew, lang))
                     : null;
 
                   const isCandleLit = !!litCandles[event.deceased.id];

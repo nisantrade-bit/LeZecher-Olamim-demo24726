@@ -3,6 +3,148 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+export const RUSSIAN_EVENT_NAMES: Record<string, string> = {
+  // Weekly Parashot
+  "bereshit": "Берешит",
+  "noach": "Ноах",
+  "lech-lecha": "Лех-Леха",
+  "vayera": "Ваера",
+  "chayei sara": "Хаей Сара",
+  "chayei sarah": "Хаей Сара",
+  "toldot": "Толдот",
+  "vayetzei": "Ваеце",
+  "vayishlach": "Ваишлах",
+  "vayeshev": "Ваешев",
+  "miketz": "Микец",
+  "vayigash": "Ваигаш",
+  "vayechi": "Ваехи",
+  "shemot": "Шемот",
+  "vaera": "Ваэра",
+  "bo": "Бо",
+  "beshalach": "Бешалах",
+  "yitro": "Итро",
+  "mishpatim": "Мишпатим",
+  "terumah": "Трума",
+  "tetzaveh": "Тецаве",
+  "ki tisa": "Ки Тиса",
+  "ki tissa": "Ки Тиса",
+  "vayakhel": "Ваякгель",
+  "pekudei": "Пекудей",
+  "vayikra": "Ваикра",
+  "tzav": "Цав",
+  "shmini": "Шмини",
+  "tazria": "Тазриа",
+  "metzora": "Мецора",
+  "acharei mot": "Ахарей Мот",
+  "kedoshim": "Кедошим",
+  "emor": "Эмор",
+  "behar": "Бехар",
+  "bechukotai": "Бехукотай",
+  "bamidbar": "Бемидбар",
+  "nasso": "Насо",
+  "beha'alotcha": "Бехаалотха",
+  "sh'lach": "Шлах",
+  "korach": "Корах",
+  "chukat": "Хукат",
+  "balak": "Балак",
+  "pinchas": "Пинхас",
+  "matot": "Матот",
+  "masei": "Масей",
+  "devarim": "Дварим",
+  "vaetchanan": "Ваэтханан",
+  "eikev": "Эйкев",
+  "re'eh": "Реэ",
+  "shoftim": "Шофтим",
+  "ki teitzei": "Ки Теце",
+  "ki tavo": "Ки Таво",
+  "nitzavim": "Ницавим",
+  "vayeilech": "Ваелех",
+  "ha'azinu": "Аазину",
+  "v'zot haberachah": "Вэ-Зот а-Браха",
+  "vzot haberachah": "Вэ-Зот а-Браха",
+
+  // Double Parashot
+  "vayakhel-pekudei": "Ваякгель-Пекудей",
+  "tazria-metzora": "Тазриа-Мецора",
+  "acharei mot-kedoshim": "Ахарей Мот-Кедошим",
+  "behar-bechukotai": "Бехар-Бехукотай",
+  "chukat-balak": "Хукат-Балак",
+  "matot-masei": "Матот-Масей",
+  "nitzavim-vayeilech": "Ницавим-Ваелех",
+
+  // Holidays and Fasts
+  "tu b'av": "Ту бе-Ав",
+  "tu b'shvat": "Ту би-Шват",
+  "tu bishvat": "Ту би-Шват",
+  "rosh chodesh": "Рош Ходеш",
+  "rosh chodesh av": "Рош Ходеш Ав",
+  "rosh chodesh elul": "Рош Ходеш Элул",
+  "rosh chodesh tishrei": "Рош Ходеш Тишрей",
+  "rosh chodesh cheshvan": "Рош Ходеш Хешван",
+  "rosh chodesh kislev": "Рош Ходеш Кислев",
+  "rosh chodesh tevet": "Рош Ходеш Тевет",
+  "rosh chodesh shevat": "Рош Ходеш Шват",
+  "rosh chodesh shvat": "Рош Ходеш Шват",
+  "rosh chodesh adar": "Рош Ходеш Адар",
+  "rosh chodesh adar i": "Рош Ходеш Адар I",
+  "rosh chodesh adar ii": "Рош Ходеш Адар II",
+  "rosh chodesh nisan": "Рош Ходеш Нисан",
+  "rosh chodesh iyar": "Рош Ходеш Ияр",
+  "rosh chodesh sivan": "Рош Ходеш Сиван",
+  "rosh chodesh tammuz": "Рош Ходеш Таммуз",
+  "rosh hashana": "Рош а-Шана",
+  "yom kippur": "Йом Киппур",
+  "sukkot": "Суккот",
+  "shmini atzeret": "Шмини Ацерет",
+  "simchat torah": "Симхат Тора",
+  "chanukah": "Ханука",
+  "hanukkah": "Ханука",
+  "purim": "Пурим",
+  "shushan purim": "Шушан Пурим",
+  "pesach": "Песах",
+  "passover": "Песах",
+  "shavuot": "Шавуот",
+  "lag baomer": "Лаг ба-Омер",
+  "tish'a b'av": "9 Ава (Тиша бе-Ав)",
+  "tisha b'av": "9 Ава (Тиша бе-Ав)",
+  "fast of tammuz": "17 Таммуза (Пост)",
+  "17th of tammuz": "17 Таммуза (Пост)",
+  "fast of tevet": "10 Тевета (Пост)",
+  "asara b'tevet": "10 Тевета (Пост)",
+  "ta'anit esther": "Пост Эстер",
+  "tzom gedaliah": "Пост Гедалии",
+  "fast of gedaliah": "Пост Гедалии"
+};
+
+export function getLocalizedEventName(titleEn: string, hebrewTitle: string, lang: string): string {
+  if (lang === 'he') {
+    return hebrewTitle || titleEn;
+  }
+  if (lang === 'ru') {
+    const raw = (titleEn || "").trim();
+    const isParashat = raw.toLowerCase().startsWith("parashat ") || raw.toLowerCase().startsWith("parsha ");
+    const cleanKey = raw.replace(/^parashat\s+/i, '').replace(/^parsha\s+/i, '').trim().toLowerCase();
+    
+    if (RUSSIAN_EVENT_NAMES[cleanKey]) {
+      return isParashat ? `Паршат ${RUSSIAN_EVENT_NAMES[cleanKey]}` : RUSSIAN_EVENT_NAMES[cleanKey];
+    }
+    if (RUSSIAN_EVENT_NAMES[raw.toLowerCase()]) {
+      return RUSSIAN_EVENT_NAMES[raw.toLowerCase()];
+    }
+    if (raw.toLowerCase().includes("rosh chodesh")) {
+      const monthPart = raw.replace(/rosh chodesh/i, '').trim().toLowerCase();
+      const ruMonth: Record<string, string> = {
+        "av": "Ав", "elul": "Элул", "tishrei": "Тишрей", "cheshvan": "Хешван", "kislev": "Кислев",
+        "tevet": "Тевет", "shevat": "Шват", "shvat": "Шват", "adar": "Адар", "adar i": "Адар I",
+        "adar ii": "Адар II", "nisan": "Нисан", "iyar": "Ияр", "sivan": "Сиван", "tammuz": "Таммуз"
+      };
+      return `Рош Ходеш ${ruMonth[monthPart] || monthPart}`;
+    }
+    return raw.replace(/^Parashat\s+/i, 'Паршат ');
+  }
+  return titleEn;
+}
+
 export interface PortionDetails {
   nameHe: string;
   nameEn: string;
@@ -28,10 +170,11 @@ export function getTorahPortionDetails(titleHe: string, titleEn: string): Portio
     normalizedHe.includes("פורים") || normalizedEn.toLowerCase().includes("purim");
 
   // Default regular weekly Parasha values
+  const ruName = getLocalizedEventName(normalizedEn, normalizedHe, 'ru').replace(/^Паршат\s+/i, '').trim();
   let details: PortionDetails = {
     nameHe: normalizedHe.replace("פרשת ", "").trim(),
     nameEn: normalizedEn.replace("Parashat ", "").trim(),
-    nameRu: normalizedEn.replace("Parashat ", "").trim(),
+    nameRu: ruName || normalizedEn.replace("Parashat ", "").trim(),
     aliyotIsrael: {
       he: "7 עליות לתורה + קריאת מפטיר (סך הכל 8 עליות)",
       en: "7 Aliyot + Maftir (Total of 8 Aliyot)",

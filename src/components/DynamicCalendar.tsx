@@ -8,6 +8,7 @@ import { Deceased, Language, CalendarMonthData } from '../types';
 import { translations } from '../utils/translations';
 import { getHebrewDate, getLocalizedHebrewDate, isYahrzeitMatch, HEBREW_MONTHS_HE } from '../utils/hebrewDate';
 import { Calendar, ChevronLeft, ChevronRight, MapPin, Sparkles, Loader2, List, LayoutGrid as GridIcon } from 'lucide-react';
+import { getLocalizedEventName } from '../utils/torahPortionHelper';
 
 interface DynamicCalendarProps {
   deceasedList: Deceased[];
@@ -473,10 +474,10 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                     )}
 
                     {shabbatObj.parsha && (
-                      <div className="text-[9px] text-[#c8a96e] font-semibold leading-none truncate" title={lang === 'he' ? shabbatObj.hebrewParsha : shabbatObj.parsha}>
+                      <div className="text-[9px] text-[#c8a96e] font-semibold leading-none truncate" title={lang === 'he' ? shabbatObj.hebrewParsha : getLocalizedEventName(shabbatObj.parsha, shabbatObj.hebrewParsha || "", lang)}>
                         <span>📖 </span>
                         <span className="font-sans">
-                          {lang === 'he' ? shabbatObj.hebrewParsha.replace('פרשת ', '') : shabbatObj.parsha.replace('Parashat ', '')}
+                          {lang === 'he' ? shabbatObj.hebrewParsha.replace('פרשת ', '') : getLocalizedEventName(shabbatObj.parsha, shabbatObj.hebrewParsha || "", lang).replace(/^(Parashat|Паршат)\s+/i, '')}
                         </span>
                       </div>
                     )}
@@ -839,7 +840,7 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                   <div className="flex items-center gap-2 text-[#c8a96e]">
                     <span>📖</span>
                     <span>
-                      {lang === 'he' ? selectedDayInfo.shabbatObj.hebrewParsha : selectedDayInfo.shabbatObj.parsha}
+                      {lang === 'he' ? selectedDayInfo.shabbatObj.hebrewParsha : getLocalizedEventName(selectedDayInfo.shabbatObj.parsha, selectedDayInfo.shabbatObj.hebrewParsha || "", lang)}
                     </span>
                   </div>
                 )}
