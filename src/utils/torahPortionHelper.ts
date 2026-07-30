@@ -350,3 +350,80 @@ export function getTorahPortionDetails(titleHe: string, titleEn: string): Portio
 
   return details;
 }
+
+export interface ShabbatYahrzeitInfo {
+  isShabbat: boolean;
+  prepShabbatDate: Date;
+  prepDateStrFormatted: string;
+  prepParashaName: string;
+  memorialShabbatDate: Date;
+  memorialDateStrFormatted: string;
+  memorialParashaName: string;
+}
+
+export function getShabbatYahrzeitInfo(
+  eventDate: Date,
+  hebcalEvents: any[],
+  lang: 'he' | 'en' | 'ru'
+): ShabbatYahrzeitInfo | null {
+  const dayOfWeek = eventDate.getDay();
+  if (dayOfWeek !== 6) {
+    return null;
+  }
+
+  const prepShabbatDate = new Date(eventDate);
+  prepShabbatDate.setDate(prepShabbatDate.getDate() - 7);
+
+  const memorialShabbatDate = new Date(eventDate);
+
+  const toYmd = (dt: Date) => {
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const prepStr = toYmd(prepShabbatDate);
+  const memStr = toYmd(memorialShabbatDate);
+
+  const findParasha = (dateStr: string): string => {
+    const item = (hebcalEvents || []).find(
+      (it) => (it.category === 'parashat' || it.category === 'holiday') && it.date && it.date.startsWith(dateStr)
+    );
+    if (item) {
+      const localized = getLocalizedEventName(item.title || '', item.hebrew || '', lang);
+      return localized;
+    }
+    return lang === 'he' ? 'פרשת השבוע' : lang === 'ru' ? 'Недельная глава' : 'Weekly Parasha';
+  };
+
+  const prepParashaName = findParasha(prepStr);
+  const memorialParashaName = findParasha(memStr);
+
+  const localeMap = {
+    he: 'he-IL',
+    en: 'en-GB',
+    ru: 'ru-RU'
+  };
+
+  const prepDateStrFormatted = prepShabbatDate.toLocaleDateString(localeMap[lang], {
+    day: 'numeric',
+    month: 'short'
+  });
+
+  const memorialDateStrFormatted = memorialShabbatDate.toLocaleDateString(localeMap[lang], {
+    day: 'numeric',
+    month: 'short'
+  });
+
+  return {
+    isShabbat: true,
+    prepShabbatDate,
+    prepDateStrFormatted,
+    prepParashaName,
+    memorialShabbatDate,
+    memorialDateStrFormatted,
+    memorialParashaName
+  };
+}
+

@@ -13,6 +13,7 @@ import { Bell, Heart, Share2, BookOpen, Calendar, MessageCircle, Info, MapPin, F
 import { getTorahPortionDetails, getLocalizedEventName } from '../utils/torahPortionHelper';
 import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
 import { DedicatedStudyModal } from './DedicatedStudyModal';
+import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
 
 const CITIES = [
   { id: 293397, nameHe: "תל אביב", nameEn: "Tel Aviv", nameRu: "Тель-Авив" },
@@ -663,6 +664,13 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                               <span>{lang === 'he' ? 'נר נשמה דולק לעילוי נשמתו/ה ת.נ.צ.ב.ה' : lang === 'ru' ? 'Свеча памяти горит (Да святится память)' : 'Memorial Candle Lit'}</span>
                             </div>
                           )}
+
+                          <ShabbatYahrzeitBanner
+                            eventDate={event.gregorianDate}
+                            hebcalEvents={hebcalEvents}
+                            lang={lang}
+                            compact={true}
+                          />
                         </div>
                       </div>
 
@@ -800,6 +808,13 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                               <span>{lang === 'he' ? 'נר נשמה דולק' : lang === 'ru' ? 'Свеча памяти горит' : 'Memorial Candle Lit'}</span>
                             </div>
                           )}
+
+                          <ShabbatYahrzeitBanner
+                            eventDate={event.gregorianDate}
+                            hebcalEvents={hebcalEvents}
+                            lang={lang}
+                            compact={true}
+                          />
                         </div>
                       </div>
 

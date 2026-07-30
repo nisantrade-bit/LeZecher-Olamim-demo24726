@@ -1,0 +1,181 @@
+import React from 'react';
+import { getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
+import { translations, formatShabbatReminderText } from '../utils/translations';
+import { BookOpen, Calendar, AlertCircle, Sparkles } from 'lucide-react';
+
+export interface ShabbatYahrzeitBannerProps {
+  eventDate: Date;
+  hebcalEvents: any[];
+  lang: 'he' | 'en' | 'ru';
+  compact?: boolean;
+}
+
+export const ShabbatYahrzeitBanner: React.FC<ShabbatYahrzeitBannerProps> = ({
+  eventDate,
+  hebcalEvents,
+  lang,
+  compact = false,
+}) => {
+  const info = getShabbatYahrzeitInfo(eventDate, hebcalEvents, lang);
+  if (!info) {
+    return null;
+  }
+
+  const t = translations[lang];
+  const isRtl = lang === 'he';
+
+  const prepTextFormatted = formatShabbatReminderText(
+    t.shabbatPrepText,
+    info.prepParashaName,
+    info.prepDateStrFormatted
+  );
+
+  const memorialTextFormatted = formatShabbatReminderText(
+    t.shabbatMemorialText,
+    info.memorialParashaName,
+    info.memorialDateStrFormatted
+  );
+
+  if (compact) {
+    return (
+      <div
+        className={`mt-3 rounded-xl border-2 border-amber-500/70 bg-gradient-to-br from-[#0d0a04] via-[#1a1205] to-[#130d04] p-3.5 shadow-[0_0_15px_rgba(245,158,11,0.25)] space-y-2.5 font-sans ${
+          isRtl ? 'text-right' : 'text-left'
+        }`}
+        dir={isRtl ? 'rtl' : 'ltr'}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Top Header Badge */}
+        <div className="flex items-center justify-between gap-2 flex-wrap border-b border-amber-500/30 pb-2">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/50 text-xs font-black tracking-wide">
+            <span>📌</span>
+            <span>{t.shabbatYahrzeitBadge}</span>
+          </span>
+          <span className="text-[11px] font-semibold text-amber-200/90 bg-black/40 px-2 py-0.5 rounded border border-amber-500/20">
+            {t.shabbatGraveVisitRule}
+          </span>
+        </div>
+
+        {/* Double Reminder Box */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+          {/* Preparation Shabbat (1 week before) */}
+          <div className="bg-black/50 p-2.5 rounded-lg border border-amber-500/30 space-y-1">
+            <div className="flex items-center gap-1.5 text-amber-400 font-bold text-[11px]">
+              <Calendar className="w-3.5 h-3.5 shrink-0" />
+              <span>{t.shabbatPrepTitle}</span>
+            </div>
+            <p className="text-gray-200 text-[11px] leading-relaxed">
+              {prepTextFormatted}
+            </p>
+          </div>
+
+          {/* Memorial Shabbat (Yahrzeit day) */}
+          <div className="bg-black/50 p-2.5 rounded-lg border border-amber-500/30 space-y-1">
+            <div className="flex items-center gap-1.5 text-amber-300 font-bold text-[11px]">
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span>{t.shabbatMemorialTitle}</span>
+            </div>
+            <p className="text-gray-200 text-[11px] leading-relaxed">
+              {memorialTextFormatted}
+            </p>
+          </div>
+        </div>
+
+        {/* Candle Lighting Notice */}
+        <div className="flex items-center gap-2 bg-amber-500/15 border border-amber-400/40 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-amber-200">
+          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>{t.shabbatCandleWarning}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Full Expanded View for MemorialDetailsModal / DeceasedMemorialPage
+  return (
+    <div
+      className={`my-4 rounded-2xl border-2 border-[#c8a96e]/60 bg-gradient-to-br from-[#0d0a04] via-[#181106] to-[#0a0c10] p-5 shadow-[0_0_25px_rgba(200,169,110,0.2)] space-y-4 font-sans ${
+        isRtl ? 'text-right' : 'text-left'
+      }`}
+      dir={isRtl ? 'rtl' : 'ltr'}
+    >
+      {/* Title Bar */}
+      <div className="flex items-center justify-between border-b border-[#c8a96e]/25 pb-3">
+        <h4 className="text-sm md:text-base font-serif font-black text-[#c8a96e] flex items-center gap-2">
+          <span>📌</span>
+          <span>{t.shabbatDoubleReminderTitle}</span>
+        </h4>
+        <span className="text-xs bg-[#c8a96e]/15 text-[#c8a96e] border border-[#c8a96e]/30 px-2.5 py-1 rounded-full font-bold">
+          {t.shabbatYahrzeitBadge}
+        </span>
+      </div>
+
+      {/* Grave Visit Rule Highlights */}
+      <div className="bg-black/40 border border-[#c8a96e]/30 p-3 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs font-semibold text-gray-200">
+          <BookOpen className="w-4 h-4 text-[#c8a96e] shrink-0" />
+          <span>{t.shabbatGraveVisitRule}</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] font-bold">
+          <span className="bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
+            {t.shabbatGraveVisitFriday}
+          </span>
+          <span className="text-gray-400">/</span>
+          <span className="bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
+            {t.shabbatGraveVisitSunday}
+          </span>
+        </div>
+      </div>
+
+      {/* Two Shabbats Comparison Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        {/* Preparation Shabbat Card */}
+        <div className="bg-[#120e06]/90 border border-amber-500/40 rounded-xl p-3.5 space-y-2 shadow-inner">
+          <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
+            <span className="text-xs font-black text-amber-400 flex items-center gap-1.5">
+              <span>1️⃣</span>
+              <span>{t.shabbatPrepTitle}</span>
+            </span>
+            <span className="text-[10px] bg-amber-500/10 text-amber-300 font-mono px-2 py-0.5 rounded">
+              {info.prepDateStrFormatted}
+            </span>
+          </div>
+          <div className="text-xs text-amber-200 font-semibold flex items-center gap-1">
+            <span>📖</span>
+            <span>{info.prepParashaName}</span>
+          </div>
+          <p className="text-xs text-gray-300 leading-relaxed">
+            {prepTextFormatted}
+          </p>
+        </div>
+
+        {/* Memorial Shabbat Card */}
+        <div className="bg-[#120e06]/90 border border-amber-500/40 rounded-xl p-3.5 space-y-2 shadow-inner">
+          <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
+            <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+              <span>2️⃣</span>
+              <span>{t.shabbatMemorialTitle}</span>
+            </span>
+            <span className="text-[10px] bg-amber-500/10 text-amber-300 font-mono px-2 py-0.5 rounded">
+              {info.memorialDateStrFormatted}
+            </span>
+          </div>
+          <div className="text-xs text-amber-200 font-semibold flex items-center gap-1">
+            <span>📖</span>
+            <span>{info.memorialParashaName}</span>
+          </div>
+          <p className="text-xs text-gray-300 leading-relaxed">
+            {memorialTextFormatted}
+          </p>
+        </div>
+      </div>
+
+      {/* Mandatory Candle Lighting Warning */}
+      <div className="bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent border border-amber-400/50 rounded-xl p-3 flex items-center gap-3">
+        <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+        <p className="text-xs md:text-sm font-bold text-amber-200 leading-snug">
+          {t.shabbatCandleWarning}
+        </p>
+      </div>
+    </div>
+  );
+};
