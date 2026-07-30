@@ -14,12 +14,11 @@ import { MemorialBook } from './components/MemorialBook';
 import { DynamicCalendar } from './components/DynamicCalendar';
 import { Quick30Grid } from './components/Quick30Grid';
 import { MemorialDetailsModal } from './components/MemorialDetailsModal';
-import { Flame, Calendar, BookOpen, LayoutGrid, FileDown, Globe, Sparkles, AlertTriangle, Bell, Plus, X, CheckCircle2 } from 'lucide-react';
+import { Flame, Calendar, BookOpen, LayoutGrid, FileDown, Globe, Sparkles, AlertTriangle } from 'lucide-react';
 import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
 import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
 import { translateDeceasedListClientSide } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
-import { getUpcomingYahrzeits, requestNotificationPermission, sendYahrzeitNotification, UpcomingYahrzeitNotice } from './utils/notifications';
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
@@ -183,39 +182,6 @@ function MainAppContent() {
   const [supabaseTableMissing, setSupabaseTableMissing] = useState<boolean>(false);
   const [showSqlSetupModal, setShowSqlSetupModal] = useState<boolean>(false);
   const [sqlCopied, setSqlCopied] = useState<boolean>(false);
-
-  // Mobile drawer / sheet state for adding deceased
-  const [isMobileFormOpen, setIsMobileFormOpen] = useState<boolean>(false);
-
-  // Notification state
-  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() => 
-    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
-  );
-  const [upcomingNotices, setUpcomingNotices] = useState<UpcomingYahrzeitNotice[]>([]);
-  const [notifBannerDismissed, setNotifBannerDismissed] = useState<boolean>(false);
-
-  // Auto-check upcoming Yahrzeits for the next 3 days whenever list updates
-  useEffect(() => {
-    if (displayedList && displayedList.length > 0) {
-      const notices = getUpcomingYahrzeits(displayedList, 3);
-      setUpcomingNotices(notices);
-
-      // Trigger push/local notifications if granted
-      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-        notices.forEach(notice => {
-          sendYahrzeitNotification(notice, lang);
-        });
-      }
-    }
-  }, [displayedList, lang]);
-
-  const handleEnableNotifications = async () => {
-    const perm = await requestNotificationPermission();
-    setNotifPermission(perm);
-    if (perm === 'granted' && upcomingNotices.length > 0) {
-      upcomingNotices.forEach(notice => sendYahrzeitNotification(notice, lang));
-    }
-  };
 
   // Merge urlDeceasedFromPayload safely into existing masterList, LocalStorage, Supabase and server
   useEffect(() => {
@@ -840,8 +806,7 @@ function MainAppContent() {
     setUrlDeceasedFromPayload(null);
     setSelectedDeceased(null);
     if (typeof window !== 'undefined' && window.history) {
-      const targetUrl = lang !== 'he' ? `/?lang=${lang}` : '/';
-      window.history.pushState({}, document.title, targetUrl);
+      window.history.pushState({}, document.title, window.location.pathname || '/');
     }
   };
 
@@ -911,7 +876,7 @@ function MainAppContent() {
 
   return (
     <div 
-      className="min-h-screen bg-[#0d0d0d] text-[#f0f4f8] selection:bg-[#c8a96e] selection:text-black pb-28 lg:pb-12 transition-all duration-300"
+      className="min-h-screen bg-[#0d0d0d] text-[#f0f4f8] selection:bg-[#c8a96e] selection:text-black pb-12 transition-all duration-300"
       dir={isRtl ? 'rtl' : 'ltr'}
     >
       {/* Dynamic Background Grain overlay */}
@@ -996,6 +961,19 @@ function MainAppContent() {
                 Русский
               </button>
             </div>
+
+            {/* Standalone Single File Download Button */}
+            <a
+              href="/index_single.html"
+              download="index.html"
+              className="flex items-center gap-2 bg-gradient-to-r from-amber-600/20 to-amber-700/20 hover:from-amber-600/30 hover:to-amber-700/30 text-[#c8a96e] border border-[#c8a96e]/30 px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-md font-sans"
+              title={lang === 'he' ? 'הורד גרסת קובץ בודד ללא צורך באינטרנט' : lang === 'ru' ? 'Скачать автономную версию' : 'Download standalone offline version'}
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              <span>
+                {lang === 'he' ? 'הורד קובץ INDEX.HTML עצמאי' : lang === 'ru' ? 'Скачать файл INDEX.HTML' : 'Download Standalone INDEX.HTML'}
+              </span>
+            </a>
           </div>
         </header>
 
@@ -1054,47 +1032,6 @@ function MainAppContent() {
             >
               {lang === 'he' ? 'נהל כפילויות' : lang === 'ru' ? 'Управление дубликатами' : 'Manage Duplicates'}
             </button>
-          </div>
-        )}
-
-        {/* Notification Permission Banner */}
-        {!notifBannerDismissed && (
-          <div className="mb-6 w-full bg-[#131a26]/90 border border-[#c8a96e]/30 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-200 font-sans shadow-lg">
-            <div className="flex items-center gap-2.5">
-              <Bell className="w-5 h-5 text-amber-400 animate-bounce shrink-0" />
-              <div>
-                <p className="font-semibold text-white text-xs sm:text-sm">
-                  {notifPermission === 'granted'
-                    ? (lang === 'he' ? `התראות יארצייט פעילות בנייד (${upcomingNotices.length} אזכרות קרובות ב-3 הימים הקרובים)` : lang === 'ru' ? `Уведомления о Йארцайтах активны (${upcomingNotices.length} ближайших)` : `Mobile Yahrzeit Notifications Active (${upcomingNotices.length} upcoming)`)
-                    : (lang === 'he' ? 'קבל התראות לנייד על אזכרות קרובות ב-3 הימים הקרובים' : lang === 'ru' ? 'Получать уведомления о приближающихся Йארцайтах' : 'Get mobile push notifications for upcoming Yahrzeits')}
-                </p>
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  {lang === 'he' ? 'המערכת תשלח תזכורת אוטומטית למכשירך לקראת יום האזכרה' : lang === 'ru' ? 'Система автоматически отправит напоминание на ваше устройство' : 'Automatic push notifications directly on your phone or computer'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              {notifPermission !== 'granted' ? (
-                <button
-                  onClick={handleEnableNotifications}
-                  className="px-3.5 py-1.5 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-bold text-xs rounded-lg transition-all shadow cursor-pointer whitespace-nowrap"
-                >
-                  {lang === 'he' ? 'הפעל התראות כעת' : lang === 'ru' ? 'Включить уведомления' : 'Enable Notifications'}
-                </button>
-              ) : (
-                <span className="px-2.5 py-1 bg-green-500/20 text-green-300 border border-green-500/30 font-bold text-[11px] rounded-lg flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
-                  {lang === 'he' ? 'פעיל' : lang === 'ru' ? 'Активно' : 'Active'}
-                </span>
-              )}
-              <button
-                onClick={() => setNotifBannerDismissed(true)}
-                className="p-1 text-gray-400 hover:text-white cursor-pointer"
-                title={lang === 'he' ? 'סגור' : 'Close'}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         )}
 
@@ -1426,86 +1363,6 @@ function MainAppContent() {
             </div>
           </div>
         )}
-
-        {/* Mobile Floating Action Button (FAB) */}
-        <button
-          onClick={() => setIsMobileFormOpen(true)}
-          className="lg:hidden fixed bottom-18 right-4 z-40 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold p-3.5 rounded-full shadow-[0_0_20px_rgba(200,169,110,0.5)] flex items-center gap-2 border border-[#c8a96e] cursor-pointer transition-transform active:scale-95"
-          title={lang === 'he' ? 'הוסף נפטר' : 'Add Memorial'}
-        >
-          <Plus className="w-6 h-6 stroke-[2.5]" />
-          <span className="text-xs font-bold pl-1 hidden sm:inline">{lang === 'he' ? 'הוסף נפטר' : 'Add Name'}</span>
-        </button>
-
-        {/* Mobile Form Bottom Sheet / Modal */}
-        {isMobileFormOpen && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end justify-center sm:items-center p-0 sm:p-4">
-            <div className="bg-[#131a26] border-t-2 sm:border-2 border-[#c8a96e] rounded-t-2xl sm:rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-4 relative shadow-2xl animate-in slide-in-from-bottom duration-300">
-              <div className="flex items-center justify-between pb-3 border-b border-[#c8a96e]/20 mb-3">
-                <h3 className="text-base font-serif font-bold text-[#c8a96e] flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-[#c8a96e]" />
-                  <span>{lang === 'he' ? 'הוספת נפטר חדש לספר הזיכרון' : 'Add New Deceased'}</span>
-                </h3>
-                <button
-                  onClick={() => setIsMobileFormOpen(false)}
-                  className="p-1.5 text-gray-400 hover:text-white rounded-lg bg-gray-800/50 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <MemorialForm 
-                lang={lang} 
-                onSave={(deceased) => {
-                  handleSaveDeceased(deceased);
-                  setIsMobileFormOpen(false);
-                }} 
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Fixed Mobile Bottom Navigation Bar */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0d0d0d]/95 border-t border-[#c8a96e]/30 backdrop-blur-lg flex items-center justify-around py-2 px-1 shadow-2xl">
-          <button
-            onClick={() => setActiveTab('calendar')}
-            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'calendar' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <Calendar className="w-5 h-5" />
-            <span className="text-[10px] font-sans">{t.calendar}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('book')}
-            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'book' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <BookOpen className="w-5 h-5" />
-            <span className="text-[10px] font-sans">{t.memorialBook}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('grid')}
-            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'grid' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <LayoutGrid className="w-5 h-5" />
-            <span className="text-[10px] font-sans">{t.quick30Grid}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('import')}
-            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'import' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <FileDown className="w-5 h-5" />
-            <span className="text-[10px] font-sans">{t.importBulk}</span>
-          </button>
-        </div>
 
       </div>
     </div>
