@@ -301,9 +301,29 @@ export function sanitizeParentName(name: string): string {
   return cleaned;
 }
 
-export function formatParentRelation(gender: 'male' | 'female', fatherName: string | undefined, motherName: string | undefined, lang: 'he' | 'en' | 'ru'): string {
-  const father = sanitizeParentName(fatherName || '');
-  const mother = sanitizeParentName(motherName || '');
+export function formatParentRelation(
+  gender: 'male' | 'female', 
+  fatherName: string | undefined, 
+  motherName: string | undefined, 
+  lang: 'he' | 'en' | 'ru',
+  deceased?: any
+): string {
+  let father = sanitizeParentName(fatherName || '');
+  let mother = sanitizeParentName(motherName || '');
+
+  if (deceased) {
+    if (lang === 'he') {
+      father = deceased.fatherNameHe || father;
+      mother = deceased.motherNameHe || mother;
+    } else if (lang === 'en') {
+      father = deceased.fatherNameEn || father;
+      mother = deceased.motherNameEn || mother;
+    } else if (lang === 'ru') {
+      father = deceased.fatherNameRu || father;
+      mother = deceased.motherNameRu || mother;
+    }
+  }
+
   const hasFather = father !== '' && father !== '???' && father !== '-';
   const hasMother = mother !== '' && mother !== '???' && mother !== '-';
 
@@ -321,8 +341,8 @@ export function formatParentRelation(gender: 'male' | 'female', fatherName: stri
     return `${prefix} הורה`;
   } else if (lang === 'ru') {
     const prefix = gender === 'male' ? 'сын' : 'дочь';
-    const translatedFather = hasFather ? translateText(father, 'ru') : '';
-    const translatedMother = hasMother ? translateText(mother, 'ru') : '';
+    const translatedFather = hasFather ? (deceased?.fatherNameRu || translateText(father, 'ru')) : '';
+    const translatedMother = hasMother ? (deceased?.motherNameRu || translateText(mother, 'ru')) : '';
 
     // No "и" between father and mother names as requested
     if (hasFather && hasMother) return `${prefix} ${translatedFather}, ${translatedMother}`;
@@ -331,8 +351,8 @@ export function formatParentRelation(gender: 'male' | 'female', fatherName: stri
     return `${prefix} родителя`;
   } else {
     const prefix = gender === 'male' ? 'son of' : 'daughter of';
-    const translatedFather = hasFather ? translateText(father, 'en') : '';
-    const translatedMother = hasMother ? translateText(mother, 'en') : '';
+    const translatedFather = hasFather ? (deceased?.fatherNameEn || translateText(father, 'en')) : '';
+    const translatedMother = hasMother ? (deceased?.motherNameEn || translateText(mother, 'en')) : '';
 
     // No "AND" between father and mother names as requested
     if (hasFather && hasMother) return `${prefix} ${translatedFather}, ${translatedMother}`;
