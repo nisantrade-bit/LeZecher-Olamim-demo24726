@@ -4,843 +4,1520 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Deceased, Language } from './types';
-import { translations, formatParentRelation } from './utils/translations';
-import { translateText } from './utils/transliteration';
-import { getHebrewDate, isYahrzeitMatch, HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, normalizeMonthName, getYahrzeitEveDate } from './utils/hebrewDate';
-import { Bell, Heart, Share2, BookOpen, Calendar, MessageCircle, Info, MapPin, Flame, Sparkles, Clock } from 'lucide-react';
-import { getTorahPortionDetails } from './utils/torahPortionHelper';
-import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from './utils/shareUtils';
-import { DedicatedStudyModal } from './components/DedicatedStudyModal';
-const CITIES = [
-  { id: 293397, nameHe: "תל אביב", nameEn: "Tel Aviv", nameRu: "Тель-Авив" },
-  { id: 281184, nameHe: "ירושלים", nameEn: "Jerusalem", nameRu: "Иерусалим" },
-  { id: 294801, nameHe: "חיפה", nameEn: "Haifa", nameRu: "Хайфа" },
-  { id: 5128581, nameHe: "ניו יורק", nameEn: "New York", nameRu: "Нью-Йорк" },
-  { id: 2643743, nameHe: "לונדון", nameEn: "London", nameRu: "Лондон" },
-  { id: 2988507, nameHe: "פריז", nameEn: "Paris", nameRu: "Париж" },
-  { id: 524901, nameHe: "מוסקבה", nameEn: "Moscow", nameRu: "Москва" },
-  { id: 703448, nameHe: "קייב", nameEn: "Киев", nameRu: "Киев" }
-];
+import { translations } from './utils/translations';
+import { getHebrewDate } from './utils/hebrewDate';
+import { BulletinBoard } from './components/BulletinBoard';
+import { MemorialForm } from './components/MemorialForm';
+import { BulkImport } from './components/BulkImport';
+import { MemorialBook } from './components/MemorialBook';
+import { DynamicCalendar } from './components/DynamicCalendar';
+import { Quick30Grid } from './components/Quick30Grid';
+import { MemorialDetailsModal } from './components/MemorialDetailsModal';
+import { Flame, Calendar, BookOpen, LayoutGrid, FileDown, Globe, Sparkles, AlertTriangle, Bell, Plus, X, CheckCircle2 } from 'lucide-react';
+import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
+import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
+import { translateDeceasedListClientSide } from './utils/transliteration';
+import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
+import { getUpcomingYahrzeits, requestNotificationPermission, sendYahrzeitNotification, UpcomingYahrzeitNotice } from './utils/notifications';
+import { motion, AnimatePresence } from 'framer-motion';
+import INITIAL_DATABASE from '../database.json';
 
-const RealisticFlame = ({ size = "normal", showWax = true }: { size?: "normal" | "large"; showWax?: boolean }) => {
-  const isLarge = size === "large";
-  return (
-    <div className={`relative ${isLarge ? 'w-8 h-9' : 'w-6 h-7'} flex flex-col items-center justify-end shrink-0 select-none pointer-events-none`}>
-      {/* Radiant ambient glow */}
-      <div className={`absolute ${isLarge ? 'top-0 w-9 h-9 blur-md bg-amber-400/80' : 'top-0 w-5 h-5 blur-sm bg-amber-500/50'} rounded-full animate-pulse`}></div>
-      
-      {/* Animated flame body */}
-      <motion.div 
-        className={`relative ${isLarge ? 'w-4 h-7' : 'w-2.5 h-4'} bg-gradient-to-t from-amber-600 via-amber-400 to-yellow-100 rounded-full blur-[0.3px] shadow-[0_0_16px_#f59e0b,0_0_28px_#ff9900,0_0_38px_#ffaa00] origin-bottom z-10`}
-        animate={{
-          scaleY: [1, 1.25, 0.88, 1.18, 1],
-          scaleX: [1, 0.82, 1.18, 0.88, 1],
-          rotate: [0, -3.5, 3.5, -1.5, 0],
-          x: [0, -0.6, 0.6, -0.6, 0]
-        }}
-        transition={{
-          duration: 1.2,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      >
-        <div className={`absolute bottom-0.5 left-0.5 ${isLarge ? 'w-1.5 h-3.5' : 'w-0.5 h-1.5'} bg-white rounded-full opacity-95 shadow-[0_0_8px_#fff]`}></div>
-        <div className={`absolute bottom-0 left-0.5 ${isLarge ? 'w-1 h-2' : 'w-0.5 h-1'} bg-blue-500 rounded-full opacity-80`}></div>
-      </motion.div>
+import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord } from './utils/supabase';
+export { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord };
 
-      {/* Small Wax Candle Body - ONLY rendered when showWax is true (OFF / Unlit state) */}
-      {showWax && (
-        <div className="relative flex flex-col items-center shrink-0 -mt-0.5 z-0">
-          {/* Wick */}
-          <div className="w-0.5 h-1 bg-gray-900 rounded-t"></div>
-          {/* Candle wax pillar */}
-          <div className="w-3.5 h-3 bg-gradient-to-t from-amber-800 via-amber-600 to-amber-500/90 rounded-sm shadow-inner border border-amber-400/50 relative overflow-hidden">
-            <div className="absolute top-0 left-0.5 w-1 h-1.5 bg-amber-300/40 rounded-full"></div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+const SEED_DATABASE: Deceased[] = (INITIAL_DATABASE || []) as unknown as Deceased[];
 
-interface BulletinBoardProps {
-  deceasedList: Deceased[];
-  lang: Language;
-  onSelectDeceased: (deceased: Deceased) => void;
+const MOCK_IDS = new Set([1718882041001, 1718882041002, 1718882041003, 1718882041004, 1718882041005, 1718882041006]);
+const MOCK_NAMES = new Set(["אברהם אבינו", "שרה אמנו", "יוסף בן יעקב", "לאה אמנו", "אלעזר בן אהרן", "מרים הנביאה"]);
+
+function filterOutMockRecords(list: Deceased[]): Deceased[] {
+  if (!Array.isArray(list)) return [];
+  return list.filter(item => {
+    if (!item) return false;
+    if (MOCK_IDS.has(Number(item.id))) return false;
+    if (MOCK_NAMES.has(item.name?.trim())) return false;
+    return true;
+  });
 }
 
-export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang, onSelectDeceased }) => {
-  const t = translations[lang];
+// Helper to enrich single deceased item with multi-language fields
+const enrichDeceasedTranslations = (item: Deceased): Deceased => {
+  if (!item) return item;
+  const list = translateDeceasedListClientSide([item], 'he');
+  return list && list.length > 0 ? list[0] : item;
+};
 
-  const [hebcalEvents, setHebcalEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
 
-  const [selectedCity, setSelectedCity] = useState(() => {
-    try {
-      const stored = localStorage.getItem('shabbat_default_city_id');
-      if (stored) {
-        const found = CITIES.find(c => c.id === Number(stored));
-        if (found) return found;
-      }
-    } catch (e) {}
-    return CITIES[0]; // Tel Aviv
-  });
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
 
-  const [shabbatCandles, setShabbatCandles] = useState<string>('');
-  const [shabbatHavdalah, setShabbatHavdalah] = useState<string>('');
-
-  // Periodically check if city has been changed in localStorage elsewhere (e.g. Calendar tab)
-  useEffect(() => {
-    const checkCity = () => {
-      try {
-        const stored = localStorage.getItem('shabbat_default_city_id');
-        if (stored) {
-          const found = CITIES.find(c => c.id === Number(stored));
-          if (found && found.id !== selectedCity.id) {
-            setSelectedCity(found);
-          }
-        }
-      } catch (e) {}
-    };
-    const interval = setInterval(checkCity, 1000);
-    return () => clearInterval(interval);
-  }, [selectedCity.id]);
-
-  // Fetch current week's Shabbat times
-  useEffect(() => {
-    const fetchCurrentShabbatTimes = async () => {
-      try {
-        const res = await fetch(`https://www.hebcal.com/shabbat?cfg=json&geonameid=${selectedCity.id}&m=50&b=18`);
-        if (res.ok) {
-          const data = await res.json();
-          const candleItem = data.items?.find((item: any) => item.category === "candles");
-          const havdalahItem = data.items?.find((item: any) => item.category === "havdalah");
-          
-          if (candleItem) {
-            setShabbatCandles(candleItem.title.split(": ")[1] || candleItem.title);
-          } else {
-            setShabbatCandles('');
-          }
-
-          if (havdalahItem) {
-            setShabbatHavdalah(havdalahItem.title.split(": ")[1] || havdalahItem.title);
-          } else {
-            setShabbatHavdalah('');
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching current Shabbat times:", err);
-      }
-    };
-
-    fetchCurrentShabbatTimes();
-  }, [selectedCity.id]);
-
-  // Fetch all annual events on load to compute preceding Shabbats, weekly portions, holidays and fasts
-  useEffect(() => {
-    const fetchYearEvents = async () => {
-      setLoading(true);
-      try {
-        const year = new Date().getFullYear();
-        const isIsrael = selectedCity.id === 293397 || selectedCity.id === 294801 || selectedCity.id === 293396;
-        const response = await fetch(`https://www.hebcal.com/hebcal?v=1&cfg=json&s=on&maj=on&min=on&mod=on&mf=on&c=on&geonameid=${selectedCity.id}&year=${year}&i=${isIsrael ? 'on' : 'off'}`);
-        if (response.ok) {
-          const data = await response.json();
-          setHebcalEvents(data.items || []);
-        }
-      } catch (err) {
-        console.error("Error fetching Hebcal for Bulletin Board:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchYearEvents();
-  }, [selectedCity.id]);
-
-  // Helper to compute preceding Shabbat's parasha for a given Yahrzeit date
-  const getPrecedingShabbatParasha = (gregDate: Date) => {
-    const dayOfWeek = gregDate.getDay();
-    const prevSat = new Date(gregDate);
-    const daysToSubtract = dayOfWeek === 6 ? 7 : dayOfWeek + 1;
-    prevSat.setDate(prevSat.getDate() - daysToSubtract);
-    
-    const yyyy = prevSat.getFullYear();
-    const mm = String(prevSat.getMonth() + 1).padStart(2, '0');
-    const dd = String(prevSat.getDate()).padStart(2, '0');
-    const prevSatStr = `${yyyy}-${mm}-${dd}`;
-
-    const parashaItem = hebcalEvents.find(
-      (item) => item.category === 'parashat' && item.date.startsWith(prevSatStr)
-    );
-
-    if (parashaItem) {
-      return {
-        title: parashaItem.title,
-        hebrew: parashaItem.hebrew || parashaItem.title
-      };
-    }
-
-    // Check if there is a special holiday on that day
-    const holidayItem = hebcalEvents.find(
-      (item) => item.category === 'holiday' && item.date.startsWith(prevSatStr)
-    );
-    if (holidayItem) {
-      return {
-        title: holidayItem.title,
-        hebrew: holidayItem.hebrew || holidayItem.title
-      };
-    }
-
-    return null;
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  declare props: ErrorBoundaryProps;
+  state: ErrorBoundaryState = {
+    hasError: false,
+    error: null
   };
 
-  // Compute Sunday and Saturday of current week
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  
-  const sunOfThisWeek = new Date(today);
-  sunOfThisWeek.setDate(today.getDate() - dayOfWeek);
-  sunOfThisWeek.setHours(0, 0, 0, 0);
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+  }
 
-  const satOfThisWeek = new Date(today);
-  satOfThisWeek.setDate(today.getDate() + (6 - dayOfWeek));
-  satOfThisWeek.setHours(23, 59, 59, 999);
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
 
-  const satOfThisWeekStr = `${satOfThisWeek.getFullYear()}-${String(satOfThisWeek.getMonth() + 1).padStart(2, '0')}-${String(satOfThisWeek.getDate()).padStart(2, '0')}`;
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("App Runtime Error:", error, errorInfo);
+  }
 
-  const currentParashaItem = hebcalEvents.find(
-    (item) => item.category === 'parashat' && item.date.startsWith(satOfThisWeekStr)
-  );
-
-  // Find holidays and fasts in the current week
-  const currentWeekHolidaysAndFasts = hebcalEvents.filter((item) => {
-    if (item.category !== 'holiday' && item.category !== 'fast') return false;
-    const itemDate = new Date(item.date);
-    return itemDate >= sunOfThisWeek && itemDate <= satOfThisWeek;
-  });
-
-  // Extract entry (candle lighting or fast start) and exit (havdalah or fast end) times for each event
-  const weeklyEventsWithTimes = currentWeekHolidaysAndFasts.map(eventItem => {
-    const dateStr = eventItem.date.split('T')[0];
-    const isFast = eventItem.category === 'fast' || eventItem.title?.toLowerCase().includes('fast') || eventItem.hebrew?.includes('צום') || eventItem.hebrew?.includes('תענית');
-
-    const candleOrStart = hebcalEvents.find(i => {
-      const d = i.date.split('T')[0];
-      return (d === dateStr || new Date(d).getTime() === new Date(dateStr).getTime() - 86400000) &&
-             (i.category === 'candles' || (i.title && i.title.toLowerCase().includes('fast begins')));
-    });
-
-    const havdalahOrEnd = hebcalEvents.find(i => {
-      const d = i.date.split('T')[0];
-      return d === dateStr &&
-             (i.category === 'havdalah' || (i.title && i.title.toLowerCase().includes('fast ends')));
-    });
-
-    const getCleanTime = (item: any) => {
-      if (!item) return null;
-      if (item.title && item.title.includes(': ')) {
-        const parts = item.title.split(': ');
-        if (parts[1]) return parts[1];
-      }
-      if (item.date && item.date.includes('T')) {
-        const timePart = item.date.split('T')[1]?.substring(0, 5);
-        if (timePart && /^\d{2}:\d{2}$/.test(timePart)) return timePart;
-      }
-      return item.title || null;
-    };
-
-    return {
-      title: eventItem.title,
-      hebrew: eventItem.hebrew || eventItem.title,
-      isFast,
-      dateStr,
-      entryTime: getCleanTime(candleOrStart),
-      exitTime: getCleanTime(havdalahOrEnd)
-    };
-  });
-
-  // Generate date array for the next 12 days (including today)
-  const daysArray = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-
-  const matchedEvents: Array<{
-    deceased: Deceased;
-    daysCount: number; // 0 = today, 1 = tomorrow, 2..11 = in N days
-    gregorianDate: Date;
-    hebrewDateStr: string;
-  }> = [];
-
-  daysArray.forEach((date, index) => {
-    const hb = getHebrewDate(date);
-    
-    // Find matching deceased
-    deceasedList.forEach(deceased => {
-      if (isYahrzeitMatch(deceased.day, deceased.month, hb.day, hb.normalizedMonth, hb.isLeapYear)) {
-        // Get month name in active language
-        let monthIdx = HEBREW_MONTHS_HE.indexOf(hb.normalizedMonth);
-        if (monthIdx === -1) monthIdx = 0;
-        const localizedMonth = lang === 'he' ? HEBREW_MONTHS_HE[monthIdx] : lang === 'en' ? HEBREW_MONTHS_EN[monthIdx] : HEBREW_MONTHS_RU[monthIdx];
-        const localizedDay = lang === 'he' ? gimatriya(hb.day) : hb.day.toString();
-        
-        matchedEvents.push({
-          deceased,
-          daysCount: index,
-          gregorianDate: date,
-          hebrewDateStr: lang === 'he' ? `${localizedDay} ב${localizedMonth}` : `${localizedDay} ${localizedMonth}`
-        });
-      }
-    });
-  });
-
-  const todayList = matchedEvents.filter(e => e.daysCount === 0);
-  const upcomingList = matchedEvents.filter(e => e.daysCount > 0);
-
-  // Helper to construct a professional Shabbat alert banner for a Yahrzeit falling on Friday/Shabbat
-  const getShabbatAlertText = (eventDate: Date, daysCount: number, parashaName: string | null) => {
-    const dayOfWeek = eventDate.getDay(); // 0 = Sun, 5 = Fri, 6 = Sat
-    const isSaturday = dayOfWeek === 6;
-    const isFriday = dayOfWeek === 5;
-
-    if (!isSaturday && !isFriday) return null;
-
-    // Is it next Shabbat (e.g., falling on the second Shabbat in the 12-day range)?
-    const isNextShabbat = daysCount >= 6;
-
-    if (lang === 'he') {
-      if (isSaturday) {
-        if (isNextShabbat) {
-          return {
-            badge: "📌 אזכרה בשבת הבאה",
-            text: `יום הזיכרון חל בשבת הבאה${parashaName ? ` (פרשת ${parashaName})` : ''} — האזכרה חלה בשבת. היערכו מראש להדלקת נר נשמה בערב שבת מבעוד מועד לפני השקיעה.`
-          };
-        } else {
-          return {
-            badge: "📌 אזכרה בשבת הקרובה",
-            text: `יום הזיכרון חל בשבת הקרובה${parashaName ? ` (פרשת ${parashaName})` : ''} — האזכרה חלה בשבת. חובה להקדים ולהדליק נר נשמה בערב שבת לפני השקיעה.`
-          };
-        }
-      } else { // Friday (ערב שבת)
-        if (isNextShabbat) {
-          return {
-            badge: "🕯️ אזכרה בערב שבת הבאה",
-            text: `יום הזיכרון מתחיל בערב שבת הבאה בשקיעת החמה — יש להדליק נר נשמה מבעוד מועד לפני כניסת השבת.`
-          };
-        } else {
-          return {
-            badge: "🕯️ אזכרה בערב שבת הקרובה",
-            text: `יום הזיכרון מתחיל בערב שבת הקרובה בשקיעת החמה — יש להדליק נר נשמה מבעוד מועד לפני כניסת השבת.`
-          };
-        }
-      }
-    } else if (lang === 'ru') {
-      if (isSaturday) {
-        const badge = isNextShabbat ? "📌 Йарцайт в следующий Шаббат" : "📌 Йарцайт в ближайший Шаббат";
-        return {
-          badge,
-          text: `Годовщина выпадает на Шаббат${parashaName ? ` (Глава ${parashaName})` : ""}. Зажгите поминальную свечу заранее в пятницу до захода солнца.`
-        };
-      } else {
-        const badge = isNextShabbat ? "🕯️ Йарцайт в пятницу (следующий Шаббат)" : "🕯️ Йарцайт в пятницу (ближайший Шаббат)";
-        return {
-          badge,
-          text: `Йарцайт начинается в пятницу вечером на закате. Зажгите свечу памяти заранее до наступления Шаббата.`
-        };
-      }
-    } else {
-      if (isSaturday) {
-        const badge = isNextShabbat ? "📌 Yahrzeit Next Shabbat" : "📌 Yahrzeit Upcoming Shabbat";
-        return {
-          badge,
-          text: `The anniversary falls on Shabbat${parashaName ? ` (Parashat ${parashaName})` : ""}. Light a memorial candle on Friday before sunset.`
-        };
-      } else {
-        const badge = isNextShabbat ? "🕯️ Yahrzeit Next Friday Eve" : "🕯️ Yahrzeit Upcoming Friday Eve";
-        return {
-          badge,
-          text: `Yahrzeit begins on Friday evening at sunset. Remember to light the memorial candle prior to Shabbat.`
-        };
-      }
-    }
-  };
-
-  // Formulates the halachic text based on language and gender
-  const formatHalachicAlert = (deceased: Deceased, day: string, month: string) => {
-    const parentRel = formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang);
-    const translatedName = lang === 'he' ? deceased.name : translateText(deceased.name, lang as 'en' | 'ru');
-
-    if (lang === 'he') {
-      return `אזכרה של ${translatedName} ${parentRel} בתאריך ${day} ב${month}`;
-    } else if (lang === 'ru') {
-      return `Йарцайт: ${translatedName} ${parentRel}, дата ${day} ${month}`;
-    } else {
-      return `Yahrzeit of ${translatedName} ${parentRel} on ${day} of ${month}`;
-    }
-  };
-
-  // Triggers the WhatsApp share invitation
-  const shareOnWhatsApp = (deceased: Deceased, gregDate: Date, hebrewDateStr: string, parashaName: string | null, e: React.MouseEvent) => {
-    e.stopPropagation(); // prevent opening details modal
-    const text = generateWhatsAppShareText(deceased, lang);
-    openWhatsAppShare(text);
-  };
-
-  const bulletinTranslations = {
-    he: {
-      weeklyBulletin: "הפרשה והחגים השבוע בלוח",
-      noHolidays: "אין חגים השבוע",
-      shareWhatsApp: "שתף בוואטסאפ",
-      parasha: "פרשת השבוע",
-      holiday: "חג/אירוע השבוע",
-      upcomingAliyah: "השבת הסמוכה (עליה לתורה):"
-    },
-    en: {
-      weeklyBulletin: "This Week's Portion & Holidays",
-      noHolidays: "No holidays this week",
-      shareWhatsApp: "Share",
-      parasha: "Torah Portion",
-      holiday: "Holiday This Week",
-      upcomingAliyah: "Preceding Shabbat (Aliyah):"
-    },
-    ru: {
-      weeklyBulletin: "Глава Торы и Праздники этой недели",
-      noHolidays: "Нет праздников на этой неделе",
-      shareWhatsApp: "Поделиться",
-      parasha: "Глава Торы",
-      holiday: "Праздник на этой неделе",
-      upcomingAliyah: "Ближайший Шаббат (Алия):"
-    }
-  };
-
-  const bt = bulletinTranslations[lang];
-
-  // State for opening dedicated spiritual study modal for a specific deceased person
-  const [studyModalDeceased, setStudyModalDeceased] = useState<Deceased | null>(null);
-
-  // State to track lit candles per deceased ID on the bulletin board
-  const [litCandles, setLitCandles] = useState<{ [id: string]: boolean }>(() => {
-    try {
-      const saved = localStorage.getItem('bulletin_board_lit_candles');
-      return saved ? JSON.parse(saved) : {};
-    } catch (e) {
-      return {};
-    }
-  });
-
-  const toggleCandle = (id: string | number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Don't trigger onSelectDeceased
-    const idStr = String(id);
-    setLitCandles(prev => {
-      const updated = { ...prev, [idStr]: !prev[idStr] };
-      try {
-        localStorage.setItem('bulletin_board_lit_candles', JSON.stringify(updated));
-      } catch (err) {}
-      return updated;
-    });
-  };
-
-  return (
-    <div id="bulletin-board" className="bg-gradient-to-b from-[#2d2312] via-[#1f170a] to-[#120e06] border-2 border-[#c8a96e] rounded-2xl p-6 mb-8 text-[#f0f4f8] shadow-[0_0_35px_rgba(200,169,110,0.2)] relative overflow-hidden font-sans">
-      {/* Decorative background light */}
-      <div className="absolute top-0 right-0 w-48 h-48 bg-[#c8a96e]/10 blur-3xl pointer-events-none rounded-full"></div>
-      
-      {/* Redesigned Header: Title + Colorful Swinging Bell Icon */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-6 border-b border-[#c8a96e]/25 pb-5">
-        <div className="flex items-center gap-4">
-          {/* Colorful, side-to-side swinging bell icon with live ring motion */}
-          <motion.div 
-            className="relative p-3 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 via-purple-500 to-emerald-400 shadow-[0_0_20px_rgba(245,158,11,0.6)] border-2 border-[#c8a96e] text-white flex items-center justify-center shrink-0 cursor-pointer"
-            animate={{ rotate: [-22, 22, -22], scale: [1, 1.05, 1] }}
-            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-          >
-            <Bell className="w-7 h-7 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] animate-pulse" />
-          </motion.div>
-
-          {/* Title and Subtitle */}
-          <div>
-            <h2 className="text-2xl md:text-3xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 via-amber-400 to-amber-100 tracking-wide drop-shadow-[0_2px_12px_rgba(200,169,110,0.4)]">
-              {t.bulletinBoard}
-            </h2>
-            <p className="text-xs text-[#c8a96e]/90 font-sans mt-0.5 font-medium flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 inline" />
-              <span>
-                {lang === 'he' 
-                  ? 'מערכת התראות אזכרות שבועיות, זמני חגים וצומות | לזכר עולמים' 
-                  : lang === 'ru'
-                  ? 'Уведомления о годовщинах, праздниках и постах | Лезэхер Оламим'
-                  : 'Weekly Yahrzeit Alerts, Holiday & Fast Times | L\'Zecher Olamim'}
-              </span>
-            </p>
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-6 p-6 text-center" dir="rtl">
+          <div className="w-16 h-16 rounded-full bg-red-950/40 border border-red-500/40 flex items-center justify-center text-red-400">
+            <AlertTriangle className="w-8 h-8 animate-pulse" />
           </div>
-        </div>
-
-        {/* Global Weekly Parasha, Shabbat & Holiday/Fast Compact Banner */}
-        {hebcalEvents.length > 0 && (
-          <div className="bg-black/40 border border-[#c8a96e]/30 px-4 py-2.5 rounded-xl flex flex-col md:flex-row md:items-center gap-3 md:gap-4 text-xs flex-wrap">
-            {/* Parasha */}
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-[#c8a96e] shrink-0" />
-              <div>
-                <span className="text-gray-400 block text-[10px] uppercase font-bold">{bt.parasha}</span>
-                <span className="font-extrabold text-white">
-                  {currentParashaItem 
-                    ? (lang === 'he' ? currentParashaItem.hebrew : currentParashaItem.title) 
-                    : (lang === 'he' ? "טוען..." : "Loading...")}
-                </span>
-              </div>
-            </div>
-
-            {/* Shabbat times with interactive city picker */}
-            <div className="flex items-center gap-2 border-t md:border-t-0 md:border-r border-[#c8a96e]/20 pt-2 md:pt-0 md:pr-4">
-              <MapPin className="w-4 h-4 text-[#c8a96e] shrink-0" />
-              <div>
-                <span className="text-gray-400 block text-[10px] uppercase font-bold">
-                  {lang === 'he' ? 'זמני שבת:' : lang === 'ru' ? 'Время Шаббата:' : 'Shabbat:'}
-                </span>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <select
-                    value={selectedCity.id}
-                    onChange={(e) => {
-                      const cid = Number(e.target.value);
-                      const found = CITIES.find(c => c.id === cid);
-                      if (found) {
-                        setSelectedCity(found);
-                        localStorage.setItem('shabbat_default_city_id', String(cid));
-                      }
-                    }}
-                    className="bg-transparent border-none text-[#c8a96e] font-extrabold outline-none cursor-pointer text-xs p-0 pr-1 select-none"
-                    style={{ direction: lang === 'he' ? 'rtl' : 'ltr' }}
-                  >
-                    {CITIES.map(c => (
-                      <option key={c.id} value={c.id} className="bg-[#131a26] text-white">
-                        {lang === 'he' ? c.nameHe : lang === 'ru' ? c.nameRu : c.nameEn}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-gray-500 font-normal">|</span>
-                  <span className="font-bold text-amber-300 font-mono text-xs flex items-center gap-0.5" title={lang === 'he' ? 'כניסת שבת (הדלקת נרות)' : 'Candle lighting'}>
-                    🕯️ {shabbatCandles || '...'}
-                  </span>
-                  {shabbatHavdalah && (
-                    <span className="text-indigo-300 font-mono text-xs flex items-center gap-0.5" title={lang === 'he' ? 'מוצאי שבת' : 'Havdalah'}>
-                      ✨ {shabbatHavdalah}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Merged Weekly Holidays & Fasts (Compact sub-table inside the header banner) */}
-            {weeklyEventsWithTimes.length > 0 && (
-              <div className="flex items-center gap-2 border-t md:border-t-0 md:border-r border-[#c8a96e]/20 pt-2 md:pt-0 md:pr-4">
-                <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
-                <div>
-                  <span className="text-gray-400 block text-[10px] uppercase font-bold">
-                    {lang === 'he' ? 'אירועי / חגי השבוע:' : lang === 'ru' ? 'Праздники недели:' : 'Weekly Holidays:'}
-                  </span>
-                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                    {weeklyEventsWithTimes.map((ev, i) => (
-                      <div key={`hdr-ev-${i}`} className="flex flex-wrap items-center gap-1.5 bg-gradient-to-r from-amber-950/80 via-black to-amber-950/80 px-2.5 py-1 rounded-lg border border-amber-400/50 shadow-md">
-                        <span className="text-amber-200 font-serif font-bold text-xs">{lang === 'he' ? ev.hebrew : ev.title}:</span>
-                        <span className="text-amber-300 font-mono text-xs font-black bg-amber-500/20 px-2 py-0.5 rounded border border-amber-400/30">
-                          {lang === 'he' ? 'כניסה בערב' : lang === 'ru' ? 'Вход вечером' : 'Eve Entry'}: 🕯️ {ev.entryTime || '--:--'}
-                        </span>
-                        {ev.exitTime && (
-                          <span className="text-indigo-300 font-mono text-xs font-black bg-indigo-500/20 px-2 py-0.5 rounded border border-indigo-400/30">
-                            {lang === 'he' ? 'יציאה למחרת' : lang === 'ru' ? 'Выход на след. день' : 'Next Day Exit'}: ✨ {ev.exitTime}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+          <div className="space-y-2 max-w-md">
+            <h2 className="text-xl font-serif font-bold text-[#c8a96e]">
+              אירעה שגיאה בטעינת האפליקציה
+            </h2>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              התרחשה שגיאת הרצה בלתי צפויה. נסה לרענן את הדף כדי לטעון מחדש את המערכת.
+            </p>
+            {this.state.error?.message && (
+              <div className="mt-3 p-3 bg-red-950/20 border border-red-500/20 rounded-xl text-[11px] text-red-300 font-mono text-right overflow-x-auto">
+                {this.state.error.message}
               </div>
             )}
           </div>
-        )}
-      </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2.5 bg-[#c8a96e] hover:bg-[#b8952e] text-black text-xs font-bold rounded-xl transition-all shadow-lg cursor-pointer flex items-center gap-2"
+          >
+            <span>רענן דף</span>
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
-      {matchedEvents.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-6 text-center text-[#f0f4f8]/70">
-          <span className="text-3xl mb-2">🕯️</span>
-          <p className="text-base font-sans leading-relaxed max-w-md">
-            {t.noMemorialsToday}
+function MainAppContent() {
+  const [lang, setLang] = useState<Language>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlLang = params.get('lang');
+    if (urlLang === 'en' || urlLang === 'ru' || urlLang === 'he') {
+      return urlLang as Language;
+    }
+    return 'he'; // Default to Hebrew
+  });
+
+  const [activeTab, setActiveTab] = useState<'calendar' | 'book' | 'grid' | 'import'>('calendar');
+  const [masterList, setMasterList] = useState<Deceased[]>([]);
+  const [displayedList, setDisplayedList] = useState<Deceased[]>([]);
+  const [translating, setTranslating] = useState<boolean>(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
+  const [editingDeceased, setEditingDeceased] = useState<Deceased | null>(null);
+  const [selectedDeceased, setSelectedDeceased] = useState<Deceased | null>(null);
+
+  // Manage direct deceased link view state across pathname /m/123, query ?d=123, and hash #m/123
+  const [urlDeceasedId, setUrlDeceasedId] = useState<number | null>(() => {
+    // 1. Pathname check (/m/12345, /m/12345.html, /p/12345, /deceased/12345)
+    const pathMatch = window.location.pathname.match(/\/(?:m|p|deceased)\/(\d+)(?:\.html)?/i);
+    if (pathMatch && pathMatch[1]) {
+      const id = parseInt(pathMatch[1], 10);
+      if (!isNaN(id)) return id;
+    }
+
+    // 2. Query param check (?d=12345, ?id=12345, ?deceased=12345)
+    const params = new URLSearchParams(window.location.search);
+    const idStr = params.get('d') || params.get('id') || params.get('deceased');
+    if (idStr) {
+      const id = parseInt(idStr, 10);
+      if (!isNaN(id)) return id;
+    }
+
+    // 3. Hash check (#m/12345 or #d=12345)
+    const hash = window.location.hash;
+    const hashMatch = hash.match(/(?:m\/|d=|id=|deceased=)(\d+)/i);
+    if (hashMatch && hashMatch[1]) {
+      const id = parseInt(hashMatch[1], 10);
+      if (!isNaN(id)) return id;
+    }
+
+    return null;
+  });
+
+  // Parse direct Deceased payload from URL if present (?data=..., ?p=..., ?payload=..., ?card=...)
+  const [urlDeceasedFromPayload, setUrlDeceasedFromPayload] = useState<Deceased | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      let dataStr = params.get('data') || params.get('p') || params.get('payload') || params.get('card') || params.get('d');
+
+      if (!dataStr && window.location.hash) {
+        const hash = window.location.hash;
+        const hashMatch = hash.match(/[?&](?:data|p|payload|card|d)=([^&]+)/i) || hash.match(/(?:data|p|payload|card|d)=([^&]+)/i);
+        if (hashMatch && hashMatch[1]) {
+          dataStr = hashMatch[1];
+        }
+      }
+
+      if (dataStr) {
+        return decodeDeceasedFromUrlPayload(dataStr);
+      }
+    } catch (e) {
+      console.error("Error parsing url payload:", e);
+    }
+    return null;
+  });
+
+  const [fetchingRemoteDeceased, setFetchingRemoteDeceased] = useState<boolean>(false);
+  const [remoteDeceasedNotFound, setRemoteDeceasedNotFound] = useState<boolean>(false);
+  const [supabaseTableMissing, setSupabaseTableMissing] = useState<boolean>(false);
+  const [showSqlSetupModal, setShowSqlSetupModal] = useState<boolean>(false);
+  const [sqlCopied, setSqlCopied] = useState<boolean>(false);
+
+  // Mobile drawer / sheet state for adding deceased
+  const [isMobileFormOpen, setIsMobileFormOpen] = useState<boolean>(false);
+
+  // Notification state
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() => 
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
+  );
+  const [upcomingNotices, setUpcomingNotices] = useState<UpcomingYahrzeitNotice[]>([]);
+  const [notifBannerDismissed, setNotifBannerDismissed] = useState<boolean>(false);
+
+  // Auto-check upcoming Yahrzeits for the next 3 days whenever list updates
+  useEffect(() => {
+    if (displayedList && displayedList.length > 0) {
+      const notices = getUpcomingYahrzeits(displayedList, 3);
+      setUpcomingNotices(notices);
+
+      // Trigger push/local notifications if granted
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        notices.forEach(notice => {
+          sendYahrzeitNotification(notice, lang);
+        });
+      }
+    }
+  }, [displayedList, lang]);
+
+  const handleEnableNotifications = async () => {
+    const perm = await requestNotificationPermission();
+    setNotifPermission(perm);
+    if (perm === 'granted' && upcomingNotices.length > 0) {
+      upcomingNotices.forEach(notice => sendYahrzeitNotification(notice, lang));
+    }
+  };
+
+  // Merge urlDeceasedFromPayload safely into existing masterList, LocalStorage, Supabase and server
+  useEffect(() => {
+    if (urlDeceasedFromPayload) {
+      const enrichedPayload = enrichDeceasedTranslations(urlDeceasedFromPayload);
+      setRemoteDeceasedNotFound(false);
+      setSelectedDeceased(enrichedPayload);
+
+      // Add/merge to local database without clearing existing records
+      setMasterList(prev => {
+        const base = prev.length > 0 ? prev : SEED_DATABASE;
+        const merged = smartMergeDeceasedLists(base, [enrichedPayload]);
+        const finalData = deduplicateSingleList(merged);
+        try {
+          localStorage.setItem('eternal_db', JSON.stringify(finalData));
+        } catch (e) {
+          console.error("Storage access error:", e);
+        }
+        return finalData;
+      });
+
+      // Upsert into Supabase database
+      (async () => {
+        try {
+          const { error } = await safeUpsert([enrichedPayload]);
+          if (error) {
+            console.error("Supabase Fetch Error:", error);
+            if (isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'deceased' table is missing in schema cache. Using local/server database fallback.");
+            } else {
+              console.error("Supabase upsert error on URL payload:", error);
+            }
+          }
+        } catch (e) {
+          console.error("Supabase Fetch Error:", e);
+        }
+      })();
+
+      // Sync to cloud server API database as backup
+      if (!(window as any).__OFFLINE_DATABASE_DATA__) {
+        fetch('/api/deceased', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(enrichedPayload)
+        }).catch(e => console.error("Cloud database sync error:", e));
+      }
+    }
+  }, [urlDeceasedFromPayload]);
+
+  // If urlDeceasedId is accessed directly (e.g. /m/12345) and card is not in local list, fetch from Supabase or server API
+  useEffect(() => {
+    if (urlDeceasedId && !urlDeceasedFromPayload) {
+      const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId));
+      if (!alreadyInMaster && !remoteDeceasedNotFound && !fetchingRemoteDeceased) {
+        setFetchingRemoteDeceased(true);
+        const fetchRemote = async () => {
+          try {
+            const { data, error } = await safeEq('id', urlDeceasedId, 'deceased', true);
+            if (error) {
+              console.error("Supabase Fetch Error:", error);
+              if (isMissingTableError(error)) {
+                setSupabaseTableMissing(true);
+                console.warn("Supabase notice: 'deceased' table missing in schema cache, using server API fallback.");
+              }
+            }
+            if (!error && data && data.id && data.name) {
+              const enriched = enrichDeceasedTranslations(data as Deceased);
+              setMasterList(prev => {
+                const base = prev.length > 0 ? prev : SEED_DATABASE;
+                const merged = smartMergeDeceasedLists(base, [enriched]);
+                const finalData = deduplicateSingleList(merged);
+                try {
+                  localStorage.setItem('eternal_db', JSON.stringify(finalData));
+                } catch (e) {}
+                return finalData;
+              });
+              setFetchingRemoteDeceased(false);
+              return;
+            }
+
+            // Fallback to Express server API
+            const res = await fetch(`/api/deceased/${urlDeceasedId}`);
+            if (res.ok) {
+              const record = await res.json();
+              if (record && record.id && record.name) {
+                const enriched = enrichDeceasedTranslations(record);
+                setMasterList(prev => {
+                  const base = prev.length > 0 ? prev : SEED_DATABASE;
+                  const merged = smartMergeDeceasedLists(base, [enriched]);
+                  const finalData = deduplicateSingleList(merged);
+                  try {
+                    localStorage.setItem('eternal_db', JSON.stringify(finalData));
+                  } catch (e) {}
+                  return finalData;
+                });
+                return;
+              }
+            }
+            setRemoteDeceasedNotFound(true);
+          } catch (err) {
+            console.error("Failed to fetch remote deceased record:", err);
+            setRemoteDeceasedNotFound(true);
+          } finally {
+            setFetchingRemoteDeceased(false);
+          }
+        };
+        fetchRemote();
+      }
+    }
+  }, [urlDeceasedId, urlDeceasedFromPayload, masterList, remoteDeceasedNotFound, fetchingRemoteDeceased]);
+
+  // Helper to merge urlDeceasedFromPayload into any loaded list
+  const mergeWithUrlPayload = (list: Deceased[]): Deceased[] => {
+    let clean = deduplicateSingleList(list);
+    if (urlDeceasedFromPayload) {
+      const enrichedPayload = enrichDeceasedTranslations(urlDeceasedFromPayload);
+      clean = smartMergeDeceasedLists(clean, [enrichedPayload]);
+    }
+    return clean;
+  };
+
+  // Load database on mount directly from Supabase, with local storage & fallback merging
+  useEffect(() => {
+    const loadDatabase = async () => {
+      try {
+        // 1. Read existing local storage records first
+        let localRecords: Deceased[] = [];
+        try {
+          const stored = localStorage.getItem('eternal_db');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              localRecords = parsed;
+            }
+          }
+        } catch (e) {
+          console.error("Storage access error:", e);
+        }
+
+        // Standalone Offline mode check
+        if ((window as any).__OFFLINE_DATABASE_DATA__) {
+          const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
+          let merged = smartMergeDeceasedLists(SEED_DATABASE, localRecords);
+          merged = smartMergeDeceasedLists(merged, Array.isArray(offlineData) ? offlineData : []);
+          merged = mergeWithUrlPayload(merged);
+          const finalData = filterOutMockRecords(deduplicateSingleList(merged));
+          setMasterList(finalData);
+          try {
+            localStorage.setItem('eternal_db', JSON.stringify(finalData));
+          } catch (e) {}
+          return;
+        }
+
+        // 2. Fetch directly from Supabase 'deceased' table
+        let supabaseRecords: Deceased[] = [];
+        try {
+          const { data, error } = await safeSelect('deceased');
+          if (error) {
+            console.error("Supabase Fetch Error:", error);
+            if (isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'public.deceased' table is not created yet in schema cache. Using local server & storage seamlessly.");
+            } else {
+              console.error("Supabase select error:", error.message || error);
+            }
+          } else if (Array.isArray(data) && data.length > 0) {
+            supabaseRecords = filterOutMockRecords(data as Deceased[]);
+          }
+        } catch (err) {
+          console.error("Supabase Fetch Error:", err);
+        }
+
+        // 3. Fallback to Express server API if Supabase returned no data
+        let serverRecords: Deceased[] = [];
+        if (supabaseRecords.length === 0) {
+          try {
+            const response = await fetch('/api/deceased');
+            if (response.ok) {
+              const data = await response.json();
+              if (Array.isArray(data)) {
+                serverRecords = filterOutMockRecords(data);
+              }
+            }
+          } catch (err) {
+            console.error("Failed to load database from server:", err);
+          }
+        }
+
+        // 4. Smart-merge SEED_DATABASE + supabaseRecords + localRecords + serverRecords + urlDeceasedFromPayload
+        let combined = smartMergeDeceasedLists(SEED_DATABASE, supabaseRecords);
+        combined = smartMergeDeceasedLists(combined, localRecords);
+        combined = smartMergeDeceasedLists(combined, serverRecords);
+        combined = mergeWithUrlPayload(combined);
+
+        const finalMaster = filterOutMockRecords(deduplicateSingleList(combined));
+        setMasterList(finalMaster);
+        try {
+          localStorage.setItem('eternal_db', JSON.stringify(finalMaster));
+        } catch (e) {
+          console.error("Storage access error:", e);
+        }
+
+        // 5. Sync merged master list into Supabase so table is populated and up to date
+        if (finalMaster.length > 0) {
+          try {
+            const { error } = await safeUpsert(finalMaster);
+            if (error) {
+              console.error("Supabase Fetch Error:", error);
+              if (isMissingTableError(error)) {
+                setSupabaseTableMissing(true);
+                console.warn("Supabase notice: 'public.deceased' table not yet created. Master list synced to local server database.");
+              } else {
+                console.error("Supabase initial sync error:", error.message || error);
+              }
+            }
+          } catch (e) {
+            console.error("Supabase Fetch Error:", e);
+          }
+
+          fetch('/api/deceased/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(finalMaster)
+          }).catch(e => console.error("Cloud database sync error:", e));
+        }
+      } catch (err) {
+        console.error("App Runtime Error:", err);
+        setMasterList(filterOutMockRecords(SEED_DATABASE));
+      }
+    };
+
+    loadDatabase();
+  }, []);
+
+  // Language translation handler
+  const handleLanguageChange = (targetLang: Language) => {
+    setLang(targetLang);
+    setTranslationError(null);
+  };
+
+  // Helper to verify if list items match expected language script
+  const isListInTargetLanguage = (list: Deceased[], targetLang: Language): boolean => {
+    if (!list || list.length === 0) return false;
+    
+    if (targetLang === 'he') {
+      return !list.some(item => /[a-zA-Z\u0400-\u04FF]/.test(`${item.name} ${item.fatherName || ''} ${item.motherName || ''} ${item.notes || ''}`));
+    }
+    if (targetLang === 'ru') {
+      return !list.some(item => /[\u0590-\u05FFa-zA-Z]/.test(`${item.name} ${item.fatherName || ''} ${item.motherName || ''} ${item.notes || ''}`));
+    }
+    if (targetLang === 'en') {
+      return !list.some(item => /[\u0590-\u05FF\u0400-\u04FF]/.test(`${item.name} ${item.fatherName || ''} ${item.motherName || ''} ${item.notes || ''}`));
+    }
+    return true;
+  };
+
+  // Synchronize and translate displayedList whenever masterList OR lang changes
+  useEffect(() => {
+    const syncAndTranslate = async () => {
+      if (masterList.length === 0) {
+        setDisplayedList([]);
+        return;
+      }
+
+      setTranslationError(null);
+
+      // Generate fingerprint based on all masterList values to prevent stale cache on updates
+      const currentFingerprint = JSON.stringify(masterList);
+
+      // 1. Check local cache first, ensuring valid target language script
+      let cachedStr = null;
+      let cachedFingerprint = null;
+      try {
+        cachedStr = localStorage.getItem(`eternal_db_translated_${lang}`);
+        cachedFingerprint = localStorage.getItem(`eternal_db_translated_${lang}_fingerprint`);
+      } catch (e) {
+        console.error("Storage access error:", e);
+      }
+
+      if (cachedStr && cachedFingerprint === currentFingerprint) {
+        try {
+          const cachedList = JSON.parse(cachedStr) as Deceased[];
+          if (isListInTargetLanguage(cachedList, lang)) {
+            setDisplayedList(cachedList);
+            return;
+          } else {
+            localStorage.removeItem(`eternal_db_translated_${lang}`);
+            localStorage.removeItem(`eternal_db_translated_${lang}_fingerprint`);
+          }
+        } catch (e) {
+          console.error("Error reading cached translation", e);
+        }
+      }
+
+      if (lang === 'he') {
+        const hasNonHebrewText = masterList.some(item => 
+          /[a-zA-Z\u0400-\u04FF]/.test(`${item.name} ${item.fatherName || ''} ${item.motherName || ''} ${item.notes || ''}`)
+        );
+
+        if (!hasNonHebrewText) {
+          setDisplayedList(masterList);
+          try {
+            localStorage.setItem('eternal_db_translated_he', JSON.stringify(masterList));
+            localStorage.setItem('eternal_db_translated_he_fingerprint', currentFingerprint);
+          } catch (e) {
+            console.error("Storage access error:", e);
+          }
+          return;
+        }
+      }
+
+      // 2. Perform translation via API (with client-side fallback)
+      setTranslating(true);
+      try {
+        const response = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deceasedList: masterList, targetLang: lang })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Translation status ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.translatedList && Array.isArray(data.translatedList) && data.translatedList.length > 0) {
+          const fullyTranslated = translateDeceasedListClientSide(data.translatedList, lang);
+          setDisplayedList(fullyTranslated);
+          try {
+            localStorage.setItem(`eternal_db_translated_${lang}`, JSON.stringify(fullyTranslated));
+            localStorage.setItem(`eternal_db_translated_${lang}_fingerprint`, currentFingerprint);
+          } catch (e) {
+            console.error("Storage access error:", e);
+          }
+        } else {
+          throw new Error("Invalid translation response structure");
+        }
+      } catch (err: any) {
+        const fallbackTranslated = translateDeceasedListClientSide(masterList, lang);
+        setDisplayedList(fallbackTranslated);
+        try {
+          localStorage.setItem(`eternal_db_translated_${lang}`, JSON.stringify(fallbackTranslated));
+          localStorage.setItem(`eternal_db_translated_${lang}_fingerprint`, currentFingerprint);
+        } catch (e) {
+          console.error("Storage access error:", e);
+        }
+      } finally {
+        setTranslating(false);
+      }
+    };
+
+    syncAndTranslate();
+  }, [masterList, lang]);
+
+  // Synchronize selectedDeceased with the currently active translation in displayedList
+  useEffect(() => {
+    if (selectedDeceased) {
+      const updated = displayedList.find(d => Number(d.id) === Number(selectedDeceased.id));
+      if (updated && JSON.stringify(updated) !== JSON.stringify(selectedDeceased)) {
+        setSelectedDeceased(updated);
+      }
+    }
+  }, [displayedList, selectedDeceased]);
+
+  // Save or update deceased record in Supabase & LocalStorage
+  const handleSaveDeceased = async (deceasedInput: Deceased) => {
+    const deceased = enrichDeceasedTranslations(deceasedInput);
+    let updated: Deceased[] = [];
+    const exists = masterList.some(d => d.id === deceased.id);
+
+    if (exists) {
+      updated = masterList.map(d => d.id === deceased.id ? deceased : d);
+    } else {
+      updated = [...masterList, deceased];
+    }
+
+    // Save directly to Supabase
+    try {
+      const { error } = await safeUpsert([deceased]);
+      if (error) {
+        console.error("Supabase Fetch Error:", error);
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Record saved to local database.");
+        } else {
+          console.error("Supabase save error:", error.message || error);
+        }
+      }
+    } catch (e) {
+      console.error("Supabase Fetch Error:", e);
+    }
+
+    // Sync to backup server API
+    if (!(window as any).__OFFLINE_DATABASE_DATA__) {
+      try {
+        await fetch('/api/deceased', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(deceased)
+        });
+      } catch (e) {
+        console.error("Failed to save record to server database:", e);
+      }
+    }
+
+    // Clear caches
+    try {
+      ['he', 'en', 'ru'].forEach(l => {
+        localStorage.removeItem(`eternal_db_translated_${l}`);
+        localStorage.removeItem(`eternal_db_translated_${l}_fingerprint`);
+      });
+    } catch (e) {
+      console.error("Storage access error:", e);
+    }
+
+    setMasterList(updated);
+    try {
+      localStorage.setItem('eternal_db', JSON.stringify(updated));
+    } catch (e) {
+      console.error("Storage access error:", e);
+    }
+    setEditingDeceased(null);
+    if (selectedDeceased && Number(selectedDeceased.id) === Number(deceased.id)) {
+      setSelectedDeceased(deceased);
+    }
+  };
+
+  // Delete a deceased record from Supabase & LocalStorage
+  const handleDeleteDeceased = async (id: number) => {
+    const updated = masterList.filter(d => d.id !== id);
+
+    // Delete from Supabase
+    try {
+      const { error } = await safeDelete('id', id);
+      if (error) {
+        console.error("Supabase Fetch Error:", error);
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Removed from local database.");
+        } else {
+          console.error("Supabase delete error:", error.message || error);
+        }
+      }
+    } catch (e) {
+      console.error("Supabase Fetch Error:", e);
+    }
+
+    if (!(window as any).__OFFLINE_DATABASE_DATA__) {
+      try {
+        await fetch(`/api/deceased/${id}`, {
+          method: 'DELETE'
+        });
+      } catch (e) {
+        console.error("Failed to delete record from server database:", e);
+      }
+    }
+
+    // Clear caches
+    try {
+      ['he', 'en', 'ru'].forEach(l => {
+        localStorage.removeItem(`eternal_db_translated_${l}`);
+        localStorage.removeItem(`eternal_db_translated_${l}_fingerprint`);
+      });
+    } catch (e) {
+      console.error("Storage access error:", e);
+    }
+
+    setMasterList(updated);
+    try {
+      localStorage.setItem('eternal_db', JSON.stringify(updated));
+    } catch (e) {
+      console.error("Storage access error:", e);
+    }
+    if (editingDeceased?.id === id) {
+      setEditingDeceased(null);
+    }
+  };
+
+  // Bulk import deceased records with smart deduplication & Supabase sync
+  const handleImportDeceased = async (newList: Deceased[]) => {
+    const enrichedList = newList.map(item => enrichDeceasedTranslations(item));
+    const merged = smartMergeDeceasedLists(masterList, enrichedList);
+    const updated = deduplicateSingleList(merged);
+
+    // Bulk upsert to Supabase
+    try {
+      const { error } = await safeUpsert(enrichedList);
+      if (error) {
+        console.error("Supabase Fetch Error:", error);
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Imported to local database.");
+        } else {
+          console.error("Supabase bulk import error:", error.message || error);
+        }
+      }
+    } catch (e) {
+      console.error("Supabase Fetch Error:", e);
+    }
+
+    if (!(window as any).__OFFLINE_DATABASE_DATA__) {
+      try {
+        await fetch('/api/deceased/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(enrichedList)
+        });
+      } catch (e) {
+        console.error("Failed to import records to server database:", e);
+      }
+    }
+
+    // Clear caches
+    try {
+      localStorage.removeItem('eternal_db_translated_he');
+      localStorage.removeItem('eternal_db_translated_en');
+      localStorage.removeItem('eternal_db_translated_ru');
+    } catch (e) {
+      console.error("Storage access error:", e);
+    }
+
+    setMasterList(updated);
+    try {
+      localStorage.setItem('eternal_db', JSON.stringify(updated));
+    } catch (e) {
+      console.error("Storage access error:", e);
+    }
+  };
+
+  // Clean and deduplicate current database
+  const handleCleanDuplicates = async () => {
+    const cleaned = deduplicateSingleList(masterList);
+    setMasterList(cleaned);
+    try {
+      localStorage.setItem('eternal_db', JSON.stringify(cleaned));
+      localStorage.removeItem('eternal_db_translated_he');
+      localStorage.removeItem('eternal_db_translated_en');
+      localStorage.removeItem('eternal_db_translated_ru');
+    } catch (e) {
+      console.error("Storage access error:", e);
+    }
+  };
+
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showDuplicatesManager, setShowDuplicatesManager] = useState(false);
+
+  const getDuplicateGroups = () => {
+    const groupsMap: { [key: string]: Deceased[] } = {};
+    (masterList || []).forEach(item => {
+      if (!item) return;
+      const itemName = (item.name || '').trim().toLowerCase();
+      const itemMonth = (item.month || '').trim();
+      const key = `${itemName}_${item.day || 0}_${itemMonth}`;
+      if (!groupsMap[key]) {
+        groupsMap[key] = [];
+      }
+      groupsMap[key].push(item);
+    });
+
+    const duplicateGroups: { name: string; day: number; month: string; items: Deceased[] }[] = [];
+    Object.keys(groupsMap).forEach(key => {
+      if (groupsMap[key] && groupsMap[key].length > 1) {
+        const firstItem = groupsMap[key][0];
+        duplicateGroups.push({
+          name: firstItem?.name || '',
+          day: firstItem?.day || 1,
+          month: firstItem?.month || '',
+          items: groupsMap[key]
+        });
+      }
+    });
+    return duplicateGroups;
+  };
+
+  const handleResolveDuplicateGroup = async (groupItems: Deceased[]) => {
+    const toDelete = groupItems.slice(1);
+    for (const item of toDelete) {
+      await handleDeleteDeceased(item.id);
+    }
+  };
+
+  const handleResetDatabase = async () => {
+    try {
+      const { error } = await safeDeleteAll('deceased');
+      if (error) {
+        console.error("Supabase Fetch Error:", error);
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+        }
+      }
+    } catch (err) {
+      console.error("Supabase Fetch Error:", err);
+    }
+
+    if (!(window as any).__OFFLINE_DATABASE_DATA__) {
+      try {
+        await fetch('/api/deceased', {
+          method: 'DELETE'
+        });
+      } catch (err) {
+        console.error("Failed to reset database on server:", err);
+      }
+    }
+
+    setMasterList([]);
+    setDisplayedList([]);
+    try {
+      localStorage.removeItem('eternal_db');
+      localStorage.removeItem('eternal_memories');
+      localStorage.removeItem('eternal_db_translated_he');
+      localStorage.removeItem('eternal_db_translated_en');
+      localStorage.removeItem('eternal_db_translated_ru');
+    } catch (e) {
+      console.error("Storage access error:", e);
+    }
+    setShowResetConfirm(false);
+  };
+
+  const handleExitMemorialPage = () => {
+    setUrlDeceasedId(null);
+    setUrlDeceasedFromPayload(null);
+    setSelectedDeceased(null);
+    if (typeof window !== 'undefined' && window.history) {
+      const targetUrl = lang !== 'he' ? `/?lang=${lang}` : '/';
+      window.history.pushState({}, document.title, targetUrl);
+    }
+  };
+
+  const t = translations[lang];
+  const isRtl = lang === 'he';
+
+  // Render standalone memorial page if a specific deceased link is accessed or payload is provided
+  if (urlDeceasedId || urlDeceasedFromPayload) {
+    let urlDeceased: Deceased | null = urlDeceasedFromPayload;
+    if (!urlDeceased && urlDeceasedId) {
+      urlDeceased = masterList.find(d => Number(d.id) === Number(urlDeceasedId)) ||
+                    displayedList.find(d => Number(d.id) === Number(urlDeceasedId)) || null;
+    }
+
+    if (urlDeceased) {
+      // Auto-sync address bar URL so copying from address bar copies the complete payload link
+      const currentPayload = encodeDeceasedToUrlPayload(urlDeceased);
+      const targetUrl = `/?data=${currentPayload}${lang !== 'he' ? `&lang=${lang}` : ''}`;
+      if (typeof window !== 'undefined' && (window.location.pathname + window.location.search) !== targetUrl) {
+        window.history.replaceState({}, document.title, targetUrl);
+      }
+
+      return (
+        <DeceasedMemorialPage 
+          deceased={urlDeceased} 
+          lang={lang} 
+          onSetLang={(newLang) => {
+            setLang(newLang);
+            const updatedPayload = encodeDeceasedToUrlPayload(urlDeceased!);
+            const newUrl = `/?data=${updatedPayload}&lang=${newLang}`;
+            window.history.replaceState({}, document.title, newUrl);
+          }} 
+          onExit={handleExitMemorialPage} 
+        />
+      );
+    }
+
+    if (fetchingRemoteDeceased || (displayedList.length === 0 && masterList.length === 0 && !remoteDeceasedNotFound)) {
+      return (
+        <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-3">
+          <div className="w-8 h-8 border-4 border-[#c8a96e] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-xs text-[#c8a96e] font-medium font-sans">
+            {lang === 'he' ? 'טוען דף הנצחה אישי משרת הענן והקישור...' : lang === 'ru' ? 'Загрузка поминальной страницы из облачной базы данных...' : 'Loading memorial page from cloud server & link...'}
           </p>
         </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Today's Memorials */}
-          {todayList.length > 0 && (
-            <div>
-              <h3 className="text-sm font-sans uppercase tracking-wider text-[#c8a96e] mb-3 font-semibold flex items-center gap-2">
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
-                {t.todayMemorials}
-              </h3>
-              <div className="grid gap-3 grid-cols-1">
-                {todayList.map((event, idx) => {
-                  const m = event.deceased.month;
-                  const normalized = normalizeMonthName(m);
-                  let monthIdx = HEBREW_MONTHS_HE.indexOf(normalized);
-                  if (monthIdx === -1) monthIdx = 0;
-                  const monthStr = lang === 'he' ? HEBREW_MONTHS_HE[monthIdx] : lang === 'en' ? HEBREW_MONTHS_EN[monthIdx] : HEBREW_MONTHS_RU[monthIdx];
-                  const dayStr = lang === 'he' ? gimatriya(event.deceased.day) : event.deceased.day.toString();
-                  
-                  const precedingShabbat = getPrecedingShabbatParasha(event.gregorianDate);
-                  const parashaLabel = precedingShabbat 
-                    ? (lang === 'he' ? precedingShabbat.hebrew : precedingShabbat.title)
-                    : null;
+      );
+    }
 
-                  const isCandleLit = !!litCandles[event.deceased.id];
+    // Fallback if deceased ID is invalid or deleted
+    return (
+      <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-4 p-4 text-center">
+        <p className="text-base text-amber-400 font-bold">
+          {lang === 'he' ? 'לא נמצא דף הנצחה עבור כרטיס זה.' : lang === 'ru' ? 'Страница памяти не найдена.' : 'No memorial page found for this card.'}
+        </p>
+        <p className="text-xs text-gray-400">
+          {lang === 'he' ? 'יתכן שהכרטיס אינו קיים במערכת או שהקישור שונה.' : lang === 'ru' ? 'Возможно, запись не существует или ссылка была изменена.' : 'The card may not exist in the system or the link was altered.'}
+        </p>
+        <button 
+          onClick={handleExitMemorialPage}
+          className="px-4 py-2 bg-[#c8a96e] hover:bg-[#b8952e] text-black text-xs font-bold rounded-xl transition-all cursor-pointer"
+        >
+          {lang === 'he' ? 'חזרה למערכת ההנצחה הכללית ←' : lang === 'ru' ? 'Вернуться в главный раздел ←' : 'Return to main memorial system ←'}
+        </button>
+      </div>
+    );
+  }
 
-                  return (
-                    <div 
-                      key={`today-${idx}`}
-                      onClick={() => onSelectDeceased(event.deceased)}
-                      className={`bg-gradient-to-r from-amber-950/90 via-[#26180a] to-[#131a26] hover:to-[#1a2333] border-2 border-amber-400 rounded-xl p-5 cursor-pointer transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-5 group animate-yahrzeit-fire transform hover:-translate-y-0.5 ${lang === 'he' ? 'text-right' : 'text-left'}`}
-                      dir={lang === 'he' ? 'rtl' : 'ltr'}
-                    >
-                      <div className="flex items-start gap-4 flex-1">
-                        {event.deceased.image ? (
-                          <img 
-                            src={event.deceased.image} 
-                            alt={event.deceased.name} 
-                            referrerPolicy="no-referrer"
-                            className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
-                          />
-                        ) : (
-                          <div className="w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-3xl shadow-[0_0_15px_rgba(251,191,36,0.5)] group-hover:scale-105 transition-transform duration-300 shrink-0">
-                            🕯️
-                          </div>
-                        )}
-                        <div className="space-y-2 flex-1">
-                          {/* Original, deeply moving Hebrew Eve Alert Banner */}
-                          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500/30 via-amber-500/20 to-amber-500/10 border border-amber-400/70 px-3 py-1 rounded-full text-xs font-black text-amber-200 shadow-md">
-                            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0"></span>
-                            <span>
-                              {lang === 'he' 
-                                ? '✨ יארצייט קדוש ומרומם: האזכרה נכנסת מהיום בערב (משקיעת החמה) - מדליקים נר נשמה, אומרים קדיש ולומדים משנה לעילוי הנשמה 🕯️' 
-                                : lang === 'ru' 
-                                ? '✨ Священный Ярцайт: Начинается сегодня вечером (на закате) — Зажгите поминальную свечу и прочтите Псалмы 🕯️' 
-                                : '✨ Sacred Yahrzeit: Begins this evening at sunset — Light a memorial candle & recite Psalms in loving memory 🕯️'}
-                            </span>
-                          </div>
+  return (
+    <div 
+      className="min-h-screen bg-[#0d0d0d] text-[#f0f4f8] selection:bg-[#c8a96e] selection:text-black pb-28 lg:pb-12 transition-all duration-300"
+      dir={isRtl ? 'rtl' : 'ltr'}
+    >
+      {/* Dynamic Background Grain overlay */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(20,30,48,0.5),rgba(13,13,13,1))] pointer-events-none z-0"></div>
 
-                          {/* Distinctive, prominent typography for the deceased name */}
-                          <div className="space-y-0.5">
-                            <h4 className="text-lg md:text-xl font-serif font-black text-amber-100 tracking-wide leading-snug drop-shadow-md">
-                              {formatHalachicAlert(event.deceased, dayStr, monthStr)}
-                            </h4>
-                          </div>
-                          
-                          {parashaLabel && (
-                            <p className="text-xs text-amber-300/90 font-sans font-semibold flex items-center gap-1.5 bg-black/20 w-fit px-2.5 py-1 rounded-md border border-amber-500/20">
-                              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-                              <span>{bt.upcomingAliyah} <strong>{parashaLabel}</strong></span>
-                            </p>
-                          )}
+      {/* Main Content Area */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        
+        {/* Navigation & Language Header */}
+        <header className="flex flex-col items-center justify-center border-b border-[#c8a96e]/20 pb-6 mb-8 gap-6 w-full text-center">
+          
+          {/* Centered Logo / Title with Large Live Burning Candle */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 group">
+            
+            {/* Beautiful Live Burning Memorial Candle (Animation) */}
+            <div className="relative w-16 h-28 flex flex-col items-center justify-end shrink-0 select-none">
+              {/* Flame */}
+              <motion.div 
+                className="absolute top-1 w-4 h-7 bg-amber-400 rounded-full blur-[0.5px] shadow-[0_0_15px_#f59e0b,0_0_25px_#f59e0b] origin-bottom animate-pulse"
+                animate={{
+                  scaleY: [1, 1.15, 0.95, 1.1, 1],
+                  scaleX: [1, 0.9, 1.1, 0.95, 1],
+                  rotate: [0, -3, 3, -1, 0],
+                  x: [0, -0.5, 0.5, -0.5, 0]
+                }}
+                transition={{
+                  duration: 1.4,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              >
+                <div className="absolute bottom-1 left-1 w-2 h-3 bg-yellow-100 rounded-full opacity-95 shadow-[0_0_6px_#fff]"></div>
+                <div className="absolute bottom-0 left-1.5 w-1 h-1.5 bg-blue-500 rounded-full opacity-70"></div>
+              </motion.div>
+              
+              {/* Candle Body */}
+              <div className="w-9 h-14 bg-gradient-to-t from-amber-700 via-amber-600 to-amber-500/80 rounded-md shadow-inner relative overflow-hidden border border-amber-500/20">
+                {/* Wax drips */}
+                <div className="absolute top-0 left-1 w-2 h-4 bg-amber-400/50 rounded-full"></div>
+                <div className="absolute top-0 left-3.5 w-1 h-6 bg-amber-400/30 rounded-full"></div>
+                <div className="absolute top-0 right-1.5 w-1.5 h-3 bg-amber-400/40 rounded-full"></div>
+                {/* Wick */}
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0.5 h-1.5 bg-gray-900"></div>
+              </div>
+              
+              {/* Pedestal */}
+              <div className="w-14 h-1.5 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 rounded-full shadow-lg"></div>
+            </div>
 
-                          {isCandleLit && (
-                            <div className="flex items-center gap-2 text-xs text-amber-300 font-extrabold bg-black/60 px-3 py-1.5 rounded-lg border border-amber-400/50 w-fit shadow-md">
-                              <Flame className="w-4 h-4 text-amber-400 fill-amber-400 animate-bounce" />
-                              <span>{lang === 'he' ? 'נר נשמה דולק לעילוי נשמתו/ה ת.נ.צ.ב.ה' : lang === 'ru' ? 'Свеча памяти горит (Да святится память)' : 'Memorial Candle Lit'}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+            {/* Title text */}
+            <div className="flex flex-col items-center sm:items-start text-center sm:text-right">
+              <h1 className="text-3xl sm:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#f0d19e] via-[#c8a96e] to-[#f0d19e] tracking-wide leading-tight">
+                {t.title}
+              </h1>
+              <p className="text-xs sm:text-sm text-[#c8a96e]/80 font-sans mt-2">
+                {t.subtitle}
+              </p>
+            </div>
+          </div>
 
-                      {/* Lively Redesigned Action Buttons */}
-                      <div className="flex items-center gap-2.5 self-end md:self-auto shrink-0 flex-wrap">
-                        {/* Dedicated Soul Study Button */}
-                        <motion.button
-                          type="button"
-                          whileHover={{ scale: 1.06, y: -1 }}
-                          whileTap={{ scale: 0.94 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setStudyModalDeceased(event.deceased);
-                          }}
-                          className="flex items-center gap-2 bg-gradient-to-r from-amber-600/30 via-amber-500/20 to-amber-600/30 hover:from-amber-500 hover:to-amber-400 text-amber-200 hover:text-black font-black px-3.5 py-2 rounded-xl text-xs transition-all duration-200 cursor-pointer shadow-md border border-amber-400/60 hover:border-amber-200"
-                          title={lang === 'he' ? `פתח חלון לימוד לעילוי נשמת ${event.deceased.name}` : `Study for ${event.deceased.name}`}
-                        >
-                          <BookOpen className="w-4 h-4 text-amber-300" />
-                          <span>{lang === 'he' ? '📖 לימוד לעילוי נשמה' : lang === 'ru' ? '📖 Изучение' : '📖 Soul Study'}</span>
-                        </motion.button>
+          {/* Language Selector & Standalone Download Container */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 mx-auto">
+            {/* Language Selector Buttons */}
+            <div className="flex items-center gap-1.5 bg-[#131a26]/90 border border-[#c8a96e]/20 p-1.5 rounded-xl shadow-inner font-sans">
+              <Globe className="w-3.5 h-3.5 text-gray-500 mx-2" />
+              <button
+                onClick={() => handleLanguageChange('he')}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${lang === 'he' ? 'bg-[#c8a96e] text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+              >
+                עברית
+              </button>
+              <button
+                onClick={() => handleLanguageChange('en')}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${lang === 'en' ? 'bg-[#c8a96e] text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+              >
+                English
+              </button>
+              <button
+                onClick={() => handleLanguageChange('ru')}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${lang === 'ru' ? 'bg-[#c8a96e] text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+              >
+                Русский
+              </button>
+            </div>
+          </div>
+        </header>
 
-                        {/* Interactive Burning Candle Button */}
-                        <motion.button
-                          type="button"
-                          whileHover={{ scale: 1.06, y: -1 }}
-                          whileTap={{ scale: 0.94 }}
-                          onClick={(e) => toggleCandle(event.deceased.id, e)}
-                          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer shadow-lg border ${
-                            isCandleLit 
-                              ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black border-yellow-200 shadow-[0_0_22px_rgba(245,158,11,0.85)]' 
-                              : 'bg-gradient-to-r from-amber-950/80 to-[#1a1105] text-amber-300 border-amber-500/50 hover:border-amber-300'
-                          }`}
-                        >
-                          <RealisticFlame size={isCandleLit ? "large" : "normal"} showWax={!isCandleLit} />
-                          <span>
-                            {isCandleLit 
-                              ? (lang === 'he' ? 'נר נשמה דולק' : lang === 'ru' ? 'Свеча памяти горит' : 'Candle Lit') 
-                              : (lang === 'he' ? 'הדלקת נר נשמה' : lang === 'ru' ? 'Зажечь свечу' : 'Light Candle')}
-                          </span>
-                        </motion.button>
+        {/* Dynamic translation progress / feedback panel */}
+        {translating && (
+          <div className="mb-6 bg-gradient-to-r from-amber-600/10 via-amber-700/10 to-amber-600/10 border border-[#c8a96e]/20 px-4 py-3.5 rounded-xl flex items-center justify-between animate-pulse">
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 border-2 border-[#c8a96e] border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-xs font-sans font-medium text-amber-200">
+                {lang === 'he' 
+                  ? 'מתרגם את רשומות הזיכרון לעברית באמצעות Gemini AI...' 
+                  : lang === 'ru'
+                    ? 'Перевод записей на русский язык с помощью Gemini AI...'
+                    : 'Translating memorial records via Gemini AI...'}
+              </span>
+            </div>
+            <span className="text-[10px] uppercase font-mono tracking-widest text-[#c8a96e] hidden sm:inline">
+              Powered by Gemini 3.5
+            </span>
+          </div>
+        )}
 
+        {translationError && (
+          <div className="mb-6 bg-red-950/20 border border-red-500/20 px-4 py-3 rounded-xl flex items-center justify-between text-xs text-red-200 font-sans">
+            <span>{translationError}</span>
+            <button onClick={() => setTranslationError(null)} className="text-gray-400 hover:text-white font-bold leading-none text-base">×</button>
+          </div>
+        )}
 
-
-                        <span className="text-xs font-mono text-amber-300 bg-amber-500/20 px-3 py-2 rounded-xl border border-amber-400/40 font-black">
-                          {lang === 'he' ? 'היום / הערב' : lang === 'ru' ? 'Сегодня' : 'Today/Eve'}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* Duplicate Entries Alert Banner */}
+        {getDuplicateGroups().length > 0 && (
+          <div className="mb-6 bg-yellow-950/20 border border-yellow-500/30 px-5 py-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-yellow-200 font-sans shadow-lg relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-2 h-full bg-yellow-500"></div>
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 animate-pulse" />
+              <div>
+                <span className="font-semibold block sm:inline">
+                  {lang === 'he' 
+                    ? `נמצאו כרטיסים כפולים במאגר (${getDuplicateGroups().length} קבוצות כפילויות)!` 
+                    : lang === 'ru'
+                      ? `Найдены дубликаты в базе данных (${getDuplicateGroups().length} групп)!`
+                      : `Duplicate records found in the database (${getDuplicateGroups().length} duplicate groups)!`}
+                </span>
+                <span className="text-xs text-gray-400 block sm:inline sm:ms-2">
+                  {lang === 'he'
+                    ? 'מומלץ לנקות כפילויות על מנת לשמור על סדר ושלמות הנתונים.'
+                    : lang === 'ru'
+                      ? 'Рекомендуется удалить дубликаты для поддержания чистоты данных.'
+                      : 'It is recommended to clean duplicates to keep the database tidy.'}
+                </span>
               </div>
             </div>
-          )}
+            <button
+              onClick={() => setShowDuplicatesManager(true)}
+              className="px-4 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-xs rounded-lg transition-all shadow cursor-pointer font-sans"
+            >
+              {lang === 'he' ? 'נהל כפילויות' : lang === 'ru' ? 'Управление дубликатами' : 'Manage Duplicates'}
+            </button>
+          </div>
+        )}
 
-          {/* Upcoming Memorials */}
-          {upcomingList.length > 0 && (
-            <div>
-              <h3 className="text-sm font-sans uppercase tracking-wider text-[#c8a96e]/90 mb-3 font-semibold flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
-                {t.upcomingMemorials}
-              </h3>
-              <div className="grid gap-3 grid-cols-1">
-                {upcomingList.map((event, idx) => {
-                  const m = event.deceased.month;
-                  const normalized = normalizeMonthName(m);
-                  let monthIdx = HEBREW_MONTHS_HE.indexOf(normalized);
-                  if (monthIdx === -1) monthIdx = 0;
-                  const monthStr = lang === 'he' ? HEBREW_MONTHS_HE[monthIdx] : lang === 'en' ? HEBREW_MONTHS_EN[monthIdx] : HEBREW_MONTHS_RU[monthIdx];
-                  const dayStr = lang === 'he' ? gimatriya(event.deceased.day) : event.deceased.day.toString();
-                  
-                  const precedingShabbat = getPrecedingShabbatParasha(event.gregorianDate);
-                  const parashaLabel = precedingShabbat 
-                    ? (lang === 'he' ? precedingShabbat.hebrew : precedingShabbat.title)
-                    : null;
-
-                  const isCandleLit = !!litCandles[event.deceased.id];
-                  const isEveToday = event.daysCount === 1; // Tomorrow's Yahrzeit starts TODAY at sunset!
-
-                  const isFireGlow = event.daysCount >= 0 && event.daysCount <= 3;
-                  const isCyanGlow = event.daysCount >= 4 && event.daysCount <= 9;
-                  const cardGlowClass = isFireGlow
-                    ? 'animate-yahrzeit-fire border-amber-500 bg-gradient-to-r from-[#2a1d0f]/90 via-[#1f150a]/90 to-[#131a26] shadow-[0_0_22px_rgba(245,158,11,0.5)]'
-                    : isCyanGlow
-                    ? 'animate-yahrzeit-upcoming border-cyan-500/80 bg-gradient-to-r from-[#170e2b]/90 via-[#0e1726]/90 to-[#131a26] shadow-[0_0_20px_rgba(6,182,212,0.4)]'
-                    : 'border-[#c8a96e]/20 hover:border-[#c8a96e]/50 bg-[#131a26]/80';
-
-                  return (
-                    <div 
-                      key={`upcoming-${idx}`}
-                      onClick={() => onSelectDeceased(event.deceased)}
-                      className={`hover:bg-[#131a26] border rounded-xl p-4 cursor-pointer transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-4 group ${cardGlowClass} ${lang === 'he' ? 'text-right' : 'text-left'}`}
-                      dir={lang === 'he' ? 'rtl' : 'ltr'}
-                    >
-                      <div className="flex items-start gap-4">
-                        {event.deceased.image ? (
-                          <img 
-                            src={event.deceased.image} 
-                            alt={event.deceased.name} 
-                            referrerPolicy="no-referrer"
-                            className="w-11 h-11 rounded-full object-cover border border-[#c8a96e]/40 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-md"
-                          />
-                        ) : (
-                          <div className="w-11 h-11 rounded-full bg-[#f0f4f8]/5 flex items-center justify-center text-xl shadow-inner group-hover:bg-[#c8a96e]/10 transition-all duration-300 shrink-0">
-                            🕯️
-                          </div>
-                        )}
-                        <div className="space-y-1">
-                          {isEveToday && (
-                            <div className="inline-flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/50 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-amber-300">
-                              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-                              <span>{lang === 'he' ? '🕯️ נכנס מהיום בערב (ערב יארצייט)' : lang === 'ru' ? '🕯️ Начинается сегодня вечером (на закате)' : '🕯️ Starts this evening at sunset'}</span>
-                            </div>
-                          )}
-
-                          <p className="text-sm md:text-base font-sans text-[#f0f4f8]/90 font-semibold">
-                            {formatHalachicAlert(event.deceased, dayStr, monthStr)}
-                          </p>
-
-                          {parashaLabel && (
-                            <p className="text-xs text-[#c8a96e]/90 font-sans flex items-center gap-1.5">
-                              <BookOpen className="w-3.5 h-3.5 text-[#c8a96e]/70" />
-                              <span>{bt.upcomingAliyah} <strong>{parashaLabel}</strong></span>
-                            </p>
-                          )}
-
-                          {isCandleLit && (
-                            <div className="flex items-center gap-1.5 text-xs text-amber-300 font-bold bg-black/40 px-2.5 py-0.5 rounded border border-amber-500/30 w-fit">
-                              <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-bounce" />
-                              <span>{lang === 'he' ? 'נר נשמה דולק' : lang === 'ru' ? 'Свеча памяти горит' : 'Memorial Candle Lit'}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Lively Redesigned Action Buttons */}
-                      <div className="flex items-center gap-2.5 self-end md:self-auto shrink-0 flex-wrap">
-                        {/* Dedicated Soul Study Button */}
-                        <motion.button
-                          type="button"
-                          whileHover={{ scale: 1.06, y: -1 }}
-                          whileTap={{ scale: 0.94 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setStudyModalDeceased(event.deceased);
-                          }}
-                          className="flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-400 border border-amber-400/60 hover:border-amber-300 text-amber-200 hover:text-black font-extrabold px-3 py-1.5 rounded-xl text-xs transition-all duration-200 cursor-pointer shadow-md"
-                          title={lang === 'he' ? `פתח חלון לימוד לעילוי נשמת ${event.deceased.name}` : `Study for ${event.deceased.name}`}
-                        >
-                          <BookOpen className="w-3.5 h-3.5 text-amber-300" />
-                          <span>{lang === 'he' ? '📖 לימוד לעילוי נשמה' : lang === 'ru' ? '📖 Изучение' : '📖 Soul Study'}</span>
-                        </motion.button>
-
-                        {/* Interactive Candle Button */}
-                        <motion.button
-                          type="button"
-                          whileHover={{ scale: 1.06, y: -1 }}
-                          whileTap={{ scale: 0.94 }}
-                          onClick={(e) => toggleCandle(event.deceased.id, e)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                            isCandleLit 
-                              ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black border border-yellow-200 shadow-[0_0_18px_rgba(245,158,11,0.8)]' 
-                              : 'bg-amber-950/40 hover:bg-amber-900/70 text-amber-300 border border-amber-500/40'
-                          }`}
-                        >
-                          <RealisticFlame size={isCandleLit ? "large" : "normal"} showWax={!isCandleLit} />
-                          <span>{isCandleLit ? (lang === 'he' ? 'נר נשמה דולק' : lang === 'ru' ? 'Свеча памяти горит' : 'Candle Lit') : (lang === 'he' ? 'הדלקת נר נשמה' : lang === 'ru' ? 'Зажечь свечу' : 'Light Candle')}</span>
-                        </motion.button>
-
-
-
-                        <span className="text-xs font-mono text-[#c8a96e]/90 bg-[#c8a96e]/10 px-2.5 py-1.5 rounded-xl border border-[#c8a96e]/20 whitespace-nowrap font-bold">
-                          {event.daysCount === 1 ? (lang === 'he' ? 'מחר (מהערב)' : t.tomorrow) : t.inNDays.replace('{n}', event.daysCount.toString())}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* Notification Permission Banner */}
+        {!notifBannerDismissed && (
+          <div className="mb-6 w-full bg-[#131a26]/90 border border-[#c8a96e]/30 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-200 font-sans shadow-lg">
+            <div className="flex items-center gap-2.5">
+              <Bell className="w-5 h-5 text-amber-400 animate-bounce shrink-0" />
+              <div>
+                <p className="font-semibold text-white text-xs sm:text-sm">
+                  {notifPermission === 'granted'
+                    ? (lang === 'he' ? `התראות יארצייט פעילות בנייד (${upcomingNotices.length} אזכרות קרובות ב-3 הימים הקרובים)` : lang === 'ru' ? `Уведомления о Йארцайтах активны (${upcomingNotices.length} ближайших)` : `Mobile Yahrzeit Notifications Active (${upcomingNotices.length} upcoming)`)
+                    : (lang === 'he' ? 'קבל התראות לנייד על אזכרות קרובות ב-3 הימים הקרובים' : lang === 'ru' ? 'Получать уведомления о приближающихся Йארцайтах' : 'Get mobile push notifications for upcoming Yahrzeits')}
+                </p>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  {lang === 'he' ? 'המערכת תשלח תזכורת אוטומטית למכשירך לקראת יום האזכרה' : lang === 'ru' ? 'Система автоматически отправит напоминание на ваше устройство' : 'Automatic push notifications directly on your phone or computer'}
+                </p>
               </div>
             </div>
-          )}
-        </div>
-      )}
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              {notifPermission !== 'granted' ? (
+                <button
+                  onClick={handleEnableNotifications}
+                  className="px-3.5 py-1.5 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-bold text-xs rounded-lg transition-all shadow cursor-pointer whitespace-nowrap"
+                >
+                  {lang === 'he' ? 'הפעל התראות כעת' : lang === 'ru' ? 'Включить уведомления' : 'Enable Notifications'}
+                </button>
+              ) : (
+                <span className="px-2.5 py-1 bg-green-500/20 text-green-300 border border-green-500/30 font-bold text-[11px] rounded-lg flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                  {lang === 'he' ? 'פעיל' : lang === 'ru' ? 'Активно' : 'Active'}
+                </span>
+              )}
+              <button
+                onClick={() => setNotifBannerDismissed(true)}
+                className="p-1 text-gray-400 hover:text-white cursor-pointer"
+                title={lang === 'he' ? 'סגור' : 'Close'}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
-      {/* Dedicated Study Modal for a specific deceased person */}
-      {studyModalDeceased && (
-        <DedicatedStudyModal
-          deceased={studyModalDeceased}
-          lang={lang}
-          onClose={() => setStudyModalDeceased(null)}
+        {/* Real-time Alert Board / Bulletin */}
+        <BulletinBoard 
+          deceasedList={displayedList} 
+          lang={lang} 
+          onSelectDeceased={setSelectedDeceased} 
         />
-      )}
+
+        {/* Two-Column Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Main Content Area (2 cols on large screen) */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* View/Tab Switcher */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-nowrap w-full bg-[#131a26]/80 p-1.5 rounded-xl border border-[#c8a96e]/15 font-sans gap-1.5 sm:gap-2 shadow-lg">
+              <button
+                onClick={() => setActiveTab('calendar')}
+                className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-lg text-xs sm:text-xs md:text-sm font-semibold transition-all cursor-pointer flex-1 whitespace-nowrap ${
+                  activeTab === 'calendar' 
+                    ? 'bg-gradient-to-r from-[#c8a96e] to-[#b8952e] text-black shadow font-bold' 
+                    : 'text-gray-400 hover:text-white hover:bg-[#c8a96e]/5'
+                }`}
+                title={t.calendar}
+              >
+                <Calendar className="w-4 h-4 shrink-0" />
+                <span>{t.calendar}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('book')}
+                className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-lg text-xs sm:text-xs md:text-sm font-semibold transition-all cursor-pointer flex-1 whitespace-nowrap ${
+                  activeTab === 'book' 
+                    ? 'bg-gradient-to-r from-[#c8a96e] to-[#b8952e] text-black shadow font-bold' 
+                    : 'text-gray-400 hover:text-white hover:bg-[#c8a96e]/5'
+                }`}
+                title={t.memorialBook}
+              >
+                <BookOpen className="w-4 h-4 shrink-0" />
+                <span>{t.memorialBook}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('grid')}
+                className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-lg text-xs sm:text-xs md:text-sm font-semibold transition-all cursor-pointer flex-1 whitespace-nowrap ${
+                  activeTab === 'grid' 
+                    ? 'bg-gradient-to-r from-[#c8a96e] to-[#b8952e] text-black shadow font-bold' 
+                    : 'text-gray-400 hover:text-white hover:bg-[#c8a96e]/5'
+                }`}
+                title={t.quick30Grid}
+              >
+                <LayoutGrid className="w-4 h-4 shrink-0" />
+                <span>{t.quick30Grid}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('import')}
+                className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-lg text-xs sm:text-xs md:text-sm font-semibold transition-all cursor-pointer flex-1 whitespace-nowrap ${
+                  activeTab === 'import' 
+                    ? 'bg-gradient-to-r from-[#c8a96e] to-[#b8952e] text-black shadow font-bold' 
+                    : 'text-gray-400 hover:text-white hover:bg-[#c8a96e]/5'
+                }`}
+                title={t.importBulk}
+              >
+                <FileDown className="w-4 h-4 shrink-0" />
+                <span>{t.importBulk}</span>
+              </button>
+            </div>
+
+            {/* Render selected Tab Panel */}
+            <div className="transition-all duration-300">
+              {activeTab === 'calendar' && (
+                <DynamicCalendar 
+                  deceasedList={displayedList} 
+                  lang={lang} 
+                  onSelectDeceased={setSelectedDeceased} 
+                />
+              )}
+
+              {activeTab === 'book' && (
+                <MemorialBook 
+                  deceasedList={displayedList} 
+                  lang={lang} 
+                  onSelectDeceased={setSelectedDeceased} 
+                />
+              )}
+
+              {activeTab === 'grid' && (
+                <Quick30Grid 
+                  deceasedList={displayedList} 
+                  lang={lang} 
+                  onSelectDeceased={setSelectedDeceased} 
+                />
+              )}
+
+              {activeTab === 'import' && (
+                <BulkImport 
+                  lang={lang} 
+                  onImport={handleImportDeceased} 
+                  deceasedList={displayedList}
+                  onCleanDuplicates={handleCleanDuplicates}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Side Control Column (Form / Actions) */}
+          <div className="space-y-6">
+            {!editingDeceased ? (
+              <MemorialForm 
+                lang={lang} 
+                onSave={handleSaveDeceased} 
+                editingDeceased={editingDeceased}
+                onCancel={editingDeceased ? () => setEditingDeceased(null) : undefined}
+              />
+            ) : (
+              <div className="bg-[#131a26]/40 border border-[#c8a96e]/20 p-6 rounded-xl text-center space-y-3 shadow relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 blur-xl rounded-full pointer-events-none"></div>
+                <h4 className="text-xs uppercase text-[#c8a96e] tracking-widest font-semibold font-sans">
+                  {lang === 'he' ? 'מצב עריכה פעיל' : lang === 'ru' ? 'Режим редактирования' : 'Edit Mode Active'}
+                </h4>
+                <p className="text-sm text-gray-300">
+                  {lang === 'he' 
+                    ? 'אנא השלם את עריכת פרטי הנפטר בחלון הפופאפ המרכזי' 
+                    : lang === 'ru'
+                      ? 'Пожалуйста, заполните форму редактирования в центральном окне'
+                      : 'Please complete editing the memorial details in the main popup window.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setEditingDeceased(null)}
+                  className="bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs px-3 py-1.5 rounded-lg transition-all cursor-pointer font-sans"
+                >
+                  {lang === 'he' ? 'ביטול עריכה' : lang === 'ru' ? 'Отмена' : 'Cancel Edit'}
+                </button>
+              </div>
+            )}
+
+            {/* Quick stats panel if not editing */}
+            {!editingDeceased && (
+              <div className="bg-[#131a26]/40 border border-[#c8a96e]/10 p-5 rounded-xl text-center space-y-2 relative overflow-hidden shadow">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-[#c8a96e]/5 blur-xl rounded-full pointer-events-none"></div>
+                <h4 className="text-xs uppercase text-[#c8a96e] tracking-widest font-semibold font-sans">
+                  {lang === 'he' ? 'סה"כ נפטרים במאגר' : lang === 'ru' ? 'Всего записей' : 'Total Memorials'}
+                </h4>
+                <p className="text-3xl font-serif font-bold text-white leading-none">
+                  {displayedList.length}
+                </p>
+                <div className="text-[10px] text-gray-500 font-sans flex items-center justify-center gap-1">
+                  <Sparkles className="w-3 h-3 text-[#c8a96e]" />
+                  <span>{lang === 'he' ? 'יהי זכרם ברוך' : lang === 'ru' ? 'Пусть их память будет благословением' : 'May their memory be a blessing'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(true)}
+                  className="mt-4 w-full bg-red-950/20 hover:bg-red-900/30 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 text-xs font-semibold py-2 px-3 rounded-lg transition-all cursor-pointer font-sans"
+                >
+                  {lang === 'he' ? 'איפוס המערכת ומחיקת כל השמות' : lang === 'ru' ? 'Сбросить систему и удалить все имена' : 'Reset System & Delete All Names'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Deceased details modal overlay */}
+        {selectedDeceased && (
+          <MemorialDetailsModal
+            deceased={selectedDeceased}
+            lang={lang}
+            onClose={() => setSelectedDeceased(null)}
+            onEdit={(dec) => {
+              setEditingDeceased(dec);
+              setSelectedDeceased(null);
+            }}
+            onDelete={handleDeleteDeceased}
+          />
+        )}
+
+        {/* Dedicated Editing Modal Overlay */}
+        {editingDeceased && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-[#131a26] border-2 border-[#c8a96e] rounded-2xl w-full max-w-xl shadow-2xl relative">
+              <MemorialForm 
+                lang={lang} 
+                onSave={(updated) => {
+                  handleSaveDeceased(updated);
+                  setEditingDeceased(null);
+                }} 
+                editingDeceased={editingDeceased}
+                onCancel={() => setEditingDeceased(null)}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Custom Reset Confirmation Modal */}
+        {showResetConfirm && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 font-sans">
+            <div className="bg-[#131a26] border border-red-500/40 max-w-md w-full rounded-2xl p-6 shadow-2xl relative space-y-4">
+              <div className="flex items-center gap-3 text-red-500">
+                <AlertTriangle className="w-8 h-8 shrink-0 animate-bounce" />
+                <h3 className="text-xl font-serif font-bold">
+                  {lang === 'he' ? 'אזהרת מחיקה חמורה!' : lang === 'ru' ? 'Предупреждение об удалении!' : 'Severe Deletion Warning!'}
+                </h3>
+              </div>
+              
+              <p className="text-sm text-gray-300 leading-relaxed">
+                {lang === 'he' 
+                  ? 'האם אתה בטוח לחלוטין שברצונך למחוק את כל מאגר שמות הנפטרים ולאפס את המערכת? פעולה זו תמחוק את כל השמות ואת כל הדפים האישיים לתמיד ללא יכולת שחזור!' 
+                  : lang === 'ru'
+                    ? 'Вы абсолютно уверены, что хотите удалить всю базу данных умерших и сбросить систему? Это действие навсегда удалит все имена и личные страницы без возможности восстановления!'
+                    : 'Are you absolutely sure you want to delete the entire deceased database and reset the system? This action will permanently erase all names and personal memorial pages forever!'}
+              </p>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleResetDatabase}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl transition-all cursor-pointer text-sm"
+                >
+                  {lang === 'he' ? 'כן, מחק הכל ואפס מערכת' : lang === 'ru' ? 'Да, удалить всё' : 'Yes, delete everything'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(false)}
+                  className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-2.5 rounded-xl transition-all cursor-pointer text-sm"
+                >
+                  {lang === 'he' ? 'ביטול וחזרה' : lang === 'ru' ? 'Отмена' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Duplicates Manager Modal */}
+        {showDuplicatesManager && (
+          <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 font-sans">
+            <div className="bg-[#131a26] border border-[#c8a96e]/30 max-w-2xl w-full rounded-2xl p-6 shadow-2xl relative space-y-4 max-h-[85vh] overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => setShowDuplicatesManager(false)}
+                className="absolute top-4 left-4 text-gray-400 hover:text-white text-xl font-bold leading-none"
+              >
+                ×
+              </button>
+
+              <div>
+                <h3 className="text-xl font-serif font-bold text-[#c8a96e]">
+                  {lang === 'he' ? 'ניהול ומיזוג כרטיסים כפולים' : lang === 'ru' ? 'Управление дубликатами' : 'Manage & Clean Duplicate Records'}
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  {lang === 'he' 
+                    ? 'השמות הבאים מופיעים מספר פעמים באותו התאריך. באפשרותך למזג אותם ולהשאיר כרטיס אחד בלבד מכל קבוצה.' 
+                    : lang === 'ru'
+                      ? 'Следующие имена повторяются в одну и ту же дату. Вы можете объединить их и оставить только одну запись.'
+                      : 'The following names appear multiple times on the same date. You can merge them and keep only one card.'}
+                </p>
+              </div>
+
+              <div className="space-y-4 divide-y divide-[#c8a96e]/10 pt-2">
+                {getDuplicateGroups().map((group, gIdx) => (
+                  <div key={gIdx} className="pt-4 first:pt-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="space-y-1 text-right">
+                      <h4 className="text-base font-semibold text-white">
+                        {group.name}
+                      </h4>
+                      <p className="text-xs text-[#c8a96e]">
+                        {group.day} ב{group.month} • {group.items.length} כרטיסים כפולים
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleResolveDuplicateGroup(group.items)}
+                      className="px-4 py-2 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-semibold text-xs rounded-xl transition-all shadow cursor-pointer self-end md:self-auto"
+                    >
+                      {lang === 'he' ? 'מזג והשאר כרטיס יחיד' : lang === 'ru' ? 'Объединить записи' : 'Merge & Keep Single Record'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-4 border-t border-[#c8a96e]/20 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowDuplicatesManager(false)}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+                >
+                  {lang === 'he' ? 'סגור' : lang === 'ru' ? 'Закрыть' : 'Close'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Supabase SQL Setup Modal */}
+        {(showSqlSetupModal || supabaseTableMissing) && (
+          <div className="fixed bottom-4 left-4 z-50 font-sans max-w-sm w-full">
+            <div className="bg-[#131a26] border border-[#c8a96e]/40 p-3.5 rounded-2xl shadow-2xl space-y-2 text-right">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                  Supabase Status
+                </span>
+                <button 
+                  onClick={() => { setSupabaseTableMissing(false); setShowSqlSetupModal(false); }}
+                  className="text-gray-400 hover:text-white text-xs px-1 font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-gray-300 leading-snug">
+                {lang === 'he' 
+                  ? 'טבלת public.deceased עדיין לא נוצרה במסד הנתונים Supabase. המערכת פועלת באופן מלא דרך השרת המקומי.'
+                  : 'The public.deceased table is not yet created in Supabase. System is running seamlessly via local database.'}
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(SUPABASE_SETUP_SQL);
+                    setSqlCopied(true);
+                    setTimeout(() => setSqlCopied(false), 3000);
+                  }}
+                  className="w-full py-1.5 px-3 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-bold text-xs rounded-xl transition-all shadow cursor-pointer text-center"
+                >
+                  {sqlCopied ? '✓ קוד ה-SQL הועתק!' : 'העתק SQL ליצירת הטבלה ב-Supabase'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Floating Action Button (FAB) */}
+        <button
+          onClick={() => setIsMobileFormOpen(true)}
+          className="lg:hidden fixed bottom-18 right-4 z-40 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold p-3.5 rounded-full shadow-[0_0_20px_rgba(200,169,110,0.5)] flex items-center gap-2 border border-[#c8a96e] cursor-pointer transition-transform active:scale-95"
+          title={lang === 'he' ? 'הוסף נפטר' : 'Add Memorial'}
+        >
+          <Plus className="w-6 h-6 stroke-[2.5]" />
+          <span className="text-xs font-bold pl-1 hidden sm:inline">{lang === 'he' ? 'הוסף נפטר' : 'Add Name'}</span>
+        </button>
+
+        {/* Mobile Form Bottom Sheet / Modal */}
+        {isMobileFormOpen && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end justify-center sm:items-center p-0 sm:p-4">
+            <div className="bg-[#131a26] border-t-2 sm:border-2 border-[#c8a96e] rounded-t-2xl sm:rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-4 relative shadow-2xl animate-in slide-in-from-bottom duration-300">
+              <div className="flex items-center justify-between pb-3 border-b border-[#c8a96e]/20 mb-3">
+                <h3 className="text-base font-serif font-bold text-[#c8a96e] flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-[#c8a96e]" />
+                  <span>{lang === 'he' ? 'הוספת נפטר חדש לספר הזיכרון' : 'Add New Deceased'}</span>
+                </h3>
+                <button
+                  onClick={() => setIsMobileFormOpen(false)}
+                  className="p-1.5 text-gray-400 hover:text-white rounded-lg bg-gray-800/50 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <MemorialForm 
+                lang={lang} 
+                onSave={(deceased) => {
+                  handleSaveDeceased(deceased);
+                  setIsMobileFormOpen(false);
+                }} 
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Fixed Mobile Bottom Navigation Bar */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0d0d0d]/95 border-t border-[#c8a96e]/30 backdrop-blur-lg flex items-center justify-around py-2 px-1 shadow-2xl">
+          <button
+            onClick={() => setActiveTab('calendar')}
+            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
+              activeTab === 'calendar' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Calendar className="w-5 h-5" />
+            <span className="text-[10px] font-sans">{t.calendar}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('book')}
+            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
+              activeTab === 'book' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <BookOpen className="w-5 h-5" />
+            <span className="text-[10px] font-sans">{t.memorialBook}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('grid')}
+            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
+              activeTab === 'grid' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <LayoutGrid className="w-5 h-5" />
+            <span className="text-[10px] font-sans">{t.quick30Grid}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('import')}
+            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
+              activeTab === 'import' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <FileDown className="w-5 h-5" />
+            <span className="text-[10px] font-sans">{t.importBulk}</span>
+          </button>
+        </div>
+
+      </div>
     </div>
   );
-};
-export default App; 
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <MainAppContent />
+    </ErrorBoundary>
+  );
+}
+
+export default App;
