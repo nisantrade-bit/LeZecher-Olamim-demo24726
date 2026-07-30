@@ -187,10 +187,11 @@ export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: stri
   if (deceasedObj) {
     if (deceasedObj.id) {
       idParam = `m=${deceasedObj.id}`;
-    }
-    const payload = encodeDeceasedToUrlPayload(deceasedObj);
-    if (payload) {
-      dataParam = `data=${payload}`;
+    } else {
+      const payload = encodeDeceasedToUrlPayload(deceasedObj);
+      if (payload) {
+        dataParam = `data=${payload}`;
+      }
     }
   } else if (typeof deceasedOrId === 'number' || (typeof deceasedOrId === 'string' && !isNaN(Number(deceasedOrId)))) {
     idParam = `m=${deceasedOrId}`;
@@ -200,7 +201,7 @@ export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: stri
   const params = [idParam, dataParam, langQuery].filter(Boolean);
   const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
 
-  // Always return base origin with root path to avoid 404s on subpaths on static hosts like Vercel
+  // Return clean short domain & path params URL
   return `${baseOrigin}/${queryStr}`;
 }
 

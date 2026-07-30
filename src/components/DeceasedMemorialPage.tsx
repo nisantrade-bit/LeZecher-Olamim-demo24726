@@ -200,7 +200,18 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
     setActiveMishnah(getRandomMishnah());
     setActivePsalm(getRandomPsalm());
     setActiveHalakha(getRandomHalakha());
-  }, [deceased.id, deceased.day, deceased.month]);
+
+    try {
+      const title = `לזכר עולמים - עמוד זיכרון לעילוי נשמת ${deceased.name}`;
+      document.title = title;
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) ogTitle.setAttribute('content', title);
+      const ogDesc = document.querySelector('meta[property="og:description"]');
+      if (ogDesc) ogDesc.setAttribute('content', `נר נשמה דולק לעילוי נשמת ${deceased.name} ז״ל | השתתפות בהנצחה, תהילים ומשנה`);
+      const ogImg = document.querySelector('meta[property="og:image"]');
+      if (ogImg) ogImg.setAttribute('content', deceased.image || '/icon-192.png');
+    } catch (e) {}
+  }, [deceased.id, deceased.day, deceased.month, deceased.name, deceased.image]);
 
   // Spiritual Study States
   const [activeMishnah, setActiveMishnah] = useState<MishnahRecord>(() => getRandomMishnah());
