@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Deceased, Language } from '../types';
-import { translations, formatParentRelation } from '../utils/translations';
+import { translations, formatParentRelation } from './utils/translations';
 import { translateText } from '../utils/transliteration';
 import { getHebrewDate, isYahrzeitMatch, HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, normalizeMonthName, getYahrzeitEveDate } from '../utils/hebrewDate';
 import { Bell, Heart, Share2, BookOpen, Calendar, MessageCircle, Info, MapPin, Flame, Sparkles, Clock } from 'lucide-react';
