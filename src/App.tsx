@@ -843,3 +843,4 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
     </div>
   );
 };
+export default App;
