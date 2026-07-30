@@ -13,7 +13,7 @@ import { getRandomMishnah, getRandomPsalm, getRandomHalakha, MishnahRecord, Psal
 import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
 import { FullReadingModal } from './FullReadingModal';
 import { Flame, Globe, BookOpen, Calendar, MessageCircle, RefreshCw, Star, User, Heart, Share2, ArrowLeft, Phone, MapPin, Copy, Check } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 interface DeceasedMemorialPageProps {
   deceased: Deceased;
@@ -493,23 +493,10 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
     });
   };
 
-  const [copiedLink, setCopiedLink] = useState(false);
-
   // WhatsApp sharing logic
   const shareMemorialPage = () => {
     const text = generateWhatsAppShareText(deceased, lang);
     openWhatsAppShare(text);
-  };
-
-  const copyShortLink = async () => {
-    const shortUrl = getShortMemorialUrl(deceased, lang);
-    try {
-      await navigator.clipboard.writeText(shortUrl);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 3000);
-    } catch (e) {
-      console.error("Failed to copy link:", e);
-    }
   };
 
   // Get localized Hebrew month name
@@ -583,49 +570,78 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
           <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-[#c8a96e]/50 rounded-bl-xl pointer-events-none"></div>
           <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-[#c8a96e]/50 rounded-br-xl pointer-events-none"></div>
 
-          {/* Glowing Animated Flame widget */}
-          <div className="mb-6 flex flex-col items-center">
-            {/* Ultra-radiant Flame Component */}
-            <div className="relative w-28 h-32 flex flex-col items-center justify-center">
-              {/* Vibrant Ambient Glow Effect */}
-              <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-2xl animate-pulse"></div>
-              
-              {/* Flame */}
-              <motion.div 
-                className="relative w-12 h-20 bg-gradient-to-t from-amber-600 via-amber-400 to-yellow-100 rounded-full blur-[0.5px] shadow-[0_0_25px_#f59e0b,0_0_45px_#ff9900,0_0_60px_#ffaa00] origin-bottom z-10"
-                animate={{
-                  scaleY: [1, 1.25, 0.88, 1.18, 1],
-                  scaleX: [1, 0.82, 1.18, 0.88, 1],
-                  rotate: [0, -3.5, 3.5, -1.5, 0],
-                  x: [0, -0.8, 0.8, -0.8, 0]
-                }}
-                transition={{
-                  duration: 1.2,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              >
-                <div className="absolute bottom-1 left-2.5 w-6 h-10 bg-white rounded-full opacity-95 shadow-[0_0_12px_#fff]"></div>
-                <div className="absolute bottom-0 left-4 w-3 h-5 bg-blue-500 rounded-full opacity-85"></div>
-              </motion.div>
-              
-              {/* Minimal Candle Stand */}
-              <div className="w-10 h-2 bg-gradient-to-r from-amber-900 via-amber-700 to-amber-900 rounded-full shadow-lg mt-1 border border-amber-500/30"></div>
-            </div>
-            <span className="text-xs uppercase font-mono tracking-widest text-[#c8a96e] mt-1 block font-bold">
-              {lang === 'he' ? '🔥 נר נשמה דולק' : lang === 'ru' ? '🔥 Свеча памяти горит' : '🔥 Memorial Candle Lit'}
-            </span>
-          </div>
+          {/* Hero Center Display: Framed Photo with Memorial Candle Beside It */}
+          {deceased.image ? (
+            <div className="flex flex-row items-center justify-center gap-6 sm:gap-12 mb-6 relative z-10">
+              {/* Deceased Portrait in Memorial Frame */}
+              <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl border-2 border-[#c8a96e] shadow-[0_0_30px_rgba(200,169,110,0.5)] overflow-hidden bg-black/60 shrink-0 group">
+                <img
+                  src={deceased.image}
+                  alt={deceased.name}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  style={{ objectPosition: deceased.imagePosition || 'center top' }}
+                  referrerPolicy="no-referrer"
+                />
+              </div>
 
-          {/* Profile photo fallback / Uploaded picture */}
-          {deceased.image && (
-            <div className="mb-6">
-              <img
-                src={deceased.image}
-                alt={deceased.name}
-                className="w-32 h-32 rounded-full object-cover border-4 border-[#c8a96e]/40 shadow-xl"
-                referrerPolicy="no-referrer"
-              />
+              {/* Memorial Candle Burning Beside Portrait ("לצד התמונה") */}
+              <div className="flex flex-col items-center justify-center shrink-0">
+                <div className="relative w-28 h-32 flex flex-col items-center justify-center">
+                  <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-2xl animate-pulse"></div>
+                  
+                  <motion.div 
+                    className="relative w-12 h-20 bg-gradient-to-t from-amber-600 via-amber-400 to-yellow-100 rounded-full blur-[0.5px] shadow-[0_0_25px_#f59e0b,0_0_45px_#ff9900,0_0_60px_#ffaa00] origin-bottom z-10"
+                    animate={{
+                      scaleY: [1, 1.25, 0.88, 1.18, 1],
+                      scaleX: [1, 0.82, 1.18, 0.88, 1],
+                      rotate: [0, -3.5, 3.5, -1.5, 0],
+                      x: [0, -0.8, 0.8, -0.8, 0]
+                    }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    <div className="absolute bottom-1 left-2.5 w-6 h-10 bg-white rounded-full opacity-95 shadow-[0_0_12px_#fff]"></div>
+                    <div className="absolute bottom-0 left-4 w-3 h-5 bg-blue-500 rounded-full opacity-85"></div>
+                  </motion.div>
+                  
+                  <div className="w-10 h-2 bg-gradient-to-r from-amber-900 via-amber-700 to-amber-900 rounded-full shadow-lg mt-1 border border-amber-500/30"></div>
+                </div>
+                <span className="text-xs uppercase font-mono tracking-widest text-[#c8a96e] mt-1 block font-bold">
+                  {lang === 'he' ? '🔥 נר נשמה דולק' : lang === 'ru' ? '🔥 Свеча памяти горит' : '🔥 Memorial Candle Lit'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-6 flex flex-col items-center">
+              <div className="relative w-28 h-32 flex flex-col items-center justify-center">
+                <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-2xl animate-pulse"></div>
+                
+                <motion.div 
+                  className="relative w-12 h-20 bg-gradient-to-t from-amber-600 via-amber-400 to-yellow-100 rounded-full blur-[0.5px] shadow-[0_0_25px_#f59e0b,0_0_45px_#ff9900,0_0_60px_#ffaa00] origin-bottom z-10"
+                  animate={{
+                    scaleY: [1, 1.25, 0.88, 1.18, 1],
+                    scaleX: [1, 0.82, 1.18, 0.88, 1],
+                    rotate: [0, -3.5, 3.5, -1.5, 0],
+                    x: [0, -0.8, 0.8, -0.8, 0]
+                  }}
+                  transition={{
+                    duration: 1.2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <div className="absolute bottom-1 left-2.5 w-6 h-10 bg-white rounded-full opacity-95 shadow-[0_0_12px_#fff]"></div>
+                  <div className="absolute bottom-0 left-4 w-3 h-5 bg-blue-500 rounded-full opacity-85"></div>
+                </motion.div>
+                
+                <div className="w-10 h-2 bg-gradient-to-r from-amber-900 via-amber-700 to-amber-900 rounded-full shadow-lg mt-1 border border-amber-500/30"></div>
+              </div>
+              <span className="text-xs uppercase font-mono tracking-widest text-[#c8a96e] mt-1 block font-bold">
+                {lang === 'he' ? '🔥 נר נשמה דולק' : lang === 'ru' ? '🔥 Свеча памяти горит' : '🔥 Memorial Candle Lit'}
+              </span>
             </div>
           )}
 
@@ -770,28 +786,15 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
             </span>
           </div>
 
-          {/* Share & Copy Link Buttons */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          {/* WhatsApp Share Button */}
+          <div className="mt-6 flex items-center justify-center">
             <button
               type="button"
               onClick={shareMemorialPage}
-              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm py-2.5 px-5 rounded-xl shadow transition-all hover:scale-105 cursor-pointer border border-emerald-500/20"
+              className="inline-flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm py-3 px-6 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer border border-emerald-500/30"
             >
-              <Share2 className="w-4 h-4 shrink-0" />
+              <MessageCircle className="w-5 h-5 shrink-0" />
               <span>{mt.sharePage}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={copyShortLink}
-              className={`inline-flex items-center gap-2 font-semibold text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow transition-all cursor-pointer border ${
-                copiedLink 
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' 
-                  : 'bg-[#1a2332] hover:bg-[#253247] text-gray-200 border-[#c8a96e]/20'
-              }`}
-            >
-              {copiedLink ? <Check className="w-4 h-4 shrink-0 text-emerald-400" /> : <Copy className="w-4 h-4 shrink-0 text-[#c8a96e]" />}
-              <span>{copiedLink ? (lang === 'he' ? 'הקישור הועתק!' : lang === 'ru' ? 'Ссылка скопирована!' : 'Link copied!') : (lang === 'he' ? 'העתק קישור' : lang === 'ru' ? 'Скопировать ссылку' : 'Copy link')}</span>
             </button>
           </div>
         </div>

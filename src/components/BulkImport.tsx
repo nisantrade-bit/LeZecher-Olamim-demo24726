@@ -10,7 +10,7 @@ import { normalizeMonthName } from '../utils/hebrewDate';
 import { Download, Upload, Clipboard, CheckCircle, AlertTriangle, FileSpreadsheet, Sparkles, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { downloadDeceasedCsv, exportCombined3LanguageCsv } from '../utils/csvExport';
-import { translateDeceasedListClientSide } from '../utils/transliteration';
+import { translateDeceasedListClientSide, translateDeceasedListClientSize } from '../utils/transliteration';
 
 interface BulkImportProps {
   lang: Language;
@@ -172,7 +172,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       if (!rawMonth.trim()) continue; // skip rows without month
       const normalizedMonth = normalizeMonthName(rawMonth);
 
-      result.push({
+      const newItem: Deceased = {
         id: Date.now() + Math.floor(Math.random() * 1000000) + index,
         name: rawName.trim(),
         gender,
@@ -182,7 +182,9 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         month: normalizedMonth,
         contactPhone: rawPhone.trim() || undefined,
         notes: rawNotes.trim() || undefined
-      });
+      };
+
+      result.push(newItem);
     }
 
     return result;
@@ -192,6 +194,50 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     if (!pasteText.trim()) {
       setFeedback({ type: 'error', message: lang === 'he' ? 'אנא הדבק טקסט קודם כל' : 'Please paste some text first' });
       return;
+    }
+
+    const trimmed = pasteText.trim();
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        const arrayToProcess = Array.isArray(parsed) ? parsed : [parsed];
+        const importedList: Deceased[] = arrayToProcess.map((item, idx) => ({
+          id: Number(item.id || Date.now() + idx),
+          name: String(item.name || item.nameHe || item.nameEn || item.nameRu || ''),
+          gender: (item.gender === 'female' ? 'female' : 'male') as Gender,
+          fatherName: sanitizeParentName(item.fatherName || ''),
+          motherName: sanitizeParentName(item.motherName || ''),
+          day: Number(item.day || 1),
+          month: normalizeMonthName(item.month || 'תשרי'),
+          contactPhone: item.contactPhone || undefined,
+          notes: item.notes || undefined,
+          image: item.image || undefined,
+          ageAtDeath: item.ageAtDeath ? Number(item.ageAtDeath) : undefined,
+          birthDate: item.birthDate || undefined,
+          nameHe: item.nameHe,
+          nameEn: item.nameEn,
+          nameRu: item.nameRu,
+          fatherNameHe: item.fatherNameHe,
+          fatherNameEn: item.fatherNameEn,
+          fatherNameRu: item.fatherNameRu,
+          motherNameHe: item.motherNameHe,
+          motherNameEn: item.motherNameEn,
+          motherNameRu: item.motherNameRu,
+          notesHe: item.notesHe,
+          notesEn: item.notesEn,
+          notesRu: item.notesRu
+        })).filter(item => Boolean(item.name));
+
+        if (importedList.length > 0) {
+          onImport(importedList);
+          setPasteText('');
+          setFeedback({ 
+            type: 'success', 
+            message: t.importSuccess.replace('{count}', importedList.length.toString()) 
+          });
+          return;
+        }
+      } catch (e) {}
     }
 
     try {
@@ -227,6 +273,61 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
   const readAndProcessFile = (file: File) => {
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
     
+    if (fileExtension === 'json') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const text = event.target?.result as string;
+          const parsed = JSON.parse(text);
+          const arrayToProcess = Array.isArray(parsed) ? parsed : [parsed];
+          const importedList: Deceased[] = arrayToProcess.map((item, idx) => ({
+            id: Number(item.id || Date.now() + idx),
+            name: String(item.name || item.nameHe || item.nameEn || item.nameRu || ''),
+            gender: (item.gender === 'female' ? 'female' : 'male') as Gender,
+            fatherName: sanitizeParentName(item.fatherName || ''),
+            motherName: sanitizeParentName(item.motherName || ''),
+            day: Number(item.day || 1),
+            month: normalizeMonthName(item.month || 'תשרי'),
+            contactPhone: item.contactPhone || undefined,
+            notes: item.notes || undefined,
+            image: item.image || undefined,
+            ageAtDeath: item.ageAtDeath ? Number(item.ageAtDeath) : undefined,
+            birthDate: item.birthDate || undefined,
+            nameHe: item.nameHe,
+            nameEn: item.nameEn,
+            nameRu: item.nameRu,
+            fatherNameHe: item.fatherNameHe,
+            fatherNameEn: item.fatherNameEn,
+            fatherNameRu: item.fatherNameRu,
+            motherNameHe: item.motherNameHe,
+            motherNameEn: item.motherNameEn,
+            motherNameRu: item.motherNameRu,
+            notesHe: item.notesHe,
+            notesEn: item.notesEn,
+            notesRu: item.notesRu
+          })).filter(item => Boolean(item.name));
+
+          if (importedList.length === 0) {
+            setFeedback({ 
+              type: 'error', 
+              message: lang === 'he' ? 'לא נמצאו נתונים תקינים בקובץ ה-JSON.' : 'No valid records found in the JSON file.' 
+            });
+            return;
+          }
+
+          onImport(importedList);
+          setFeedback({ 
+            type: 'success', 
+            message: t.importSuccess.replace('{count}', importedList.length.toString()) 
+          });
+        } catch (err) {
+          setFeedback({ type: 'error', message: t.importError });
+        }
+      };
+      reader.readAsText(file);
+      return;
+    }
+
     if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const reader = new FileReader();
       reader.onload = (event) => {

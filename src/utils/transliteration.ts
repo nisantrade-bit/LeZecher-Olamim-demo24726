@@ -571,9 +571,9 @@ export const CANONICAL_PHRASE_MAP: Record<string, { he: string; en: string; ru: 
   "бобо борухча": { he: "בובו ברוכצ'ה", en: "Bobo Boruchcha", ru: "Бобо Борухча" },
 
   // 22. Yeshua
-  "ישועה": { he: "ישועה", en: "Yeshua", ru: "Йешуא" },
-  "yeshua": { he: "ישועה", en: "Yeshua", ru: "Йешуא" },
-  "йешуа": { he: "ישועה", en: "Yeshua", ru: "Йешуא" },
+  "ישועה": { he: "ישועה", en: "Yeshua", ru: "Йешуа" },
+  "yeshua": { he: "ישועה", en: "Yeshua", ru: "Йешуа" },
+  "йешуа": { he: "ישועה", en: "Yeshua", ru: "Йешуа" },
 
   // 23. Bibi Esther
   "ביבי אסתר": { he: "ביבי אסתר", en: "Bibi Esther", ru: "Биби Эстер" },
@@ -786,6 +786,108 @@ export function translateText(text: string, targetLang: 'he' | 'en' | 'ru'): str
   return translatedWords.join(' ');
 }
 
+export function isHebrewText(text: string): boolean {
+  return /[\u0590-\u05FF]/.test(text || '');
+}
+
+export function isCyrillicText(text: string): boolean {
+  return /[\u0400-\u04FF]/.test(text || '');
+}
+
+export function isLatinText(text: string): boolean {
+  return /[a-zA-Z]/.test(text || '');
+}
+
+export function getLocalizedName(deceased: Deceased, targetLang: Language): string {
+  if (!deceased) return '';
+  if (targetLang === 'he' && deceased.nameHe) return deceased.nameHe;
+  if (targetLang === 'en' && deceased.nameEn) return deceased.nameEn;
+  if (targetLang === 'ru' && deceased.nameRu) return deceased.nameRu;
+  return translateText(deceased.name, targetLang);
+}
+
+export function getLocalizedFatherName(deceased: Deceased, targetLang: Language): string {
+  if (!deceased || !deceased.fatherName) return '';
+  if (targetLang === 'he' && deceased.fatherNameHe) return deceased.fatherNameHe;
+  if (targetLang === 'en' && deceased.fatherNameEn) return deceased.fatherNameEn;
+  if (targetLang === 'ru' && deceased.fatherNameRu) return deceased.fatherNameRu;
+  return translateText(deceased.fatherName, targetLang);
+}
+
+export function getLocalizedMotherName(deceased: Deceased, targetLang: Language): string {
+  if (!deceased || !deceased.motherName) return '';
+  if (targetLang === 'he' && deceased.motherNameHe) return deceased.motherNameHe;
+  if (targetLang === 'en' && deceased.motherNameEn) return deceased.motherNameEn;
+  if (targetLang === 'ru' && deceased.motherNameRu) return deceased.motherNameRu;
+  return translateText(deceased.motherName, targetLang);
+}
+
+export function getLocalizedNotes(deceased: Deceased, targetLang: Language): string {
+  if (!deceased || !deceased.notes) return '';
+  if (targetLang === 'he' && deceased.notesHe) return deceased.notesHe;
+  if (targetLang === 'en' && deceased.notesEn) return deceased.notesEn;
+  if (targetLang === 'ru' && deceased.notesRu) return deceased.notesRu;
+  return translateText(deceased.notes, targetLang);
+}
+
+export function enrichDeceasedTranslations(item: Deceased): Deceased {
+  if (!item) return item;
+
+  const result: Deceased = { ...item };
+
+  // 1. Name translations - respect existing fields if present
+  if (!result.nameHe) {
+    result.nameHe = isHebrewText(result.name) ? result.name : translateText(result.name, 'he');
+  }
+  if (!result.nameEn) {
+    result.nameEn = isLatinText(result.name) ? result.name : translateText(result.name, 'en');
+  }
+  if (!result.nameRu) {
+    result.nameRu = isCyrillicText(result.name) ? result.name : translateText(result.name, 'ru');
+  }
+
+  // 2. Father Name
+  if (result.fatherName) {
+    if (!result.fatherNameHe) {
+      result.fatherNameHe = isHebrewText(result.fatherName) ? result.fatherName : translateText(result.fatherName, 'he');
+    }
+    if (!result.fatherNameEn) {
+      result.fatherNameEn = isLatinText(result.fatherName) ? result.fatherName : translateText(result.fatherName, 'en');
+    }
+    if (!result.fatherNameRu) {
+      result.fatherNameRu = isCyrillicText(result.fatherName) ? result.fatherName : translateText(result.fatherName, 'ru');
+    }
+  }
+
+  // 3. Mother Name
+  if (result.motherName) {
+    if (!result.motherNameHe) {
+      result.motherNameHe = isHebrewText(result.motherName) ? result.motherName : translateText(result.motherName, 'he');
+    }
+    if (!result.motherNameEn) {
+      result.motherNameEn = isLatinText(result.motherName) ? result.motherName : translateText(result.motherName, 'en');
+    }
+    if (!result.motherNameRu) {
+      result.motherNameRu = isCyrillicText(result.motherName) ? result.motherName : translateText(result.motherName, 'ru');
+    }
+  }
+
+  // 4. Notes
+  if (result.notes) {
+    if (!result.notesHe) {
+      result.notesHe = isHebrewText(result.notes) ? result.notes : translateText(result.notes, 'he');
+    }
+    if (!result.notesEn) {
+      result.notesEn = isLatinText(result.notes) ? result.notes : translateText(result.notes, 'en');
+    }
+    if (!result.notesRu) {
+      result.notesRu = isCyrillicText(result.notes) ? result.notes : translateText(result.notes, 'ru');
+    }
+  }
+
+  return result;
+}
+
 /**
  * Translates a full list of Deceased objects client-side
  */
@@ -793,6 +895,8 @@ export function translateDeceasedListClientSide(list: Deceased[], targetLang: La
   if (!list) return list;
 
   return list.map(item => {
+    const enriched = enrichDeceasedTranslations(item);
+
     let localizedMonth = item.month;
     const normalized = normalizeMonthName(item.month);
     if (targetLang === 'he') {
@@ -806,11 +910,11 @@ export function translateDeceasedListClientSide(list: Deceased[], targetLang: La
     }
 
     return {
-      ...item,
-      name: translateText(item.name, targetLang),
-      fatherName: item.fatherName ? translateText(item.fatherName, targetLang) : '',
-      motherName: item.motherName ? translateText(item.motherName, targetLang) : '',
-      notes: item.notes ? translateText(item.notes, targetLang) : '',
+      ...enriched,
+      name: getLocalizedName(enriched, targetLang),
+      fatherName: getLocalizedFatherName(enriched, targetLang),
+      motherName: getLocalizedMotherName(enriched, targetLang),
+      notes: getLocalizedNotes(enriched, targetLang),
       month: localizedMonth
     };
   });
@@ -830,3 +934,6 @@ export function phoneticTransliterateHebrewVerse(hebrewVerse: string, targetLang
 
   return transliterated.join(' ');
 }
+
+export const translateDeceasedListClientSize = translateDeceasedListClientSide;
+

@@ -4,6 +4,7 @@
 
 import { Deceased, Language } from '../types';
 import { formatParentRelation } from './translations';
+import { getLocalizedName } from './transliteration';
 
 export const PUBLIC_PRODUCTION_URL = 'https://peaceful-tarsier-9f8a3d.netlify.app';
 
@@ -26,7 +27,21 @@ export function encodeDeceasedToUrlPayload(deceased: Deceased): string {
       p: deceased.contactPhone || '',
       nt: deceased.notes || '',
       a: deceased.ageAtDeath,
-      bd: deceased.birthDate || ''
+      bd: deceased.birthDate || '',
+
+      // Multi-language pre-translated fields
+      nHe: deceased.nameHe || undefined,
+      nEn: deceased.nameEn || undefined,
+      nRu: deceased.nameRu || undefined,
+      fnHe: deceased.fatherNameHe || undefined,
+      fnEn: deceased.fatherNameEn || undefined,
+      fnRu: deceased.fatherNameRu || undefined,
+      mnHe: deceased.motherNameHe || undefined,
+      mnEn: deceased.motherNameEn || undefined,
+      mnRu: deceased.motherNameRu || undefined,
+      ntHe: deceased.notesHe || undefined,
+      ntEn: deceased.notesEn || undefined,
+      ntRu: deceased.notesRu || undefined
     };
     if (deceased.image) {
       if (deceased.image.length < 4000 || deceased.image.startsWith('http://') || deceased.image.startsWith('https://')) {
@@ -80,7 +95,21 @@ export function decodeDeceasedFromUrlPayload(encodedStr: string): Deceased | nul
         notes: String(parsed.notes !== undefined ? parsed.notes : (parsed.nt || '')),
         ageAtDeath: parsed.ageAtDeath !== undefined ? Number(parsed.ageAtDeath) : (parsed.a !== undefined ? Number(parsed.a) : undefined),
         birthDate: parsed.birthDate ? String(parsed.birthDate) : (parsed.bd ? String(parsed.bd) : undefined),
-        image: parsed.image ? String(parsed.image) : (parsed.img ? String(parsed.img) : undefined)
+        image: parsed.image ? String(parsed.image) : (parsed.img ? String(parsed.img) : undefined),
+
+        // Multi-language pre-translated fields
+        nameHe: parsed.nameHe || parsed.nHe || undefined,
+        nameEn: parsed.nameEn || parsed.nEn || undefined,
+        nameRu: parsed.nameRu || parsed.nRu || undefined,
+        fatherNameHe: parsed.fatherNameHe || parsed.fnHe || undefined,
+        fatherNameEn: parsed.fatherNameEn || parsed.fnEn || undefined,
+        fatherNameRu: parsed.fatherNameRu || parsed.fnRu || undefined,
+        motherNameHe: parsed.motherNameHe || parsed.mnHe || undefined,
+        motherNameEn: parsed.motherNameEn || parsed.mnEn || undefined,
+        motherNameRu: parsed.motherNameRu || parsed.mnRu || undefined,
+        notesHe: parsed.notesHe || parsed.ntHe || undefined,
+        notesEn: parsed.notesEn || parsed.ntEn || undefined,
+        notesRu: parsed.notesRu || parsed.ntRu || undefined
       };
     }
     return null;
@@ -154,15 +183,21 @@ export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: stri
   }
 
   let dataParam = '';
+  let idParam = '';
   if (deceasedObj) {
+    if (deceasedObj.id) {
+      idParam = `m=${deceasedObj.id}`;
+    }
     const payload = encodeDeceasedToUrlPayload(deceasedObj);
     if (payload) {
       dataParam = `data=${payload}`;
     }
+  } else if (typeof deceasedOrId === 'number' || (typeof deceasedOrId === 'string' && !isNaN(Number(deceasedOrId)))) {
+    idParam = `m=${deceasedOrId}`;
   }
 
   const langQuery = (lang && lang !== 'he') ? `lang=${lang}` : '';
-  const params = [dataParam, langQuery].filter(Boolean);
+  const params = [idParam, dataParam, langQuery].filter(Boolean);
   const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
 
   // Always return base origin with root path to avoid 404s on subpaths on static hosts like Vercel
@@ -189,13 +224,14 @@ export function openWhatsAppShare(text: string) {
  */
 export function generateWhatsAppShareText(deceased: Deceased, lang: Language): string {
   const shortUrl = getShortMemorialUrl(deceased, lang);
-  const parentRelation = formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang as 'he' | 'en' | 'ru');
+  const localizedName = getLocalizedName(deceased, lang);
+  const parentRelation = formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang as 'he' | 'en' | 'ru', deceased);
   const parentSuffix = parentRelation ? ` (${parentRelation})` : '';
 
   if (lang === 'he') {
     return `🕯️ *הזמנה לאתר הזיכרון וההנצחה העולמי | לזכר עולמים* 🕯️\n\n` +
       `מזמינים אתכם להצטרף אלינו, להדליק נר נשמה, לקרוא פרק תהילים ולהקדיש משניות לעילוי נשמתו/ה היקרה של:\n\n` +
-      `✨ *${deceased.name}*${parentSuffix} ✨\n\n` +
+      `✨ *${localizedName}*${parentSuffix} ✨\n\n` +
       `זוכרים, מנציחים ושומרים את הזיכרון חי בלב כולנו.\n` +
       `צפו בכרטיס הזיכרון והשתתפו בהנצחה:\n` +
       `🔗 ${shortUrl}\n\n` +
@@ -203,14 +239,14 @@ export function generateWhatsAppShareText(deceased: Deceased, lang: Language): s
   } else if (lang === 'ru') {
     return `🕯️ *Приглашение на страницу памяти и поминовения | Лезэхер Оламим* 🕯️\n\n` +
       `Приглашаем вас присоединиться к нам, чтобы почтить светлую память нашего дорогого человека:\n\n` +
-      `✨ *${deceased.name}*${parentSuffix} ✨\n\n` +
+      `✨ *${localizedName}*${parentSuffix} ✨\n\n` +
       `Зажгите виртуальную свечу, оставьте теплые слова и прочитайте псалмы в его/ее память:\n` +
       `🔗 ${shortUrl}\n\n` +
       `_Светлая и вечная память_ 🙏`;
   } else {
     return `🕯️ *Memorial & Remembrance Invitation | L'Zecher Olamim* 🕯️\n\n` +
       `You are warmly invited to join us in honoring and keeping alive the sacred memory of our beloved:\n\n` +
-      `✨ *${deceased.name}*${parentSuffix} ✨\n\n` +
+      `✨ *${localizedName}*${parentSuffix} ✨\n\n` +
       `Light a virtual candle, share loving memories, and participate in holy study for the elevation of their soul:\n` +
       `🔗 ${shortUrl}\n\n` +
       `_May their memory be an eternal blessing_ 🙏`;

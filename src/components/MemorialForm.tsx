@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Deceased, Gender, Language } from '../types';
 import { translations, sanitizeParentName } from '../utils/translations';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, normalizeMonthName } from '../utils/hebrewDate';
+import { translateDeceasedListClientSize } from '../utils/transliteration';
 import { PlusCircle, Upload, X, Save, User, Sparkles, Loader2 } from 'lucide-react';
 
 interface MemorialFormProps {
@@ -28,6 +29,7 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
   const [contactPhone, setContactPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [imageBase64, setImageBase64] = useState<string>('');
+  const [imagePosition, setImagePosition] = useState<string>('center top');
   const [ageAtDeath, setAgeAtDeath] = useState<number | ''>('');
   const [birthDate, setBirthDate] = useState('');
   
@@ -92,6 +94,7 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       setContactPhone(editingDeceased.contactPhone || '');
       setNotes(editingDeceased.notes || '');
       setImageBase64(editingDeceased.image || '');
+      setImagePosition(editingDeceased.imagePosition || 'center top');
       setAgeAtDeath(editingDeceased.ageAtDeath !== undefined ? editingDeceased.ageAtDeath : '');
       setBirthDate(editingDeceased.birthDate || '');
     } else {
@@ -110,6 +113,7 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
     setContactPhone('');
     setNotes('');
     setImageBase64('');
+    setImagePosition('center top');
     setAgeAtDeath('');
     setBirthDate('');
   };
@@ -187,7 +191,7 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       return;
     }
 
-    const deceasedData: Deceased = {
+    const baseData: Deceased = {
       id: editingDeceased ? editingDeceased.id : Date.now(),
       name: name.trim(),
       gender,
@@ -198,11 +202,44 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       contactPhone: contactPhone.trim() || undefined,
       notes: notes.trim() || undefined,
       image: imageBase64 || undefined,
+      imagePosition: imageBase64 ? imagePosition : undefined,
       ageAtDeath: ageAtDeath !== '' ? Number(ageAtDeath) : undefined,
-      birthDate: birthDate.trim() || undefined
+      birthDate: birthDate.trim() || undefined,
+
+      // Preserve existing multi-language translations if editing
+      nameHe: editingDeceased?.nameHe,
+      nameEn: editingDeceased?.nameEn,
+      nameRu: editingDeceased?.nameRu,
+      fatherNameHe: editingDeceased?.fatherNameHe,
+      fatherNameEn: editingDeceased?.fatherNameEn,
+      fatherNameRu: editingDeceased?.fatherNameRu,
+      motherNameHe: editingDeceased?.motherNameHe,
+      motherNameEn: editingDeceased?.motherNameEn,
+      motherNameRu: editingDeceased?.motherNameRu,
+      notesHe: editingDeceased?.notesHe,
+      notesEn: editingDeceased?.notesEn,
+      notesRu: editingDeceased?.notesRu
     };
 
-    onSave(deceasedData);
+    // Update current language's explicit values
+    if (lang === 'he') {
+      baseData.nameHe = name.trim();
+      baseData.fatherNameHe = cleanFather;
+      baseData.motherNameHe = cleanMother;
+      baseData.notesHe = notes.trim() || undefined;
+    } else if (lang === 'en') {
+      baseData.nameEn = name.trim();
+      baseData.fatherNameEn = cleanFather;
+      baseData.motherNameEn = cleanMother;
+      baseData.notesEn = notes.trim() || undefined;
+    } else if (lang === 'ru') {
+      baseData.nameRu = name.trim();
+      baseData.fatherNameRu = cleanFather;
+      baseData.motherNameRu = cleanMother;
+      baseData.notesRu = notes.trim() || undefined;
+    }
+
+    onSave(baseData);
     if (!editingDeceased) {
       resetForm();
     }
@@ -429,15 +466,89 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
             {t.uploadImage}
           </label>
           {imageBase64 ? (
-            <div className="relative w-full h-32 rounded-lg overflow-hidden border border-[#c8a96e]/40 bg-black/40 flex items-center justify-center">
-              <img src={imageBase64} alt="Memorial" referrerPolicy="no-referrer" className="h-full w-auto object-contain" />
-              <button
-                type="button"
-                onClick={handleRemoveImage}
-                className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-1 rounded-full shadow transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            <div className="space-y-3 bg-[#0d0d0d] p-3 rounded-xl border border-[#c8a96e]/30">
+              {/* Live Portrait Preview Box & Explanation */}
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-xl overflow-hidden border-2 border-[#c8a96e] bg-black/60 shadow-lg shrink-0">
+                  <img
+                    src={imageBase64}
+                    alt="Memorial preview"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                    style={{ objectPosition: imagePosition }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-1.5 right-1.5 bg-red-600 hover:bg-red-700 text-white p-1 rounded-full shadow transition-colors cursor-pointer"
+                    title={t.removeImage || 'Remove image'}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="text-xs text-gray-300 space-y-1">
+                  <span className="font-bold text-[#c8a96e] block">
+                    {lang === 'he'
+                      ? '🎯 כוונון תצוגת התמונה (למניעת חיתוך הראש/הפנים):'
+                      : lang === 'ru'
+                      ? '🎯 Позиционирование фото (чтобы лицо не обрезалось):'
+                      : '🎯 Photo Position (prevent cropping head/face):'}
+                  </span>
+                  <p className="text-[11px] text-gray-400 leading-relaxed">
+                    {lang === 'he'
+                      ? 'כך התמונה תוצג בכרטיס ובאזכרה. באפשרותך לבחור מיקום או לגרור את הסליידר כדי שפני הנפטר יוצגו במלואם.'
+                      : lang === 'ru'
+                      ? 'Так фото будет выглядеть на странице памяти. Выберите позицию или сдвиньте ползунок, чтобы лицо было видно полностью.'
+                      : 'This is how the portrait appears. Choose a position or slide to center the face.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Position Buttons & Slider */}
+              <div className="space-y-2 pt-1 border-t border-[#c8a96e]/15">
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  {[
+                    { labelHe: '⬆️ עליון (ראש/פנים)', labelRu: '⬆️ Верх (Лицо)', labelEn: '⬆️ Top (Face)', val: 'center 0%' },
+                    { labelHe: '↖️ מרכז-עליון', labelRu: '↖️ Выше центра', labelEn: '↖️ Upper', val: 'center 20%' },
+                    { labelHe: '⏺️ מרכז', labelRu: '⏺️ Центр', labelEn: '⏺️ Center', val: 'center 50%' },
+                    { labelHe: '⬇️ תחתון', labelRu: '⬇️ Низ', labelEn: '⬇️ Bottom', val: 'center 100%' }
+                  ].map((btn) => (
+                    <button
+                      key={btn.val}
+                      type="button"
+                      onClick={() => setImagePosition(btn.val)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+                        imagePosition === btn.val
+                          ? 'bg-[#c8a96e] text-black border-[#c8a96e] shadow'
+                          : 'bg-black/40 text-gray-300 border-[#c8a96e]/20 hover:border-[#c8a96e]/50'
+                      }`}
+                    >
+                      {lang === 'he' ? btn.labelHe : lang === 'ru' ? btn.labelRu : btn.labelEn}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-[10px] text-[#c8a96e] font-mono whitespace-nowrap">
+                    {lang === 'he' ? 'דיוק גובה (0% - 100%):' : lang === 'ru' ? 'Высота (0% - 100%):' : 'Fine-tune (0% - 100%):'}
+                  </span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={
+                      imagePosition.startsWith('center ') && !isNaN(parseInt(imagePosition.replace('center ', '').replace('%', '')))
+                        ? parseInt(imagePosition.replace('center ', '').replace('%', ''))
+                        : 0
+                    }
+                    onChange={(e) => setImagePosition(`center ${e.target.value}%`)}
+                    className="w-full accent-[#c8a96e] cursor-pointer"
+                  />
+                  <span className="text-[10px] text-amber-300 font-mono w-8 text-center">
+                    {imagePosition.startsWith('center ') ? imagePosition.replace('center ', '') : '0%'}
+                  </span>
+                </div>
+              </div>
             </div>
           ) : (
             <label className="w-full h-20 border border-dashed border-[#c8a96e]/30 hover:border-[#c8a96e]/60 bg-[#0d0d0d] rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-[#c8a96e]/5 transition-all group">

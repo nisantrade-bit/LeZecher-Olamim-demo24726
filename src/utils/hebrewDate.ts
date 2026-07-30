@@ -95,7 +95,7 @@ export function isHebrewLeapYear(year: number): boolean {
  * Converts a Gregorian date into a Hebrew date structure using standard Intl API.
  * The Intl API is extremely accurate and native to modern JavaScript.
  */
-export function getHebrewDate(date: Date): { day: number; monthName: string; year: number; normalizedMonth: string; isLeapYear: boolean } {
+export function getHebrewDate(date: Date): { day: number; dayFormatted: string; monthName: string; year: number; normalizedMonth: string; isLeapYear: boolean } {
   // Use he-IL-u-ca-hebrew-nu-latn so year and day are returned as standard digits
   const formatter = new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn', {
     day: 'numeric',
@@ -122,6 +122,7 @@ export function getHebrewDate(date: Date): { day: number; monthName: string; yea
   
   return {
     day,
+    dayFormatted: gimatriya(day),
     monthName,
     year,
     normalizedMonth,

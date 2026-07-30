@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Deceased, Language } from '../types';
 import { translations, formatParentRelation } from '../utils/translations';
 import { translateText } from '../utils/transliteration';
@@ -258,23 +258,10 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
   // Grab rich portion details if loaded
   const portionDetails = parshaInfo ? getTorahPortionDetails(parshaInfo.hebrewName, parshaInfo.name) : null;
 
-  const [copiedLink, setCopiedLink] = useState(false);
-
   // WhatsApp share trigger
   const shareMemorial = () => {
     const text = generateWhatsAppShareText(deceased, lang);
     openWhatsAppShare(text);
-  };
-
-  const copyShortLink = async () => {
-    const shortUrl = getShortMemorialUrl(deceased, lang);
-    try {
-      await navigator.clipboard.writeText(shortUrl);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 3000);
-    } catch (e) {
-      console.error("Failed to copy link:", e);
-    }
   };
 
   const getAgeIfAliveToday = (birthStr: string | undefined): number | null => {
@@ -333,17 +320,62 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
 
         {/* Modal Scroll Content */}
         <div className="overflow-y-auto flex-1 p-6 space-y-6">
-          {/* Top Banner: Image or Premium Memorial Candle Graphics */}
-          <div className="relative w-full h-56 sm:h-60 bg-black/40 rounded-2xl overflow-hidden border border-[#c8a96e]/30 flex items-center justify-center shadow-lg group">
+          {/* Top Banner: Framed Image with Memorial Candle to the side */}
+          <div className="relative w-full min-h-[220px] bg-gradient-to-b from-[#181109] via-[#10141e] to-[#0d0d0d] rounded-2xl border border-[#c8a96e]/40 p-5 flex flex-col items-center justify-center shadow-lg overflow-hidden">
+            {/* Ambient gold glow behind portrait and candle */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
             {deceased.image ? (
-              <img 
-                src={deceased.image} 
-                alt={deceased.name} 
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-              />
+              <div className="flex flex-row items-center justify-center gap-6 sm:gap-10 my-2 relative z-10">
+                {/* Framed Deceased Portrait */}
+                <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl border-2 border-[#c8a96e] shadow-[0_0_25px_rgba(200,169,110,0.4)] overflow-hidden bg-black/60 shrink-0 group">
+                  <img 
+                    src={deceased.image} 
+                    alt={deceased.name} 
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    style={{ objectPosition: deceased.imagePosition || 'center top' }}
+                  />
+                </div>
+
+                {/* Memorial Candle Beside Photo ("לצד התמונה") */}
+                <div className="flex flex-col items-center justify-center shrink-0">
+                  <div className="relative w-14 h-20 flex flex-col items-center justify-end">
+                    {/* Flame */}
+                    <motion.div 
+                      className="absolute top-1 w-4 h-7 bg-amber-400 rounded-full blur-[0.5px] shadow-[0_0_12px_#f59e0b,0_0_22px_#f59e0b] origin-bottom"
+                      animate={{
+                        scaleY: [1, 1.15, 0.95, 1.1, 1],
+                        scaleX: [1, 0.9, 1.1, 0.95, 1],
+                        rotate: [0, -1.5, 1.5, -0.8, 0],
+                        x: [0, -0.3, 0.3, -0.3, 0]
+                      }}
+                      transition={{
+                        duration: 1.6,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
+                      <div className="absolute bottom-0.5 left-1 w-2 h-3.5 bg-yellow-100 rounded-full opacity-95"></div>
+                      <div className="absolute bottom-0 left-1.5 w-1 h-2 bg-blue-500 rounded-full opacity-60"></div>
+                    </motion.div>
+                    
+                    {/* Candle Body */}
+                    <div className="w-8 h-12 bg-gradient-to-t from-amber-700 via-amber-600 to-amber-500/80 rounded shadow-inner relative overflow-hidden border border-amber-500/20">
+                      <div className="absolute top-0 left-0.5 w-1.5 h-3 bg-amber-400/50 rounded-full"></div>
+                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0.5 h-1.5 bg-gray-900"></div>
+                    </div>
+                    
+                    {/* Pedestal */}
+                    <div className="w-14 h-1 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 rounded-full"></div>
+                  </div>
+                  <span className="text-[10px] sm:text-xs tracking-wider text-[#c8a96e]/90 font-serif uppercase mt-1.5 font-bold">
+                    {lang === 'he' ? '🔥 נר נשמה דולק' : lang === 'ru' ? '🔥 Свеча памяти горит' : '🔥 Memorial Candle Lit'}
+                  </span>
+                </div>
+              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center space-y-2 text-center select-none pb-8">
+              <div className="flex flex-col items-center justify-center space-y-2 text-center select-none py-2 relative z-10">
                 <div className="relative w-16 h-24 flex flex-col items-center justify-end">
                   {/* Flame */}
                   <motion.div 
@@ -378,12 +410,10 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
                 </span>
               </div>
             )}
-            {/* High-contrast dark gradient overlay anchored at bottom */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent pointer-events-none"></div>
-            
-            {/* Title & Parentage positioned neatly at bottom inside image frame */}
-            <div className="absolute bottom-3 left-3 right-3 text-center z-10">
-              <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#f0d19e] tracking-wide mb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
+
+            {/* Title & Parentage below photo & candle */}
+            <div className="text-center z-10 mt-3">
+              <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#f0d19e] tracking-wide mb-1.5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
                 {lang === 'he' ? deceased.name : translateText(deceased.name, lang as 'en' | 'ru')}
               </h2>
               <p className="text-xs sm:text-sm font-serif font-medium text-amber-100 bg-black/65 backdrop-blur-md px-3.5 py-1 rounded-full border border-amber-500/30 inline-block shadow-lg">
@@ -392,24 +422,15 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
             </div>
           </div>
 
-          {/* Action Buttons: WhatsApp Share & Copy Link */}
-          <div className="flex gap-3">
+          {/* Action Button: WhatsApp Share */}
+          <div className="flex">
             <button
               type="button"
               onClick={shareMemorial}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 border border-emerald-500/25 shadow-lg cursor-pointer"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 border border-emerald-500/30 shadow-lg cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
             >
-              <MessageCircle className="w-4.5 h-4.5" />
+              <MessageCircle className="w-5 h-5" />
               <span>{st.shareWhatsApp}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={copyShortLink}
-              className="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 py-2.5 px-4 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 border border-amber-500/30 shadow-lg cursor-pointer"
-            >
-              <Copy className="w-4.5 h-4.5 text-amber-400" />
-              <span>{copiedLink ? (lang === 'he' ? 'הקישור הועתק! ✨' : lang === 'ru' ? 'Ссылка скопирована! ✨' : 'Link Copied! ✨') : (lang === 'he' ? 'העתק קישור לכרטיס' : lang === 'ru' ? 'Копировать ссылку' : 'Copy Card Link')}</span>
             </button>
           </div>
 

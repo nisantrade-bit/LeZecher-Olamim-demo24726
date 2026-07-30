@@ -84,7 +84,21 @@ export function mergeDeceasedRecords(existing: Deceased, incoming: Deceased): De
     notes,
     image: existing.image || incoming.image,
     ageAtDeath: existing.ageAtDeath || incoming.ageAtDeath,
-    birthDate: existing.birthDate || incoming.birthDate
+    birthDate: existing.birthDate || incoming.birthDate,
+
+    // Preserve multi-language fields
+    nameHe: existing.nameHe || incoming.nameHe,
+    nameEn: existing.nameEn || incoming.nameEn,
+    nameRu: existing.nameRu || incoming.nameRu,
+    fatherNameHe: existing.fatherNameHe || incoming.fatherNameHe,
+    fatherNameEn: existing.fatherNameEn || incoming.fatherNameEn,
+    fatherNameRu: existing.fatherNameRu || incoming.fatherNameRu,
+    motherNameHe: existing.motherNameHe || incoming.motherNameHe,
+    motherNameEn: existing.motherNameEn || incoming.motherNameEn,
+    motherNameRu: existing.motherNameRu || incoming.motherNameRu,
+    notesHe: existing.notesHe || incoming.notesHe,
+    notesEn: existing.notesEn || incoming.notesEn,
+    notesRu: existing.notesRu || incoming.notesRu
   };
 }
 

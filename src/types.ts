@@ -16,8 +16,23 @@ export interface Deceased {
   contactPhone?: string; // Optional relative phone
   notes?: string; // Optional story / cemetery location
   image?: string; // Optional Base64 image
+  imagePosition?: string; // Optional CSS object-position (e.g. 'center top', 'center 20%') to prevent cropping head/face
   ageAtDeath?: number; // Optional age at death
   birthDate?: string; // Optional Gregorian birth date
+
+  // Multi-language pre-translated or localized fields
+  nameHe?: string;
+  nameEn?: string;
+  nameRu?: string;
+  fatherNameHe?: string;
+  fatherNameEn?: string;
+  fatherNameRu?: string;
+  motherNameHe?: string;
+  motherNameEn?: string;
+  motherNameRu?: string;
+  notesHe?: string;
+  notesEn?: string;
+  notesRu?: string;
 }
 
 export type Language = 'he' | 'en' | 'ru';

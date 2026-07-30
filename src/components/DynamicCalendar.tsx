@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Deceased, Language, CalendarMonthData } from '../types';
 import { translations } from '../utils/translations';
 import { getHebrewDate, getLocalizedHebrewDate, isYahrzeitMatch, HEBREW_MONTHS_HE } from '../utils/hebrewDate';
-import { Calendar, ChevronLeft, ChevronRight, MapPin, Sparkles, Loader2 } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, MapPin, Sparkles, Loader2, List, LayoutGrid as GridIcon } from 'lucide-react';
 
 interface DynamicCalendarProps {
   deceasedList: Deceased[];
@@ -55,6 +55,7 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
   });
   const [hebcalData, setHebcalData] = useState<CalendarMonthData>({});
   const [loading, setLoading] = useState(false);
+  const [calendarMode, setCalendarMode] = useState<'grid' | 'agenda'>('grid');
   const [selectedDayInfo, setSelectedDayInfo] = useState<{
     date: Date;
     dateStr: string;
@@ -245,18 +246,24 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
     lang === 'en' ? selectedCity.nameEn : 
     selectedCity.nameRu;
 
+  // Short weekday headers for mobile
+  const shortWeekdaysHe = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
+  const shortWeekdaysEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const shortWeekdaysRu = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+  const currentShortWeekdays = lang === 'he' ? shortWeekdaysHe : lang === 'en' ? shortWeekdaysEn : shortWeekdaysRu;
+
   return (
-    <div id="dynamic-calendar-panel" className="bg-[#131a26] border border-[#c8a96e]/20 rounded-xl p-6 text-[#f0f4f8] shadow-lg">
+    <div id="dynamic-calendar-panel" className="bg-[#131a26] border border-[#c8a96e]/20 rounded-xl p-3 sm:p-6 text-[#f0f4f8] shadow-lg">
       
       {/* Header controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#c8a96e]/10 pb-4 mb-6">
-        <div className="flex items-center gap-3">
-          <Calendar className="w-6 h-6 text-[#c8a96e]" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[#c8a96e]/10 pb-4 mb-4 sm:mb-6">
+        <div className="flex items-center gap-2.5">
+          <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-[#c8a96e] shrink-0" />
           <div>
-            <h3 className="text-lg font-serif font-bold text-[#c8a96e] tracking-wide">
+            <h3 className="text-base sm:text-lg font-serif font-bold text-[#c8a96e] tracking-wide">
               {t.calendar}
             </h3>
-            <div className="flex items-center gap-2 text-xs text-gray-400 font-sans mt-0.5">
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-400 font-sans mt-0.5">
               <span>{localizedGregMonth} {year}</span>
               <span className="text-[#c8a96e]/60">•</span>
               <span className="text-[#c8a96e]">{firstDayHebDate.normalizedMonth} - {lastDayHebDate.normalizedMonth} {firstDayHebDate.year}</span>
@@ -264,11 +271,11 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
           </div>
         </div>
 
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center justify-between md:justify-end gap-2 flex-wrap">
           {/* City select for Shabbat times */}
-          <div className="flex items-center gap-1.5 bg-[#0d0d0d] px-3 py-1.5 rounded-lg border border-[#c8a96e]/20 text-xs">
-            <MapPin className="w-3.5 h-3.5 text-[#c8a96e]" />
-            <span className="text-gray-400 font-sans font-medium mr-1">{t.city}:</span>
+          <div className="flex items-center gap-1 bg-[#0d0d0d] px-2.5 py-1.5 rounded-lg border border-[#c8a96e]/20 text-xs">
+            <MapPin className="w-3.5 h-3.5 text-[#c8a96e] shrink-0" />
+            <span className="text-gray-400 font-sans font-medium hidden sm:inline mr-1">{t.city}:</span>
             <select
               value={selectedCity.id}
               onChange={(e) => {
@@ -282,7 +289,7 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                   }
                 }
               }}
-              className="bg-transparent border-none text-[#c8a96e] font-sans font-semibold outline-none cursor-pointer"
+              className="bg-transparent border-none text-[#c8a96e] font-sans font-semibold outline-none cursor-pointer max-w-[110px] sm:max-w-none truncate"
             >
               {CITIES.map(c => (
                 <option key={c.id} value={c.id} className="bg-[#0d0d0d] text-[#c8a96e]">
@@ -292,51 +299,73 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
             </select>
           </div>
 
-          {/* Navigation Month buttons */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handlePrevMonth}
-              className="p-1.5 rounded-lg border border-[#c8a96e]/20 hover:bg-[#c8a96e]/10 text-[#c8a96e] transition-all cursor-pointer"
-              title={t.prevMonth}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleNextMonth}
-              className="p-1.5 rounded-lg border border-[#c8a96e]/20 hover:bg-[#c8a96e]/10 text-[#c8a96e] transition-all cursor-pointer"
-              title={t.nextMonth}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+          {/* View switcher & Navigation Month buttons */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-[#0d0d0d] p-1 rounded-lg border border-[#c8a96e]/20 text-xs">
+              <button
+                onClick={() => setCalendarMode('grid')}
+                className={`p-1.5 rounded flex items-center gap-1 transition-all cursor-pointer ${calendarMode === 'grid' ? 'bg-[#c8a96e] text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+                title={lang === 'he' ? 'תצוגת גריד חודשי' : 'Grid View'}
+              >
+                <GridIcon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{lang === 'he' ? 'חודשי' : 'Grid'}</span>
+              </button>
+              <button
+                onClick={() => setCalendarMode('agenda')}
+                className={`p-1.5 rounded flex items-center gap-1 transition-all cursor-pointer ${calendarMode === 'agenda' ? 'bg-[#c8a96e] text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+                title={lang === 'he' ? "תצוגת רשימה (אג׳נדה)" : "Agenda List View"}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{lang === 'he' ? 'רשימה' : 'Agenda'}</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handlePrevMonth}
+                className="p-2 sm:p-1.5 rounded-lg border border-[#c8a96e]/20 hover:bg-[#c8a96e]/10 text-[#c8a96e] transition-all cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center"
+                title={t.prevMonth}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleNextMonth}
+                className="p-2 sm:p-1.5 rounded-lg border border-[#c8a96e]/20 hover:bg-[#c8a96e]/10 text-[#c8a96e] transition-all cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center"
+                title={t.nextMonth}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Loader indicator */}
       {loading && (
-        <div className="flex items-center justify-center gap-2 mb-4 text-xs font-sans text-[#c8a96e]">
+        <div className="flex items-center justify-center gap-2 mb-3 text-xs font-sans text-[#c8a96e]">
           <Loader2 className="w-4 h-4 animate-spin" />
           <span>{lang === 'he' ? 'טוען זמני שבת...' : 'Loading Shabbat times...'}</span>
         </div>
       )}
 
-      {/* Calendar Grid */}
-      <div className="overflow-x-auto">
-        <div className="min-w-[640px]">
+      {/* Calendar View: Grid or Agenda */}
+      {calendarMode === 'grid' ? (
+        <div className="w-full">
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-1.5 mb-2 font-sans text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
-            {currentWeekdays.map((dayName, idx) => (
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-1.5 font-sans text-center text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-gray-500">
+            {currentShortWeekdays.map((dayName, idx) => (
               <div 
                 key={idx} 
-                className={`py-2 rounded bg-[#0d0d0d]/40 ${idx === 5 ? 'text-amber-500/85' : idx === 6 ? 'text-[#c8a96e]' : ''}`}
+                className={`py-1.5 rounded bg-[#0d0d0d]/40 ${idx === 5 ? 'text-amber-500/85' : idx === 6 ? 'text-[#c8a96e]' : ''}`}
               >
-                {dayName}
+                <span className="sm:hidden">{dayName}</span>
+                <span className="hidden sm:inline">{currentWeekdays[idx]}</span>
               </div>
             ))}
           </div>
 
           {/* Day Cells Grid */}
-          <div className="grid grid-cols-7 gap-1.5 font-sans">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5 font-sans">
             {cells.map((cell, idx) => {
               if (cell.dayNum === null || !cell.date) {
                 return (
@@ -355,7 +384,7 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                 isYahrzeitMatch(d.day, d.month, hbDate.day, hbDate.normalizedMonth, hbDate.isLeapYear)
               );
 
-              // 2) Evening Yahrzeits starting on this Gregorian day at sunset (which are daytime Yahrzeits on tomorrow's Gregorian day)
+              // 2) Evening Yahrzeits starting on this Gregorian day at sunset
               const nextDayDate = new Date(cell.date);
               nextDayDate.setDate(nextDayDate.getDate() + 1);
               const nextHbDate = getHebrewDate(nextDayDate);
@@ -363,8 +392,9 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                 isYahrzeitMatch(d.day, d.month, nextHbDate.day, nextHbDate.normalizedMonth, nextHbDate.isLeapYear)
               );
 
+              const totalYahrzeits = cellYahrzeits.length + eveYahrzeits.length;
               const shabbatObj = hebcalData[cell.dateStr] || {};
-              const dayOfWeek = cell.date.getDay(); // 0-6 (0=Sunday, 5=Friday, 6=Saturday)
+              const dayOfWeek = cell.date.getDay();
 
               return (
                 <div
@@ -380,25 +410,46 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                       dayOfWeek
                     });
                   }}
-                  className={`aspect-square p-2 bg-[#0d0d0d]/60 border rounded-lg flex flex-col justify-between transition-all group cursor-pointer overflow-hidden ${
+                  className={`aspect-square p-1 sm:p-2 bg-[#0d0d0d]/60 border rounded-lg flex flex-col justify-between transition-all group cursor-pointer overflow-hidden ${
                     cell.isToday 
-                      ? 'border-[#c8a96e] ring-1 ring-[#c8a96e]/40 bg-[#c8a96e]/5' 
-                      : 'border-[#c8a96e]/10 hover:border-[#c8a96e]/30 hover:bg-[#131a26]'
+                      ? 'border-[#c8a96e] ring-1 ring-[#c8a96e]/40 bg-[#c8a96e]/10' 
+                      : totalYahrzeits > 0
+                        ? 'border-amber-500/50 bg-amber-500/5 hover:bg-[#131a26]'
+                        : 'border-[#c8a96e]/10 hover:border-[#c8a96e]/30 hover:bg-[#131a26]'
                   } ${dayOfWeek === 6 ? 'bg-[#c8a96e]/3' : ''}`}
                 >
-                  {/* Top line: dates */}
-                  <div className="flex items-start justify-between">
-                    <span className={`text-xs font-bold ${cell.isToday ? 'text-[#c8a96e]' : 'text-white'}`}>
+                  {/* Top line: day number & hebrew date */}
+                  <div className="flex items-start justify-between w-full">
+                    <span className={`text-xs sm:text-sm font-bold ${cell.isToday ? 'text-[#c8a96e]' : 'text-white'}`}>
                       {cell.dayNum}
                     </span>
-                    <span className="text-[9px] font-medium text-gray-400 text-right leading-tight max-w-[80%] whitespace-nowrap overflow-hidden text-ellipsis" title={localizedHebDateStr}>
+                    <span className="hidden sm:inline text-[9px] font-medium text-gray-400 text-right leading-tight max-w-[80%] whitespace-nowrap overflow-hidden text-ellipsis" title={localizedHebDateStr}>
                       {localizedHebDateStr}
                     </span>
                   </div>
 
-                  {/* Middle content: Yahrzeits or Shabbat Info */}
-                  <div className="my-1 flex-1 flex flex-col justify-start gap-1 overflow-hidden">
-                    {/* General Holidays / Rosh Chodesh on any day */}
+                  {/* Mobile indicators (< md screen) */}
+                  <div className="sm:hidden my-auto flex flex-col items-center justify-center gap-0.5 w-full">
+                    {totalYahrzeits > 0 && (
+                      <div className="flex items-center justify-center gap-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full px-1 py-0.2 text-[9px] font-bold">
+                        <span className="animate-pulse">🕯️</span>
+                        {totalYahrzeits > 1 && <span>{totalYahrzeits}</span>}
+                      </div>
+                    )}
+                    {shabbatObj.candles && (
+                      <div className="text-[9px] text-amber-400 leading-none" title="הדלקת נרות">
+                        🕯️
+                      </div>
+                    )}
+                    {shabbatObj.holiday && !totalYahrzeits && !shabbatObj.candles && (
+                      <div className="text-[9px] text-blue-400 leading-none">
+                        🌙
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Desktop Content (>= md screen) */}
+                  <div className="hidden sm:flex my-1 flex-1 flex-col justify-start gap-1 overflow-hidden">
                     {shabbatObj.holiday && (
                       <div className={`text-[8.5px] font-semibold leading-none py-0.5 px-1 rounded flex items-center gap-1 truncate ${
                         shabbatObj.isHoliday 
@@ -412,7 +463,6 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                       </div>
                     )}
 
-                    {/* Candle lighting (on any day of the week, Shabbat eve or holiday eve) */}
                     {shabbatObj.candles && (
                       <div className="text-[9px] text-amber-500/90 font-medium leading-none flex items-center gap-0.5" title={lang === 'he' ? shabbatObj.hebrewCandles : shabbatObj.candles}>
                         <span className="text-[10px]">🕯️</span>
@@ -431,7 +481,6 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                       </div>
                     )}
 
-                    {/* Havdalah (on any day of the week, Shabbat end or holiday end) */}
                     {shabbatObj.havdalah && (
                       <div className="text-[9px] text-indigo-400 font-medium leading-none flex items-center gap-0.5" title={lang === 'he' ? shabbatObj.hebrewHavdalah : shabbatObj.havdalah}>
                         <span>✨</span>
@@ -441,7 +490,6 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                       </div>
                     )}
 
-                    {/* Daytime Yahrzeit Tags */}
                     {cellYahrzeits.map(d => (
                       <div
                         key={`day-${d.id}`}
@@ -457,7 +505,6 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                       </div>
                     ))}
 
-                    {/* Evening Yahrzeit Tags (starting tonight at sunset) */}
                     {eveYahrzeits.map(d => (
                       <div
                         key={`eve-${d.id}`}
@@ -474,15 +521,15 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                     ))}
                   </div>
 
-                  {/* Bottom line: Subtle decor */}
-                  <div className="flex items-center justify-between text-[8px] text-gray-500">
-                    <span className="font-mono">
-                      {String(month + 1).padStart(2, '0')}/{String(cell.dayNum).padStart(2, '0')}
+                  {/* Bottom line: Subtle date info */}
+                  <div className="flex items-center justify-between text-[7.5px] sm:text-[8px] text-gray-500 w-full">
+                    <span className="font-mono text-[7px] sm:text-[8px] truncate">
+                      {hbDate.dayFormatted} {hbDate.normalizedMonth.slice(0, 3)}
                     </span>
                     {cell.isToday && (
-                      <span className="text-[9px] text-[#c8a96e] font-semibold flex items-center gap-0.5 animate-pulse">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        {lang === 'he' ? 'היום' : lang === 'ru' ? 'Сегодня' : 'TODAY'}
+                      <span className="text-[8px] sm:text-[9px] text-[#c8a96e] font-semibold flex items-center gap-0.5 animate-pulse shrink-0">
+                        <Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
+                        <span className="hidden sm:inline">{lang === 'he' ? 'היום' : 'TODAY'}</span>
                       </span>
                     )}
                   </div>
@@ -491,7 +538,133 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
             })}
           </div>
         </div>
-      </div>
+      ) : (
+        /* Agenda List View */
+        <div className="space-y-3 font-sans">
+          {(() => {
+            const agendaDays = cells.filter(cell => cell.dayNum !== null && cell.date !== null).map(cell => {
+              const d = cell.date!;
+              const hbDate = getHebrewDate(d);
+              const localizedHebDateStr = getLocalizedHebrewDate(d, lang);
+
+              const cellYahrzeits = deceasedList.filter(item => 
+                isYahrzeitMatch(item.day, item.month, hbDate.day, hbDate.normalizedMonth, hbDate.isLeapYear)
+              );
+
+              const nextDayDate = new Date(d);
+              nextDayDate.setDate(nextDayDate.getDate() + 1);
+              const nextHbDate = getHebrewDate(nextDayDate);
+              const eveYahrzeits = deceasedList.filter(item => 
+                isYahrzeitMatch(item.day, item.month, nextHbDate.day, nextHbDate.normalizedMonth, nextHbDate.isLeapYear)
+              );
+
+              const shabbatObj = hebcalData[cell.dateStr] || {};
+              const hasEvents = cellYahrzeits.length > 0 || eveYahrzeits.length > 0 || shabbatObj.holiday || shabbatObj.candles || shabbatObj.havdalah || cell.isToday;
+
+              return {
+                cell,
+                date: d,
+                hbDate,
+                localizedHebDateStr,
+                cellYahrzeits,
+                eveYahrzeits,
+                shabbatObj,
+                hasEvents
+              };
+            }).filter(item => item.hasEvents);
+
+            if (agendaDays.length === 0) {
+              return (
+                <div className="text-center py-8 text-xs text-gray-500 italic bg-[#0d0d0d]/30 rounded-xl border border-[#c8a96e]/10">
+                  {lang === 'he' ? 'אין אירועים או אזכרות מיוחדות בחודש זה.' : 'No special events or Yahrzeits in this month.'}
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-2.5 max-h-[550px] overflow-y-auto pr-1">
+                {agendaDays.map(({ cell, date, hbDate, localizedHebDateStr, cellYahrzeits, eveYahrzeits, shabbatObj }) => {
+                  const dayName = date.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { weekday: 'short' });
+
+                  return (
+                    <div 
+                      key={cell.dateStr}
+                      onClick={() => {
+                        setSelectedDayInfo({
+                          date,
+                          dateStr: cell.dateStr,
+                          localizedHebDateStr,
+                          yahrzeits: cellYahrzeits,
+                          eveYahrzeits,
+                          shabbatObj,
+                          dayOfWeek: date.getDay()
+                        });
+                      }}
+                      className={`p-3 bg-[#0d0d0d]/80 border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#c8a96e]/40 transition-all cursor-pointer ${
+                        cell.isToday 
+                          ? 'border-[#c8a96e] bg-[#c8a96e]/10' 
+                          : 'border-[#c8a96e]/15'
+                      }`}
+                    >
+                      {/* Left/Right Date badge */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-center justify-center bg-[#131a26] border border-[#c8a96e]/20 rounded-lg px-3 py-1.5 min-w-[55px] text-center">
+                          <span className="text-[10px] uppercase font-bold text-gray-400">{dayName}</span>
+                          <span className="text-base font-bold text-[#c8a96e] leading-none">{cell.dayNum}</span>
+                        </div>
+
+                        <div>
+                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <span>{localizedHebDateStr}</span>
+                            {cell.isToday && (
+                              <span className="text-[9px] bg-[#c8a96e] text-black px-1.5 py-0.2 rounded font-bold">
+                                {lang === 'he' ? 'היום' : 'TODAY'}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Shabbat / Holiday badge */}
+                          {shabbatObj.holiday && (
+                            <div className="text-[11px] text-amber-300 font-semibold mt-0.5">
+                              🎉 {lang === 'he' ? shabbatObj.hebrewHoliday : shabbatObj.holiday}
+                            </div>
+                          )}
+                          {shabbatObj.candles && (
+                            <div className="text-[10px] text-yellow-400 mt-0.5">
+                              🕯️ {lang === 'he' ? shabbatObj.hebrewCandles : shabbatObj.candles}
+                            </div>
+                          )}
+                          {shabbatObj.havdalah && (
+                            <div className="text-[10px] text-indigo-300 mt-0.5">
+                              ✨ {lang === 'he' ? shabbatObj.hebrewHavdalah : shabbatObj.havdalah}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Yahrzeits list badges */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {eveYahrzeits.map(d => (
+                          <div key={`eve-agenda-${d.id}`} className="bg-amber-950/60 border border-amber-500/40 text-amber-200 text-xs px-2 py-1 rounded-lg font-bold flex items-center gap-1">
+                            <span className="animate-pulse">🕯️</span>
+                            <span>{lang === 'he' ? `ערב: ${d.name}` : `Eve: ${d.name}`}</span>
+                          </div>
+                        ))}
+                        {cellYahrzeits.map(d => (
+                          <div key={`day-agenda-${d.id}`} className="bg-red-950/60 border border-red-500/40 text-red-200 text-xs px-2 py-1 rounded-lg font-bold flex items-center gap-1">
+                            <span className="animate-pulse">🕯️</span>
+                            <span>{d.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Dedicated Shabbat & Holidays Times Panel */}
       <div className="mt-8 bg-[#2a1d0f]/20 border border-[#c8a96e]/20 rounded-xl p-5 space-y-4 font-sans text-right" dir={lang === 'he' ? 'rtl' : 'ltr'}>
