@@ -12,8 +12,7 @@ import { getHebrewDate, isYahrzeitMatch, HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEB
 import { Bell, Heart, Share2, BookOpen, Calendar, MessageCircle, Info, MapPin, Flame, Sparkles, Clock } from 'lucide-react';
 import { getTorahPortionDetails } from './utils/torahPortionHelper';
 import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from './utils/shareUtils';
-import { DedicatedStudyModal } from './DedicatedStudyModal';
-
+import { DedicatedStudyModal } from './components/DedicatedStudyModal';
 const CITIES = [
   { id: 293397, nameHe: "תל אביב", nameEn: "Tel Aviv", nameRu: "Тель-Авив" },
   { id: 281184, nameHe: "ירושלים", nameEn: "Jerusalem", nameRu: "Иерусалим" },
