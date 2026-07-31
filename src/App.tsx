@@ -325,7 +325,7 @@ function MainAppContent() {
           } catch (err) {
             console.error("Failed to fetch remote deceased record:", err);
             setRemoteDeceasedNotFound(true);
-          } font-sans finally {
+          } finally {
             setFetchingRemoteDeceased(false);
           }
         };
