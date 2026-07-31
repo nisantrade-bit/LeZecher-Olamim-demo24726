@@ -8,7 +8,8 @@ import { Deceased, Language } from '../types';
 import { translations, formatParentRelation } from '../utils/translations';
 import { translateText } from '../utils/transliteration';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, findYahrzeitGregorianDate, getYahrzeitEveDate, formatYahrzeitDatesWithEve, normalizeMonthName } from '../utils/hebrewDate';
-import { getTorahPortionDetails } from '../utils/torahPortionHelper';
+import { getTorahPortionDetails, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
+import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
 import { getRandomMishnah, getRandomPsalm, getRandomHalakha, MishnahRecord, PsalmRecord, HalakhaRecord } from '../utils/memorialStudy';
 import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
 import { FullReadingModal } from './FullReadingModal';
@@ -194,13 +195,26 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
   const [isIsraelCustom, setIsIsraelCustom] = useState<boolean>(true);
   const [parshaInfo, setParshaInfo] = useState<{ name: string; hebrewName: string; date: Date } | null>(null);
   const [loadingParsha, setLoadingParsha] = useState<boolean>(false);
+  const [hebcalItems, setHebcalItems] = useState<any[]>([]);
+  const [yahrzeitGregDate, setYahrzeitGregDate] = useState<Date | null>(null);
 
   useEffect(() => {
     setSelectedYahrzeitYear(new Date().getFullYear());
     setActiveMishnah(getRandomMishnah());
     setActivePsalm(getRandomPsalm());
     setActiveHalakha(getRandomHalakha());
-  }, [deceased.id, deceased.day, deceased.month]);
+
+    try {
+      const title = `לזכר עולמים - עמוד זיכרון לעילוי נשמת ${deceased.name}`;
+      document.title = title;
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) ogTitle.setAttribute('content', title);
+      const ogDesc = document.querySelector('meta[property="og:description"]');
+      if (ogDesc) ogDesc.setAttribute('content', `נר נשמה דולק לעילוי נשמת ${deceased.name} ז״ל | השתתפות בהנצחה, תהילים ומשנה`);
+      const ogImg = document.querySelector('meta[property="og:image"]');
+      if (ogImg) ogImg.setAttribute('content', deceased.image || '/icon-192.png');
+    } catch (e) {}
+  }, [deceased.id, deceased.day, deceased.month, deceased.name, deceased.image]);
 
   // Spiritual Study States
   const [activeMishnah, setActiveMishnah] = useState<MishnahRecord>(() => getRandomMishnah());
@@ -395,6 +409,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
   useEffect(() => {
     const fetchParsha = async () => {
       const yahrDate = findYahrzeitGregorianDate(deceased.day, deceased.month, selectedYahrzeitYear);
+      setYahrzeitGregDate(yahrDate);
       if (!yahrDate) {
         setParshaInfo(null);
         return;
@@ -413,6 +428,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
         );
         if (response.ok) {
           const data = await response.json();
+          setHebcalItems(data.items || []);
           const item = data.items?.find(
             (it: any) => it.category === 'parashat' && it.date === dateStr
           );
@@ -495,7 +511,8 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
 
   // WhatsApp sharing logic
   const shareMemorialPage = () => {
-    const text = generateWhatsAppShareText(deceased, lang);
+    const shabbatInfo = yahrzeitGregDate ? getShabbatYahrzeitInfo(yahrzeitGregDate, hebcalItems, lang) : null;
+    const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
     openWhatsAppShare(text);
   };
 
@@ -919,6 +936,15 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
               <span className="inline-block mt-0.5">💡</span>
               <span>{mt.explanation}</span>
             </p>
+
+            {yahrzeitGregDate && (
+              <ShabbatYahrzeitBanner
+                eventDate={yahrzeitGregDate}
+                hebcalEvents={hebcalItems}
+                lang={lang}
+                compact={false}
+              />
+            )}
           </div>
 
           {/* Right Column: Interactive Spiritual Corner (Mishnah & Psalms) */}
