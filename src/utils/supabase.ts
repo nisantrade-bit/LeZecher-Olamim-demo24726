@@ -73,8 +73,10 @@ export function isMissingTableError(error: any): boolean {
 export function isValidQueryString(query: any): boolean {
   if (query === null || query === undefined) return false;
   if (typeof query === 'number') return !isNaN(query);
-  if (typeof query !== 'string') return true;
-  return query.trim().length >= 1;
+  if (typeof query === 'string') {
+    return query.trim().length >= 1;
+  }
+  return true;
 }
 
 /**
@@ -99,29 +101,57 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
   if (!record || typeof record !== 'object') return record;
   const copy: any = { ...record };
 
-  // Mandatory fields check
-  copy.name = sanitizeValueForSupabase(copy.name, 'לא צוין');
-  copy.gender = sanitizeValueForSupabase(copy.gender, 'male');
-  copy.month = sanitizeValueForSupabase(copy.month, 'תשרי');
+  const defaultTextColumns: Record<string, string> = {
+    name: 'לא צוין',
+    nameHe: 'לא צוין',
+    nameEn: 'N/A',
+    nameRu: 'Не указано',
+    gender: 'male',
+    month: 'תשרי',
+    fatherName: '-',
+    motherName: '-',
+    fatherNameHe: '-',
+    fatherNameEn: 'N/A',
+    fatherNameRu: '-',
+    motherNameHe: '-',
+    motherNameEn: 'N/A',
+    motherNameRu: '-',
+    notes: '-',
+    notesHe: '-',
+    notesEn: 'N/A',
+    notesRu: '-',
+    contactPhone: '-',
+    image: '-',
+    birthDate: '-'
+  };
 
-  // Sanitize all string fields to ensure no empty string "" is sent to Supabase
+  // 1. Sanitize all string fields to ensure no empty string "" is sent to Supabase
   for (const key of Object.keys(copy)) {
-    if (typeof copy[key] === 'string') {
-      const trimmed = copy[key].trim();
+    const val = copy[key];
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
       if (trimmed.length === 0) {
-        if (key === 'name' || key === 'nameHe') copy[key] = 'לא צוין';
-        else if (key === 'nameEn') copy[key] = 'N/A';
-        else if (key === 'nameRu') copy[key] = 'Не указано';
-        else if (key.endsWith('En')) copy[key] = 'N/A';
-        else if (key.endsWith('Ru')) copy[key] = 'Не указано';
-        else if (key.endsWith('He')) copy[key] = 'לא צוין';
-        else if (key === 'fatherName' || key === 'motherName') copy[key] = '-';
-        else copy[key] = '-';
+        if (defaultTextColumns[key]) {
+          copy[key] = defaultTextColumns[key];
+        } else if (key.endsWith('En')) {
+          copy[key] = 'N/A';
+        } else if (key.endsWith('Ru')) {
+          copy[key] = 'Не указано';
+        } else if (key.endsWith('He') || key === 'name') {
+          copy[key] = 'לא צוין';
+        } else {
+          copy[key] = '-';
+        }
       } else {
         copy[key] = trimmed;
       }
     }
   }
+
+  // 2. Ensure mandatory string fields are never empty
+  copy.name = sanitizeValueForSupabase(copy.name, 'לא צוין');
+  copy.gender = sanitizeValueForSupabase(copy.gender, 'male');
+  copy.month = sanitizeValueForSupabase(copy.month, 'תשרי');
 
   return copy as T;
 }

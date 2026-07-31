@@ -285,7 +285,7 @@ function MainAppContent() {
 
   // If urlDeceasedId is accessed directly (e.g. /m/12345) and card is not in local list, fetch from Supabase or server API
   useEffect(() => {
-    if (urlDeceasedId && !urlDeceasedFromPayload) {
+    if (urlDeceasedId && String(urlDeceasedId).trim() !== '' && !urlDeceasedFromPayload) {
       const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId));
       if (!alreadyInMaster && !remoteDeceasedNotFound && !fetchingRemoteDeceased) {
         setFetchingRemoteDeceased(true);
