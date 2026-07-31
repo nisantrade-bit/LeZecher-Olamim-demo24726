@@ -338,24 +338,8 @@ export async function safeUpsert(
 
   const sanitized = arr.map(item => sanitizeRecordForSupabase(item));
   try {
-    let { data, error } = await (supabase.from(tableName as any) as any).upsert(sanitized, { onConflict: 'id' });
-    if (error && !isMissingTableError(error)) {
-      const fallbackRes = await (supabase.from(tableName as any) as any).upsert(sanitized);
-      if (fallbackRes.error && !isMissingTableError(fallbackRes.error)) {
-        logSupabaseError('safeUpsert', fallbackRes.error);
-      }
-      error = fallbackRes.error;
-      data = fallbackRes.data;
-    } else if (error) {
-      logSupabaseError('safeUpsert', error);
-    }
-
-    // Also sync to alternate table name ('memorials' or 'deceased') so any schema works
-    const altTable = tableName === 'deceased' ? 'memorials' : 'deceased';
-    try {
-      await (supabase.from(altTable as any) as any).upsert(sanitized, { onConflict: 'id' });
-    } catch (e) {}
-
+    const { data, error } = await (supabase.from(tableName as any) as any).upsert(sanitized);
+    if (error) logSupabaseError('safeUpsert', error);
     return { data, error };
   } catch (err) {
     logSupabaseException('safeUpsert', err);

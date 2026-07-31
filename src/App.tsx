@@ -23,8 +23,8 @@ import { getUpcomingYahrzeits, requestNotificationPermission, sendYahrzeitNotifi
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById } from './utils/supabase';
-export { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById };
+import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord } from './utils/supabase';
+export { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord };
 
 const SEED_DATABASE: Deceased[] = (INITIAL_DATABASE || []) as unknown as Deceased[];
 
@@ -128,39 +128,34 @@ function MainAppContent() {
   const [selectedDeceased, setSelectedDeceased] = useState<Deceased | null>(null);
 
   // Manage direct deceased link view state across pathname /m/123, query ?d=123, and hash #m/123
-  const [urlDeceasedId, setUrlDeceasedId] = useState<number | string | null>(() => {
-    const parseAndDecode = (raw: string | null | undefined): number | string | null => {
-      if (!raw) return null;
-      let decoded = raw.trim();
-      try {
-        decoded = decodeURIComponent(decoded);
-      } catch (e) {}
-      const num = parseInt(decoded, 10);
-      if (!isNaN(num) && String(num) === decoded) return num;
-      return decoded || null;
-    };
-
+  const [urlDeceasedId, setUrlDeceasedId] = useState<number | null>(() => {
     // 1. Pathname check (/m/12345, /p/12345, /deceased/12345, /memorial/12345, /id/12345, /card/12345, /yahrzeit/12345)
-    const pathMatch = window.location.pathname.match(/\/(?:m|p|deceased|memorial|id|card|yahrzeit)\/([^\/?#]+)(?:\.html)?/i);
+    const pathMatch = window.location.pathname.match(/\/(?:m|p|deceased|memorial|id|card|yahrzeit)\/(\d+)(?:\.html)?/i);
     if (pathMatch && pathMatch[1]) {
-      const parsed = parseAndDecode(pathMatch[1]);
-      if (parsed !== null) return parsed;
+      const id = parseInt(pathMatch[1], 10);
+      if (!isNaN(id)) return id;
     }
 
     // 2. Query param check (?id=12345, ?deceasedId=12345, ?m=12345, ?d=12345, ?deceased=12345, ?card=12345, ?cardId=12345)
     const params = new URLSearchParams(window.location.search);
     const rawIdStr = params.get('id') || params.get('m') || params.get('deceasedId') || params.get('deceased') || params.get('d') || params.get('card') || params.get('cardId');
     if (rawIdStr) {
-      const parsed = parseAndDecode(rawIdStr);
-      if (parsed !== null) return parsed;
+      try {
+        const decodedId = decodeURIComponent(rawIdStr.trim());
+        const id = parseInt(decodedId, 10);
+        if (!isNaN(id)) return id;
+      } catch (e) {
+        const id = parseInt(rawIdStr, 10);
+        if (!isNaN(id)) return id;
+      }
     }
 
     // 3. Hash check (#m/12345, #id=12345, #deceasedId=12345, #memorial=12345)
     const hash = window.location.hash;
-    const hashMatch = hash.match(/(?:m\/|m=|d=|id=|deceased=|deceasedId=|card=|cardId=|memorial=)([^\/?#&]+)/i);
+    const hashMatch = hash.match(/(?:m\/|m=|d=|id=|deceased=|deceasedId=|card=|cardId=|memorial=)(\d+)/i);
     if (hashMatch && hashMatch[1]) {
-      const parsed = parseAndDecode(hashMatch[1]);
-      if (parsed !== null) return parsed;
+      const id = parseInt(hashMatch[1], 10);
+      if (!isNaN(id)) return id;
     }
 
     return null;
