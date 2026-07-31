@@ -10,10 +10,9 @@ import { translations, formatParentRelation } from '../utils/translations';
 import { translateText } from '../utils/transliteration';
 import { getHebrewDate, isYahrzeitMatch, HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, normalizeMonthName, getYahrzeitEveDate } from '../utils/hebrewDate';
 import { Bell, Heart, Share2, BookOpen, Calendar, MessageCircle, Info, MapPin, Flame, Sparkles, Clock } from 'lucide-react';
-import { getTorahPortionDetails, getLocalizedEventName, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
+import { getTorahPortionDetails, getLocalizedEventName } from '../utils/torahPortionHelper';
 import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
 import { DedicatedStudyModal } from './DedicatedStudyModal';
-import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
 
 const CITIES = [
   { id: 293397, nameHe: "תל אביב", nameEn: "Tel Aviv", nameRu: "Тель-Авив" },
@@ -28,7 +27,7 @@ const CITIES = [
 
 const RealisticFlame = ({ size = "normal", showWax = true, isLit = true }: { size?: "normal" | "large"; showWax?: boolean; isLit?: boolean }) => {
   const isLarge = size === "large";
-  const actuallyLit = Boolean(isLit);
+  const actuallyLit = isLit && !showWax;
   return (
     <div className={`relative ${isLarge ? 'w-8 h-9' : 'w-6 h-7'} flex flex-col items-center justify-end shrink-0 select-none pointer-events-none`}>
       {/* Radiant ambient glow - ONLY when lit */}
@@ -57,18 +56,16 @@ const RealisticFlame = ({ size = "normal", showWax = true, isLit = true }: { siz
         </motion.div>
       )}
 
-      {/* Clear Wax Candle Body with Wick - ALWAYS visible below wick, but unlit wick only shown when !actuallyLit */}
-      {!actuallyLit ? (
+      {/* Small Wax Candle Body - ONLY rendered when showWax is true (OFF / Unlit state) */}
+      {!actuallyLit && (
         <div className="relative flex flex-col items-center shrink-0 z-0">
-          {/* Unlit Wick - no flame */}
-          <div className="w-0.5 h-2.5 bg-gray-400 rounded-t"></div>
-          {/* Candle wax glass/pillar */}
-          <div className="w-4 h-4 bg-gradient-to-t from-amber-900 via-amber-800 to-amber-700/90 rounded-sm shadow-inner border border-amber-600/50 relative overflow-hidden">
+          {/* Unlit Wick */}
+          <div className="w-0.5 h-2 bg-gray-500 rounded-t"></div>
+          {/* Candle wax pillar */}
+          <div className="w-4 h-3.5 bg-gradient-to-t from-amber-900 via-amber-800 to-amber-700/90 rounded-sm shadow-inner border border-amber-600/50 relative overflow-hidden">
             <div className="absolute top-0 left-0.5 w-1 h-1.5 bg-amber-400/30 rounded-full"></div>
           </div>
         </div>
-      ) : (
-        <div className="w-4 h-1.5 bg-gradient-to-t from-amber-900 to-amber-700/90 rounded-sm shadow-inner border border-amber-600/50 shrink-0"></div>
       )}
     </div>
   );
@@ -394,8 +391,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
   // Triggers the WhatsApp share invitation
   const shareOnWhatsApp = (deceased: Deceased, gregDate: Date, hebrewDateStr: string, parashaName: string | null, e: React.MouseEvent) => {
     e.stopPropagation(); // prevent opening details modal
-    const shabbatInfo = getShabbatYahrzeitInfo(gregDate, hebcalEvents, lang);
-    const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
+    const text = generateWhatsAppShareText(deceased, lang);
     openWhatsAppShare(text);
   };
 
@@ -615,18 +611,13 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                     >
                       <div className="flex items-start gap-4 flex-1">
                         {event.deceased.image ? (
-                          <div className="flex items-center gap-2.5 shrink-0">
-                            <img 
-                              src={event.deceased.image} 
-                              alt={event.deceased.name} 
-                              referrerPolicy="no-referrer"
-                              className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
-                              style={{ objectPosition: event.deceased.imagePosition || 'center top' }}
-                            />
-                            <div className="flex flex-col items-center justify-center bg-black/40 px-2 py-1 rounded-lg border border-amber-500/30">
-                              <RealisticFlame size="normal" isLit={true} />
-                            </div>
-                          </div>
+                          <img 
+                            src={event.deceased.image} 
+                            alt={event.deceased.name} 
+                            referrerPolicy="no-referrer"
+                            className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
+                            style={{ objectPosition: event.deceased.imagePosition || 'center top' }}
+                          />
                         ) : (
                           <div className="w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-3xl shadow-[0_0_15px_rgba(251,191,36,0.5)] group-hover:scale-105 transition-transform duration-300 shrink-0">
                             🕯️
@@ -665,13 +656,6 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                               <span>{lang === 'he' ? 'נר נשמה דולק לעילוי נשמתו/ה ת.נ.צ.ב.ה' : lang === 'ru' ? 'Свеча памяти горит (Да святится память)' : 'Memorial Candle Lit'}</span>
                             </div>
                           )}
-
-                          <ShabbatYahrzeitBanner
-                            eventDate={event.gregorianDate}
-                            hebcalEvents={hebcalEvents}
-                            lang={lang}
-                            compact={true}
-                          />
                         </div>
                       </div>
 
@@ -705,7 +689,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                               : 'bg-gradient-to-r from-amber-950/80 to-[#1a1105] text-amber-300 border-amber-500/50 hover:border-amber-300'
                           }`}
                         >
-                          <RealisticFlame size={isCandleLit ? "large" : "normal"} isLit={isCandleLit} showWax={true} />
+                          <RealisticFlame size={isCandleLit ? "large" : "normal"} showWax={!isCandleLit} />
                           <span>
                             {isCandleLit 
                               ? (lang === 'he' ? 'נר נשמה דולק' : lang === 'ru' ? 'Свеча памяти горит' : 'Candle Lit') 
@@ -713,18 +697,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                           </span>
                         </motion.button>
 
-                        {/* Aesthetic WhatsApp Share Button */}
-                        <motion.button
-                          type="button"
-                          whileHover={{ scale: 1.06, y: -1 }}
-                          whileTap={{ scale: 0.94 }}
-                          onClick={(e) => shareOnWhatsApp(event.deceased, event.gregorianDate, dayStr, parashaLabel, e)}
-                          className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600/30 via-emerald-500/20 to-emerald-600/30 hover:from-emerald-600 hover:to-emerald-500 text-emerald-300 hover:text-white font-black px-3 py-2 rounded-xl text-xs transition-all duration-200 cursor-pointer shadow-md border border-emerald-500/50 hover:border-emerald-300"
-                          title={lang === 'he' ? `שליחת כרטיס זיכרון בוואטסאפ` : `Share via WhatsApp`}
-                        >
-                          <MessageCircle className="w-4 h-4 text-emerald-400" />
-                          <span>{lang === 'he' ? 'שיתוף בוואטסאפ' : lang === 'ru' ? 'Поделиться в WhatsApp' : 'Share WhatsApp'}</span>
-                        </motion.button>
+
 
                         <span className="text-xs font-mono text-amber-300 bg-amber-500/20 px-3 py-2 rounded-xl border border-amber-400/40 font-black">
                           {lang === 'he' ? 'היום / הערב' : lang === 'ru' ? 'Сегодня' : 'Today/Eve'}
@@ -778,18 +751,13 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                     >
                       <div className="flex items-start gap-4">
                         {event.deceased.image ? (
-                          <div className="flex items-center gap-2 shrink-0">
-                            <img 
-                              src={event.deceased.image} 
-                              alt={event.deceased.name} 
-                              referrerPolicy="no-referrer"
-                              className="w-11 h-11 rounded-full object-cover border border-[#c8a96e]/40 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-md"
-                              style={{ objectPosition: event.deceased.imagePosition || 'center top' }}
-                            />
-                            <div className="flex flex-col items-center justify-center bg-black/40 px-1.5 py-0.5 rounded-md border border-amber-500/20">
-                              <RealisticFlame size="normal" isLit={true} />
-                            </div>
-                          </div>
+                          <img 
+                            src={event.deceased.image} 
+                            alt={event.deceased.name} 
+                            referrerPolicy="no-referrer"
+                            className="w-11 h-11 rounded-full object-cover border border-[#c8a96e]/40 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-md"
+                            style={{ objectPosition: event.deceased.imagePosition || 'center top' }}
+                          />
                         ) : (
                           <div className="w-11 h-11 rounded-full bg-[#f0f4f8]/5 flex items-center justify-center text-xl shadow-inner group-hover:bg-[#c8a96e]/10 transition-all duration-300 shrink-0">
                             🕯️
@@ -820,13 +788,6 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                               <span>{lang === 'he' ? 'נר נשמה דולק' : lang === 'ru' ? 'Свеча памяти горит' : 'Memorial Candle Lit'}</span>
                             </div>
                           )}
-
-                          <ShabbatYahrzeitBanner
-                            eventDate={event.gregorianDate}
-                            hebcalEvents={hebcalEvents}
-                            lang={lang}
-                            compact={true}
-                          />
                         </div>
                       </div>
 
@@ -860,22 +821,11 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                               : 'bg-amber-950/40 hover:bg-amber-900/70 text-amber-300 border border-amber-500/40'
                           }`}
                         >
-                          <RealisticFlame size={isCandleLit ? "large" : "normal"} isLit={isCandleLit} showWax={true} />
+                          <RealisticFlame size={isCandleLit ? "large" : "normal"} showWax={!isCandleLit} />
                           <span>{isCandleLit ? (lang === 'he' ? 'נר נשמה דולק' : lang === 'ru' ? 'Свеча памяти горит' : 'Candle Lit') : (lang === 'he' ? 'הדלקת נר נשמה' : lang === 'ru' ? 'Зажечь свечу' : 'Light Candle')}</span>
                         </motion.button>
 
-                        {/* Aesthetic WhatsApp Share Button */}
-                        <motion.button
-                          type="button"
-                          whileHover={{ scale: 1.06, y: -1 }}
-                          whileTap={{ scale: 0.94 }}
-                          onClick={(e) => shareOnWhatsApp(event.deceased, event.gregorianDate, `${event.deceased.day} ${event.deceased.month}`, null, e)}
-                          className="flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500 border border-emerald-500/40 hover:border-emerald-300 text-emerald-300 hover:text-white font-bold px-3 py-1.5 rounded-xl text-xs transition-all duration-200 cursor-pointer shadow-md"
-                          title={lang === 'he' ? `שליחת כרטיס זיכרון בוואטסאפ` : `Share via WhatsApp`}
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>{lang === 'he' ? 'שיתוף בוואטסאפ' : lang === 'ru' ? 'WhatsApp' : 'WhatsApp'}</span>
-                        </motion.button>
+
 
                         <span className="text-xs font-mono text-[#c8a96e]/90 bg-[#c8a96e]/10 px-2.5 py-1.5 rounded-xl border border-[#c8a96e]/20 whitespace-nowrap font-bold">
                           {event.daysCount === 1 ? (lang === 'he' ? 'מחר (מהערב)' : t.tomorrow) : t.inNDays.replace('{n}', event.daysCount.toString())}

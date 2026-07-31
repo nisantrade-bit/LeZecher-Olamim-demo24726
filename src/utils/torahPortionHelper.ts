@@ -52,18 +52,14 @@ export const RUSSIAN_EVENT_NAMES: Record<string, string> = {
   "masei": "Масей",
   "devarim": "Дварим",
   "vaetchanan": "Ваэтханан",
-  "va'etchanan": "Ваэтханан",
-  "eikev": "Экев",
-  "ekev": "Экев",
+  "eikev": "Эйкев",
   "re'eh": "Реэ",
-  "reeh": "Реэ",
   "shoftim": "Шофтим",
   "ki teitzei": "Ки Теце",
   "ki tavo": "Ки Таво",
   "nitzavim": "Ницавим",
   "vayeilech": "Ваелех",
   "ha'azinu": "Аазину",
-  "haazinu": "Аазину",
   "v'zot haberachah": "Вэ-Зот а-Браха",
   "vzot haberachah": "Вэ-Зот а-Браха",
 
@@ -78,9 +74,6 @@ export const RUSSIAN_EVENT_NAMES: Record<string, string> = {
 
   // Holidays and Fasts
   "tu b'av": "Ту бе-Ав",
-  "tu b'Av": "Ту бе-Ав",
-  "tu bav": "Ту бе-Ав",
-  "tu beav": "Ту бе-Ав",
   "tu b'shvat": "Ту би-Шват",
   "tu bishvat": "Ту би-Шват",
   "rosh chodesh": "Рош Ходеш",
@@ -123,46 +116,6 @@ export const RUSSIAN_EVENT_NAMES: Record<string, string> = {
   "fast of gedaliah": "Пост Гедалии"
 };
 
-function transliterateToCyrillic(text: string): string {
-  if (!text) return '';
-  const map: Record<string, string> = {
-    'sh': 'ш', 'ch': 'ч', 'th': 'т', 'tz': 'ц', 'ts': 'ц', 'zh': 'ж', 'kh': 'х',
-    'ya': 'я', 'yo': 'ё', 'yu': 'ю', 'ee': 'и', 'oo': 'у', 'ai': 'ай', 'ei': 'ей',
-    'a': 'а', 'b': 'б', 'c': 'к', 'd': 'д', 'e': 'э', 'f': 'ф', 'g': 'г',
-    'h': 'х', 'i': 'и', 'j': 'дж', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н',
-    'o': 'о', 'p': 'п', 'q': 'к', 'r': 'р', 's': 'с', 't': 'т', 'u': 'у',
-    'v': 'в', 'w': 'в', 'x': 'кс', 'y': 'й', 'z': 'з', "'": '', "’": '', "‘": '', "`": ''
-  };
-  let res = '';
-  let i = 0;
-  const lower = text.toLowerCase();
-  while (i < text.length) {
-    const char = text[i];
-    if (/[a-zA-Z'’`‘]/.test(char)) {
-      let matched = false;
-      for (const len of [2, 1]) {
-        if (i + len <= text.length) {
-          const sub = lower.slice(i, i + len);
-          if (map[sub] !== undefined) {
-            const cyr = map[sub];
-            res += (char === char.toUpperCase() && cyr.length > 0) ? cyr[0].toUpperCase() + cyr.slice(1) : cyr;
-            i += len;
-            matched = true;
-            break;
-          }
-        }
-      }
-      if (!matched) {
-        i++;
-      }
-    } else {
-      res += char;
-      i++;
-    }
-  }
-  return res;
-}
-
 export function getLocalizedEventName(titleEn: string, hebrewTitle: string, lang: string): string {
   if (lang === 'he') {
     return hebrewTitle || titleEn;
@@ -173,14 +126,10 @@ export function getLocalizedEventName(titleEn: string, hebrewTitle: string, lang
     const cleanKey = raw.replace(/^parashat\s+/i, '').replace(/^parsha\s+/i, '').trim().toLowerCase();
     
     if (RUSSIAN_EVENT_NAMES[cleanKey]) {
-      return isParashat ? `Парашат ${RUSSIAN_EVENT_NAMES[cleanKey]}` : RUSSIAN_EVENT_NAMES[cleanKey];
+      return isParashat ? `Паршат ${RUSSIAN_EVENT_NAMES[cleanKey]}` : RUSSIAN_EVENT_NAMES[cleanKey];
     }
     if (RUSSIAN_EVENT_NAMES[raw.toLowerCase()]) {
       return RUSSIAN_EVENT_NAMES[raw.toLowerCase()];
-    }
-    const noApos = cleanKey.replace(/['’`‘]/g, '');
-    if (RUSSIAN_EVENT_NAMES[noApos]) {
-      return isParashat ? `Парашат ${RUSSIAN_EVENT_NAMES[noApos]}` : RUSSIAN_EVENT_NAMES[noApos];
     }
     if (raw.toLowerCase().includes("rosh chodesh")) {
       const monthPart = raw.replace(/rosh chodesh/i, '').trim().toLowerCase();
@@ -189,10 +138,9 @@ export function getLocalizedEventName(titleEn: string, hebrewTitle: string, lang
         "tevet": "Тевет", "shevat": "Шват", "shvat": "Шват", "adar": "Адар", "adar i": "Адар I",
         "adar ii": "Адар II", "nisan": "Нисан", "iyar": "Ияр", "sivan": "Сиван", "tammuz": "Таммуз"
       };
-      return `Рош Ходеш ${ruMonth[monthPart] || transliterateToCyrillic(monthPart)}`;
+      return `Рош Ходеш ${ruMonth[monthPart] || monthPart}`;
     }
-    const transliterated = transliterateToCyrillic(cleanKey || raw);
-    return isParashat ? `Парашат ${transliterated}` : transliterated;
+    return raw.replace(/^Parashat\s+/i, 'Паршат ');
   }
   return titleEn;
 }
@@ -350,80 +298,3 @@ export function getTorahPortionDetails(titleHe: string, titleEn: string): Portio
 
   return details;
 }
-
-export interface ShabbatYahrzeitInfo {
-  isShabbat: boolean;
-  prepShabbatDate: Date;
-  prepDateStrFormatted: string;
-  prepParashaName: string;
-  memorialShabbatDate: Date;
-  memorialDateStrFormatted: string;
-  memorialParashaName: string;
-}
-
-export function getShabbatYahrzeitInfo(
-  eventDate: Date,
-  hebcalEvents: any[],
-  lang: 'he' | 'en' | 'ru'
-): ShabbatYahrzeitInfo | null {
-  const dayOfWeek = eventDate.getDay();
-  if (dayOfWeek !== 6) {
-    return null;
-  }
-
-  const prepShabbatDate = new Date(eventDate);
-  prepShabbatDate.setDate(prepShabbatDate.getDate() - 7);
-
-  const memorialShabbatDate = new Date(eventDate);
-
-  const toYmd = (dt: Date) => {
-    const yyyy = dt.getFullYear();
-    const mm = String(dt.getMonth() + 1).padStart(2, '0');
-    const dd = String(dt.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  };
-
-  const prepStr = toYmd(prepShabbatDate);
-  const memStr = toYmd(memorialShabbatDate);
-
-  const findParasha = (dateStr: string): string => {
-    const item = (hebcalEvents || []).find(
-      (it) => (it.category === 'parashat' || it.category === 'holiday') && it.date && it.date.startsWith(dateStr)
-    );
-    if (item) {
-      const localized = getLocalizedEventName(item.title || '', item.hebrew || '', lang);
-      return localized;
-    }
-    return lang === 'he' ? 'פרשת השבוע' : lang === 'ru' ? 'Недельная глава' : 'Weekly Parasha';
-  };
-
-  const prepParashaName = findParasha(prepStr);
-  const memorialParashaName = findParasha(memStr);
-
-  const localeMap = {
-    he: 'he-IL',
-    en: 'en-GB',
-    ru: 'ru-RU'
-  };
-
-  const prepDateStrFormatted = prepShabbatDate.toLocaleDateString(localeMap[lang], {
-    day: 'numeric',
-    month: 'short'
-  });
-
-  const memorialDateStrFormatted = memorialShabbatDate.toLocaleDateString(localeMap[lang], {
-    day: 'numeric',
-    month: 'short'
-  });
-
-  return {
-    isShabbat: true,
-    prepShabbatDate,
-    prepDateStrFormatted,
-    prepParashaName,
-    memorialShabbatDate,
-    memorialDateStrFormatted,
-    memorialParashaName
-  };
-}
-

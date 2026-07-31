@@ -75,18 +75,6 @@ export interface Translation {
   relationTextMale: string;
   relationTextFemale: string;
   contactDetails: string;
-
-  // Shabbat Yahrzeit (When Yahrzeit falls on Saturday / Shabbat)
-  shabbatYahrzeitBadge: string;
-  shabbatGraveVisitRule: string;
-  shabbatPrepTitle: string;
-  shabbatPrepText: string;
-  shabbatMemorialTitle: string;
-  shabbatMemorialText: string;
-  shabbatDoubleReminderTitle: string;
-  shabbatCandleWarning: string;
-  shabbatGraveVisitFriday: string;
-  shabbatGraveVisitSunday: string;
 }
 
 export const translations: Record<'he' | 'en' | 'ru', Translation> = {
@@ -154,18 +142,7 @@ export const translations: Record<'he' | 'en' | 'ru', Translation> = {
     yahrzeitDate: "תאריך אזכרה שנתי",
     relationTextMale: "בן {father} ו{mother}",
     relationTextFemale: "בת {father} ו{mother}",
-    contactDetails: "פרטי איש קשר",
-    
-    shabbatYahrzeitBadge: "📌 אזכרה בשבת",
-    shabbatGraveVisitRule: "עלייה לקבר מוקדמת ליום שישי או נדחית ליום ראשון",
-    shabbatPrepTitle: "שבת הכנה (השבת שלפני)",
-    shabbatPrepText: "תזכורת להערכות, הזמנת עולים לתורה, תיאום מניין וסעודה — פרשת {parasha} ({date})",
-    shabbatMemorialTitle: "שבת האזכרה (השבת עצמה)",
-    shabbatMemorialText: "תזכורת להדלקת נר נשמה לפני כניסת שבת, תפילת קדיש ולימוד — פרשת {parasha} ({date})",
-    shabbatDoubleReminderTitle: "תזכורת כפולה לשתי השבתות (אזכרה בשבת):",
-    shabbatCandleWarning: "חובה להקדים ולהדליק נר נשמה בערב שבת מבעוד מועד לפני כניסת השבת והשקיעה.",
-    shabbatGraveVisitFriday: "מוקדם ליום שישי",
-    shabbatGraveVisitSunday: "נדחה ליום ראשון"
+    contactDetails: "פרטי איש קשר"
   },
   en: {
     title: "L'Zecher Olamim",
@@ -231,18 +208,7 @@ export const translations: Record<'he' | 'en' | 'ru', Translation> = {
     yahrzeitDate: "Annual Yahrzeit Date",
     relationTextMale: "son of {father}, {mother}",
     relationTextFemale: "daughter of {father}, {mother}",
-    contactDetails: "Contact Details",
-    
-    shabbatYahrzeitBadge: "📌 Yahrzeit on Shabbat",
-    shabbatGraveVisitRule: "Visiting the grave is brought forward to Friday or postponed to Sunday",
-    shabbatPrepTitle: "Preparation Shabbat (Shabbat Before)",
-    shabbatPrepText: "Reminder for preparation: inviting Torah readers (Aliyot), coordinating minyan and meal — Parashat {parasha} ({date})",
-    shabbatMemorialTitle: "Memorial Shabbat (The Yahrzeit Shabbat)",
-    shabbatMemorialText: "Reminder to light a memorial candle before Shabbat begins, Kaddish prayer, and Torah study — Parashat {parasha} ({date})",
-    shabbatDoubleReminderTitle: "Double Shabbat Reminder (Yahrzeit on Shabbat):",
-    shabbatCandleWarning: "A memorial candle must be lit on Friday evening before sunset prior to the start of Shabbat.",
-    shabbatGraveVisitFriday: "Brought forward to Friday",
-    shabbatGraveVisitSunday: "Postponed to Sunday"
+    contactDetails: "Contact Details"
   },
   ru: {
     title: "Лезехер Оламим",
@@ -308,30 +274,9 @@ export const translations: Record<'he' | 'en' | 'ru', Translation> = {
     yahrzeitDate: "Ежегодная дата Йарцайта",
     relationTextMale: "сын {father}, {mother}",
     relationTextFemale: "дочь {father}, {mother}",
-    contactDetails: "Контактные данные",
-    
-    shabbatYahrzeitBadge: "📌 Йарцайт в Шаббат",
-    shabbatGraveVisitRule: "Посещение могилы переносится на пятницу или откладывается на воскресенье",
-    shabbatPrepTitle: "Шаббат подготовки (Шаббат до годовщины)",
-    shabbatPrepText: "Напоминание о подготовке: приглашение для вызова к Торе (Алийот), координация миньяна и трапезы — Парашат {parasha} ({date})",
-    shabbatMemorialTitle: "Шаббат памяти (Шаббат годовщины)",
-    shabbatMemorialText: "Напоминание зажечь свечу памяти до наступления Шаббата, чтение Кадиш и изучение Торы — Парашат {parasha} ({date})",
-    shabbatDoubleReminderTitle: "Двойное напоминание на Шаббаты (Йарцайт в Шаббат):",
-    shabbatCandleWarning: "Поминальную свечу необходимо зажечь в пятницу вечером до захода солнца и начала Шаббата.",
-    shabbatGraveVisitFriday: "Переносится на пятницу",
-    shabbatGraveVisitSunday: "Откладывается на воскресенье"
+    contactDetails: "Контактные данные"
   }
 };
-
-export function formatShabbatReminderText(
-  template: string,
-  parashaName: string,
-  dateStr: string
-): string {
-  return template
-    .replace('{parasha}', parashaName || '')
-    .replace('{date}', dateStr || '');
-}
 
 import { translateText } from './transliteration';
 
