@@ -77,8 +77,10 @@ export function decodeDeceasedFromUrlPayload(encodedStr: string): Deceased | nul
 
   let cleanedStr = encodedStr.trim();
   try {
-    if (cleanedStr.includes('%')) {
-      cleanedStr = decodeURIComponent(cleanedStr);
+    while (cleanedStr.includes('%')) {
+      const decoded = decodeURIComponent(cleanedStr);
+      if (decoded === cleanedStr) break;
+      cleanedStr = decoded;
     }
   } catch (e) {}
 
@@ -187,15 +189,14 @@ export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: stri
   let idParam = '';
   if (deceasedObj) {
     if (deceasedObj.id) {
-      idParam = `m=${deceasedObj.id}`;
-    } else {
-      const payload = encodeDeceasedToUrlPayload(deceasedObj);
-      if (payload) {
-        dataParam = `data=${payload}`;
-      }
+      idParam = `id=${deceasedObj.id}&m=${deceasedObj.id}`;
+    }
+    const payload = encodeDeceasedToUrlPayload(deceasedObj);
+    if (payload) {
+      dataParam = `data=${payload}`;
     }
   } else if (typeof deceasedOrId === 'number' || (typeof deceasedOrId === 'string' && !isNaN(Number(deceasedOrId)))) {
-    idParam = `m=${deceasedOrId}`;
+    idParam = `id=${deceasedOrId}&m=${deceasedOrId}`;
   }
 
   const langQuery = (lang && lang !== 'he') ? `lang=${lang}` : '';

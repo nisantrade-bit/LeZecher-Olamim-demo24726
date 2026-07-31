@@ -129,24 +129,30 @@ function MainAppContent() {
 
   // Manage direct deceased link view state across pathname /m/123, query ?d=123, and hash #m/123
   const [urlDeceasedId, setUrlDeceasedId] = useState<number | null>(() => {
-    // 1. Pathname check (/m/12345, /m/12345.html, /p/12345, /deceased/12345)
-    const pathMatch = window.location.pathname.match(/\/(?:m|p|deceased)\/(\d+)(?:\.html)?/i);
+    // 1. Pathname check (/m/12345, /p/12345, /deceased/12345, /memorial/12345, /id/12345, /card/12345, /yahrzeit/12345)
+    const pathMatch = window.location.pathname.match(/\/(?:m|p|deceased|memorial|id|card|yahrzeit)\/(\d+)(?:\.html)?/i);
     if (pathMatch && pathMatch[1]) {
       const id = parseInt(pathMatch[1], 10);
       if (!isNaN(id)) return id;
     }
 
-    // 2. Query param check (?m=12345, ?d=12345, ?id=12345, ?deceased=12345)
+    // 2. Query param check (?id=12345, ?deceasedId=12345, ?m=12345, ?d=12345, ?deceased=12345, ?card=12345, ?cardId=12345)
     const params = new URLSearchParams(window.location.search);
-    const idStr = params.get('m') || params.get('d') || params.get('id') || params.get('deceased');
-    if (idStr) {
-      const id = parseInt(idStr, 10);
-      if (!isNaN(id)) return id;
+    const rawIdStr = params.get('id') || params.get('m') || params.get('deceasedId') || params.get('deceased') || params.get('d') || params.get('card') || params.get('cardId');
+    if (rawIdStr) {
+      try {
+        const decodedId = decodeURIComponent(rawIdStr.trim());
+        const id = parseInt(decodedId, 10);
+        if (!isNaN(id)) return id;
+      } catch (e) {
+        const id = parseInt(rawIdStr, 10);
+        if (!isNaN(id)) return id;
+      }
     }
 
-    // 3. Hash check (#m/12345, #m=12345, #d=12345)
+    // 3. Hash check (#m/12345, #id=12345, #deceasedId=12345, #memorial=12345)
     const hash = window.location.hash;
-    const hashMatch = hash.match(/(?:m\/|m=|d=|id=|deceased=)(\d+)/i);
+    const hashMatch = hash.match(/(?:m\/|m=|d=|id=|deceased=|deceasedId=|card=|cardId=|memorial=)(\d+)/i);
     if (hashMatch && hashMatch[1]) {
       const id = parseInt(hashMatch[1], 10);
       if (!isNaN(id)) return id;
@@ -170,7 +176,13 @@ function MainAppContent() {
       }
 
       if (dataStr) {
-        return decodeDeceasedFromUrlPayload(dataStr);
+        try {
+          const decodedStr = decodeURIComponent(dataStr.trim());
+          const res = decodeDeceasedFromUrlPayload(decodedStr) || decodeDeceasedFromUrlPayload(dataStr);
+          if (res) return res;
+        } catch (e) {
+          return decodeDeceasedFromUrlPayload(dataStr);
+        }
       }
     } catch (e) {
       console.error("Error parsing url payload:", e);
@@ -871,7 +883,7 @@ function MainAppContent() {
           onSetLang={(newLang) => {
             setLang(newLang);
             const updatedPayload = encodeDeceasedToUrlPayload(urlDeceased!);
-            const newUrl = `/?data=${updatedPayload}&lang=${newLang}`;
+            const newUrl = `/?id=${urlDeceased!.id}&m=${urlDeceased!.id}&data=${updatedPayload}&lang=${newLang}`;
             window.history.replaceState({}, document.title, newUrl);
           }} 
           onExit={handleExitMemorialPage} 
@@ -879,7 +891,8 @@ function MainAppContent() {
       );
     }
 
-    if (fetchingRemoteDeceased || (displayedList.length === 0 && masterList.length === 0 && !remoteDeceasedNotFound)) {
+    // Show loading while fetching remote deceased OR while we haven't definitively confirmed remoteDeceasedNotFound
+    if (fetchingRemoteDeceased || !remoteDeceasedNotFound) {
       return (
         <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-3">
           <div className="w-8 h-8 border-4 border-[#c8a96e] border-t-transparent rounded-full animate-spin"></div>
