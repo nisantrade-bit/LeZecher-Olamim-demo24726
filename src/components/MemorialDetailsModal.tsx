@@ -10,7 +10,8 @@ import { translations, formatParentRelation } from '../utils/translations';
 import { translateText } from '../utils/transliteration';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, findYahrzeitGregorianDate, getYahrzeitEveDate, formatYahrzeitDatesWithEve, normalizeMonthName } from '../utils/hebrewDate';
 import { X, Phone, CalendarRange, MapPin, Edit, Trash2, Heart, Clock, BookOpen, Globe, MessageCircle, RefreshCw, Star, Loader2, Copy } from 'lucide-react';
-import { getTorahPortionDetails } from '../utils/torahPortionHelper';
+import { getTorahPortionDetails, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
+import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
 import { getRandomMishnah, getRandomPsalm, getRandomHalakha, getRandomPirkeiAvot, getRandomGeneralMishnah, MishnahRecord, PsalmRecord, HalakhaRecord } from '../utils/memorialStudy';
 import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
 import { FullReadingModal } from './FullReadingModal';
@@ -58,6 +59,8 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
   const [isIsraelCustom, setIsIsraelCustom] = useState<boolean>(true);
   const [parshaInfo, setParshaInfo] = useState<{ name: string; hebrewName: string; date: Date } | null>(null);
   const [loadingParsha, setLoadingParsha] = useState<boolean>(false);
+  const [hebcalItems, setHebcalItems] = useState<any[]>([]);
+  const [yahrzeitGregDate, setYahrzeitGregDate] = useState<Date | null>(null);
 
   // Spiritual Study States
   const [activeMishnah, setActiveMishnah] = useState<MishnahRecord>(() => getRandomGeneralMishnah());
@@ -172,6 +175,7 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
   React.useEffect(() => {
     const fetchParsha = async () => {
       const yahrDate = findYahrzeitGregorianDate(deceased.day, deceased.month, selectedYahrzeitYear);
+      setYahrzeitGregDate(yahrDate);
       if (!yahrDate) {
         setParshaInfo(null);
         return;
@@ -192,6 +196,7 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
           throw new Error('Failed to fetch from Hebcal');
         }
         const data = await response.json();
+        setHebcalItems(data.items || []);
         const item = data.items?.find(
           (it: any) => it.category === 'parashat' && it.date === dateStr
         );
@@ -260,7 +265,8 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
 
   // WhatsApp share trigger
   const shareMemorial = () => {
-    const text = generateWhatsAppShareText(deceased, lang);
+    const shabbatInfo = yahrzeitGregDate ? getShabbatYahrzeitInfo(yahrzeitGregDate, hebcalItems, lang) : null;
+    const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
     openWhatsAppShare(text);
   };
 
@@ -683,6 +689,15 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
               <span className="inline-block mt-0.5">💡</span>
               <span>{localT[lang].explanation}</span>
             </p>
+
+            {yahrzeitGregDate && (
+              <ShabbatYahrzeitBanner
+                eventDate={yahrzeitGregDate}
+                hebcalEvents={hebcalItems}
+                lang={lang}
+                compact={false}
+              />
+            )}
           </div>
 
           {/* SPIRITUAL CORNER: Psalms, Halakha & Mishnah Study */}

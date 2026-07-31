@@ -39,52 +39,26 @@ export const ShabbatYahrzeitBanner: React.FC<ShabbatYahrzeitBannerProps> = ({
   if (compact) {
     return (
       <div
-        className={`mt-3 rounded-xl border-2 border-amber-500/70 bg-gradient-to-br from-[#0d0a04] via-[#1a1205] to-[#130d04] p-3.5 shadow-[0_0_15px_rgba(245,158,11,0.25)] space-y-2.5 font-sans ${
+        className={`mt-2 rounded-xl border border-amber-400/50 bg-gradient-to-r from-amber-950/70 via-[#181206]/90 to-amber-950/70 px-3 py-2 shadow-sm space-y-1 font-sans ${
           isRtl ? 'text-right' : 'text-left'
         }`}
         dir={isRtl ? 'rtl' : 'ltr'}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Header Badge */}
-        <div className="flex items-center justify-between gap-2 flex-wrap border-b border-amber-500/30 pb-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/50 text-xs font-black tracking-wide">
+        <div className="flex items-center justify-between gap-2 flex-wrap text-[11px]">
+          <span className="inline-flex items-center gap-1 font-extrabold text-amber-300">
             <span>📌</span>
-            <span>{t.shabbatYahrzeitBadge}</span>
+            <span>{t.shabbatYahrzeitBadge}:</span>
+            <span className="text-amber-100 font-medium">{t.shabbatGraveVisitRule}</span>
           </span>
-          <span className="text-[11px] font-semibold text-amber-200/90 bg-black/40 px-2 py-0.5 rounded border border-amber-500/20">
-            {t.shabbatGraveVisitRule}
+          <span className="text-[10px] text-amber-400/90 font-bold bg-black/40 px-1.5 py-0.5 rounded">
+            {t.shabbatGraveVisitFriday} / {t.shabbatGraveVisitSunday}
           </span>
         </div>
-
-        {/* Double Reminder Box */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-          {/* Preparation Shabbat (1 week before) */}
-          <div className="bg-black/50 p-2.5 rounded-lg border border-amber-500/30 space-y-1">
-            <div className="flex items-center gap-1.5 text-amber-400 font-bold text-[11px]">
-              <Calendar className="w-3.5 h-3.5 shrink-0" />
-              <span>{t.shabbatPrepTitle}</span>
-            </div>
-            <p className="text-gray-200 text-[11px] leading-relaxed">
-              {prepTextFormatted}
-            </p>
-          </div>
-
-          {/* Memorial Shabbat (Yahrzeit day) */}
-          <div className="bg-black/50 p-2.5 rounded-lg border border-amber-500/30 space-y-1">
-            <div className="flex items-center gap-1.5 text-amber-300 font-bold text-[11px]">
-              <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span>{t.shabbatMemorialTitle}</span>
-            </div>
-            <p className="text-gray-200 text-[11px] leading-relaxed">
-              {memorialTextFormatted}
-            </p>
-          </div>
-        </div>
-
-        {/* Candle Lighting Notice */}
-        <div className="flex items-center gap-2 bg-amber-500/15 border border-amber-400/40 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-amber-200">
-          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>{t.shabbatCandleWarning}</span>
+        <div className="flex items-center gap-2 flex-wrap text-[11px] text-amber-200/90 font-medium pt-0.5 border-t border-amber-500/20">
+          <span>🕯️ {t.shabbatPrepTitle}: <strong className="text-amber-300">{info.prepParashaName} ({info.prepDateStrFormatted})</strong></span>
+          <span className="text-amber-500">•</span>
+          <span>✨ {t.shabbatMemorialTitle}: <strong className="text-amber-300">{info.memorialParashaName} ({info.memorialDateStrFormatted})</strong></span>
         </div>
       </div>
     );

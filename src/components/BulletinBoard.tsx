@@ -10,7 +10,7 @@ import { translations, formatParentRelation } from '../utils/translations';
 import { translateText } from '../utils/transliteration';
 import { getHebrewDate, isYahrzeitMatch, HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, normalizeMonthName, getYahrzeitEveDate } from '../utils/hebrewDate';
 import { Bell, Heart, Share2, BookOpen, Calendar, MessageCircle, Info, MapPin, Flame, Sparkles, Clock } from 'lucide-react';
-import { getTorahPortionDetails, getLocalizedEventName } from '../utils/torahPortionHelper';
+import { getTorahPortionDetails, getLocalizedEventName, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
 import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
 import { DedicatedStudyModal } from './DedicatedStudyModal';
 import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
@@ -394,7 +394,8 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
   // Triggers the WhatsApp share invitation
   const shareOnWhatsApp = (deceased: Deceased, gregDate: Date, hebrewDateStr: string, parashaName: string | null, e: React.MouseEvent) => {
     e.stopPropagation(); // prevent opening details modal
-    const text = generateWhatsAppShareText(deceased, lang);
+    const shabbatInfo = getShabbatYahrzeitInfo(gregDate, hebcalEvents, lang);
+    const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
     openWhatsAppShare(text);
   };
 
@@ -712,7 +713,18 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                           </span>
                         </motion.button>
 
-
+                        {/* Aesthetic WhatsApp Share Button */}
+                        <motion.button
+                          type="button"
+                          whileHover={{ scale: 1.06, y: -1 }}
+                          whileTap={{ scale: 0.94 }}
+                          onClick={(e) => shareOnWhatsApp(event.deceased, event.gregorianDate, dayStr, parashaLabel, e)}
+                          className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600/30 via-emerald-500/20 to-emerald-600/30 hover:from-emerald-600 hover:to-emerald-500 text-emerald-300 hover:text-white font-black px-3 py-2 rounded-xl text-xs transition-all duration-200 cursor-pointer shadow-md border border-emerald-500/50 hover:border-emerald-300"
+                          title={lang === 'he' ? `שליחת כרטיס זיכרון בוואטסאפ` : `Share via WhatsApp`}
+                        >
+                          <MessageCircle className="w-4 h-4 text-emerald-400" />
+                          <span>{lang === 'he' ? 'שיתוף בוואטסאפ' : lang === 'ru' ? 'Поделиться в WhatsApp' : 'Share WhatsApp'}</span>
+                        </motion.button>
 
                         <span className="text-xs font-mono text-amber-300 bg-amber-500/20 px-3 py-2 rounded-xl border border-amber-400/40 font-black">
                           {lang === 'he' ? 'היום / הערב' : lang === 'ru' ? 'Сегодня' : 'Today/Eve'}
@@ -852,7 +864,18 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                           <span>{isCandleLit ? (lang === 'he' ? 'נר נשמה דולק' : lang === 'ru' ? 'Свеча памяти горит' : 'Candle Lit') : (lang === 'he' ? 'הדלקת נר נשמה' : lang === 'ru' ? 'Зажечь свечу' : 'Light Candle')}</span>
                         </motion.button>
 
-
+                        {/* Aesthetic WhatsApp Share Button */}
+                        <motion.button
+                          type="button"
+                          whileHover={{ scale: 1.06, y: -1 }}
+                          whileTap={{ scale: 0.94 }}
+                          onClick={(e) => shareOnWhatsApp(event.deceased, event.gregorianDate, `${event.deceased.day} ${event.deceased.month}`, null, e)}
+                          className="flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500 border border-emerald-500/40 hover:border-emerald-300 text-emerald-300 hover:text-white font-bold px-3 py-1.5 rounded-xl text-xs transition-all duration-200 cursor-pointer shadow-md"
+                          title={lang === 'he' ? `שליחת כרטיס זיכרון בוואטסאפ` : `Share via WhatsApp`}
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{lang === 'he' ? 'שיתוף בוואטסאפ' : lang === 'ru' ? 'WhatsApp' : 'WhatsApp'}</span>
+                        </motion.button>
 
                         <span className="text-xs font-mono text-[#c8a96e]/90 bg-[#c8a96e]/10 px-2.5 py-1.5 rounded-xl border border-[#c8a96e]/20 whitespace-nowrap font-bold">
                           {event.daysCount === 1 ? (lang === 'he' ? 'מחר (מהערב)' : t.tomorrow) : t.inNDays.replace('{n}', event.daysCount.toString())}
