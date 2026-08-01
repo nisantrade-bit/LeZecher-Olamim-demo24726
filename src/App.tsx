@@ -23,8 +23,9 @@ import { getUpcomingYahrzeits, requestNotificationPermission, sendYahrzeitNotifi
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord } from './utils/supabase';
-export { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord };
+import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById } from './utils/supabase';
+export { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById };
+
 const SEED_DATABASE: Deceased[] = (INITIAL_DATABASE || []) as unknown as Deceased[];
 
 const MOCK_IDS = new Set([1718882041001, 1718882041002, 1718882041003, 1718882041004, 1718882041005, 1718882041006]);
@@ -40,6 +41,7 @@ function filterOutMockRecords(list: Deceased[]): Deceased[] {
   });
 }
 
+// Helper to enrich single deceased item with multi-language fields
 const enrichDeceasedTranslations = (item: Deceased): Deceased => {
   if (!item) return item;
   const list = translateDeceasedListClientSide([item], 'he');
@@ -114,7 +116,7 @@ function MainAppContent() {
     if (urlLang === 'en' || urlLang === 'ru' || urlLang === 'he') {
       return urlLang as Language;
     }
-    return 'he';
+    return 'he'; // Default to Hebrew
   });
 
   const [activeTab, setActiveTab] = useState<'calendar' | 'book' | 'grid' | 'import'>('calendar');
@@ -125,6 +127,7 @@ function MainAppContent() {
   const [editingDeceased, setEditingDeceased] = useState<Deceased | null>(null);
   const [selectedDeceased, setSelectedDeceased] = useState<Deceased | null>(null);
 
+  // Manage direct deceased link view state across pathname /m/123, query ?d=123, and hash #m/123
   const [urlDeceasedId, setUrlDeceasedId] = useState<number | string | null>(() => {
     const parseAndDecode = (raw: string | null | undefined): number | string | null => {
       if (!raw) return null;
@@ -137,12 +140,14 @@ function MainAppContent() {
       return decoded || null;
     };
 
+    // 1. Pathname check (/m/12345, /p/12345, /deceased/12345, /memorial/12345, /id/12345, /card/12345, /yahrzeit/12345)
     const pathMatch = window.location.pathname.match(/\/(?:m|p|deceased|memorial|id|card|yahrzeit)\/([^\/?#]+)(?:\.html)?/i);
     if (pathMatch && pathMatch[1]) {
       const parsed = parseAndDecode(pathMatch[1]);
       if (parsed !== null) return parsed;
     }
 
+    // 2. Query param check (?id=12345, ?deceasedId=12345, ?m=12345, ?d=12345, ?deceased=12345, ?card=12345, ?cardId=12345)
     const params = new URLSearchParams(window.location.search);
     const rawIdStr = params.get('id') || params.get('m') || params.get('deceasedId') || params.get('deceased') || params.get('d') || params.get('card') || params.get('cardId');
     if (rawIdStr) {
@@ -150,6 +155,7 @@ function MainAppContent() {
       if (parsed !== null) return parsed;
     }
 
+    // 3. Hash check (#m/12345, #id=12345, #deceasedId=12345, #memorial=12345)
     const hash = window.location.hash;
     const hashMatch = hash.match(/(?:m\/|m=|d=|id=|deceased=|deceasedId=|card=|cardId=|memorial=)([^\/?#&]+)/i);
     if (hashMatch && hashMatch[1]) {
@@ -160,7 +166,7 @@ function MainAppContent() {
     return null;
   });
 
-  // מנגנון חילוץ פיילוד בטוח ומורחב הפותר בעיות קטועיות קישור
+  // Parse direct Deceased payload from URL if present (?data=..., ?p=..., ?payload=..., ?card=...)
   const [urlDeceasedFromPayload, setUrlDeceasedFromPayload] = useState<Deceased | null>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -171,14 +177,6 @@ function MainAppContent() {
         const hashMatch = hash.match(/[?&](?:data|p|payload|card|d)=([^&]+)/i) || hash.match(/(?:data|p|payload|card|d)=([^&]+)/i);
         if (hashMatch && hashMatch[1]) {
           dataStr = hashMatch[1];
-        }
-      }
-
-      // טיפול גם במקרה שהמחרוזת הועברה ישירות כ-Raw String פתאומי ב-URL
-      if (!dataStr) {
-        const fullSearch = window.location.search.replace(/^\?/, '');
-        if (fullSearch.length > 20 && !fullSearch.includes('=')) {
-          dataStr = fullSearch;
         }
       }
 
@@ -203,19 +201,23 @@ function MainAppContent() {
   const [showSqlSetupModal, setShowSqlSetupModal] = useState<boolean>(false);
   const [sqlCopied, setSqlCopied] = useState<boolean>(false);
 
+  // Mobile drawer / sheet state for adding deceased
   const [isMobileFormOpen, setIsMobileFormOpen] = useState<boolean>(false);
 
+  // Notification state
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() => 
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
   );
   const [upcomingNotices, setUpcomingNotices] = useState<UpcomingYahrzeitNotice[]>([]);
   const [notifBannerDismissed, setNotifBannerDismissed] = useState<boolean>(false);
 
+  // Auto-check upcoming Yahrzeits for the next 3 days whenever list updates
   useEffect(() => {
     if (displayedList && displayedList.length > 0) {
       const notices = getUpcomingYahrzeits(displayedList, 3);
       setUpcomingNotices(notices);
 
+      // Trigger push/local notifications if granted
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         notices.forEach(notice => {
           sendYahrzeitNotification(notice, lang);
@@ -232,12 +234,14 @@ function MainAppContent() {
     }
   };
 
+  // Merge urlDeceasedFromPayload safely into existing masterList, LocalStorage, Supabase and server
   useEffect(() => {
     if (urlDeceasedFromPayload) {
       const enrichedPayload = enrichDeceasedTranslations(urlDeceasedFromPayload);
       setRemoteDeceasedNotFound(false);
       setSelectedDeceased(enrichedPayload);
 
+      // Add/merge to local database without clearing existing records
       setMasterList(prev => {
         const base = prev.length > 0 ? prev : SEED_DATABASE;
         const merged = smartMergeDeceasedLists(base, [enrichedPayload]);
@@ -250,6 +254,7 @@ function MainAppContent() {
         return finalData;
       });
 
+      // Upsert into Supabase database
       (async () => {
         try {
           const { error } = await safeUpsert([enrichedPayload]);
@@ -257,6 +262,9 @@ function MainAppContent() {
             console.error("Supabase Fetch Error:", error);
             if (isMissingTableError(error)) {
               setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'deceased' table is missing in schema cache. Using local/server database fallback.");
+            } else {
+              console.error("Supabase upsert error on URL payload:", error);
             }
           }
         } catch (e) {
@@ -264,6 +272,7 @@ function MainAppContent() {
         }
       })();
 
+      // Sync to cloud server API database as backup
       if (!(window as any).__OFFLINE_DATABASE_DATA__) {
         fetch('/api/deceased', {
           method: 'POST',
@@ -274,9 +283,11 @@ function MainAppContent() {
     }
   }, [urlDeceasedFromPayload]);
 
+  // If urlDeceasedId is accessed directly (e.g. /m/12345) and card is not in local list, fetch from Supabase or server API
   useEffect(() => {
     if (urlDeceasedId && String(urlDeceasedId).trim() !== '' && !urlDeceasedFromPayload) {
-      const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId));
+      const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
+                              SEED_DATABASE.some(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId));
       if (!alreadyInMaster && !remoteDeceasedNotFound && !fetchingRemoteDeceased) {
         setFetchingRemoteDeceased(true);
         const fetchRemote = async () => {
@@ -286,6 +297,7 @@ function MainAppContent() {
               console.error("Supabase Fetch Error:", error);
               if (isMissingTableError(error)) {
                 setSupabaseTableMissing(true);
+                console.warn("Supabase notice: 'deceased' table missing in schema cache, using server API fallback.");
               }
             }
             if (!error && data && data.id && data.name) {
@@ -303,6 +315,7 @@ function MainAppContent() {
               return;
             }
 
+            // Fallback to Express server API
             const res = await fetch(`/api/deceased/${urlDeceasedId}`);
             if (res.ok) {
               const record = await res.json();
@@ -333,6 +346,7 @@ function MainAppContent() {
     }
   }, [urlDeceasedId, urlDeceasedFromPayload, masterList, remoteDeceasedNotFound, fetchingRemoteDeceased]);
 
+  // Helper to merge urlDeceasedFromPayload into any loaded list
   const mergeWithUrlPayload = (list: Deceased[]): Deceased[] => {
     let clean = deduplicateSingleList(list);
     if (urlDeceasedFromPayload) {
@@ -342,9 +356,11 @@ function MainAppContent() {
     return clean;
   };
 
+  // Load database on mount directly from Supabase, with local storage & fallback merging
   useEffect(() => {
     const loadDatabase = async () => {
       try {
+        // 1. Read existing local storage records first
         let localRecords: Deceased[] = [];
         try {
           const stored = localStorage.getItem('eternal_db');
@@ -358,6 +374,7 @@ function MainAppContent() {
           console.error("Storage access error:", e);
         }
 
+        // Standalone Offline mode check
         if ((window as any).__OFFLINE_DATABASE_DATA__) {
           const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
           let merged = smartMergeDeceasedLists(SEED_DATABASE, localRecords);
@@ -371,6 +388,7 @@ function MainAppContent() {
           return;
         }
 
+        // 2. Fetch directly from Supabase 'deceased' table
         let supabaseRecords: Deceased[] = [];
         try {
           const { data, error } = await safeSelect('deceased');
@@ -378,6 +396,9 @@ function MainAppContent() {
             console.error("Supabase Fetch Error:", error);
             if (isMissingTableError(error)) {
               setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'public.deceased' table is not created yet in schema cache. Using local server & storage seamlessly.");
+            } else {
+              console.error("Supabase select error:", error.message || error);
             }
           } else if (Array.isArray(data) && data.length > 0) {
             supabaseRecords = filterOutMockRecords(data as Deceased[]);
@@ -386,6 +407,7 @@ function MainAppContent() {
           console.error("Supabase Fetch Error:", err);
         }
 
+        // 3. Fallback to Express server API if Supabase returned no data
         let serverRecords: Deceased[] = [];
         if (supabaseRecords.length === 0) {
           try {
@@ -401,6 +423,7 @@ function MainAppContent() {
           }
         }
 
+        // 4. Smart-merge SEED_DATABASE + supabaseRecords + localRecords + serverRecords + urlDeceasedFromPayload
         let combined = smartMergeDeceasedLists(SEED_DATABASE, supabaseRecords);
         combined = smartMergeDeceasedLists(combined, localRecords);
         combined = smartMergeDeceasedLists(combined, serverRecords);
@@ -414,11 +437,18 @@ function MainAppContent() {
           console.error("Storage access error:", e);
         }
 
+        // 5. Sync merged master list into Supabase so table is populated and up to date
         if (finalMaster.length > 0) {
           try {
             const { error } = await safeUpsert(finalMaster);
-            if (error && isMissingTableError(error)) {
-              setSupabaseTableMissing(true);
+            if (error) {
+              console.error("Supabase Fetch Error:", error);
+              if (isMissingTableError(error)) {
+                setSupabaseTableMissing(true);
+                console.warn("Supabase notice: 'public.deceased' table not yet created. Master list synced to local server database.");
+              } else {
+                console.error("Supabase initial sync error:", error.message || error);
+              }
             }
           } catch (e) {
             console.error("Supabase Fetch Error:", e);
@@ -439,13 +469,16 @@ function MainAppContent() {
     loadDatabase();
   }, []);
 
+  // Language translation handler
   const handleLanguageChange = (targetLang: Language) => {
     setLang(targetLang);
     setTranslationError(null);
   };
 
+  // Helper to verify if list items match expected language script
   const isListInTargetLanguage = (list: Deceased[], targetLang: Language): boolean => {
     if (!list || list.length === 0) return false;
+    
     if (targetLang === 'he') {
       return !list.some(item => /[a-zA-Z\u0400-\u04FF]/.test(`${item.name} ${item.fatherName || ''} ${item.motherName || ''} ${item.notes || ''}`));
     }
@@ -458,6 +491,7 @@ function MainAppContent() {
     return true;
   };
 
+  // Synchronize and translate displayedList whenever masterList OR lang changes
   useEffect(() => {
     const syncAndTranslate = async () => {
       if (masterList.length === 0) {
@@ -466,8 +500,11 @@ function MainAppContent() {
       }
 
       setTranslationError(null);
+
+      // Generate fingerprint based on all masterList values to prevent stale cache on updates
       const currentFingerprint = JSON.stringify(masterList);
 
+      // 1. Check local cache first, ensuring valid target language script
       let cachedStr = null;
       let cachedFingerprint = null;
       try {
@@ -509,6 +546,7 @@ function MainAppContent() {
         }
       }
 
+      // 2. Perform translation via API (with client-side fallback)
       setTranslating(true);
       try {
         const response = await fetch('/api/translate', {
@@ -551,6 +589,7 @@ function MainAppContent() {
     syncAndTranslate();
   }, [masterList, lang]);
 
+  // Synchronize selectedDeceased with the currently active translation in displayedList
   useEffect(() => {
     if (selectedDeceased) {
       const updated = displayedList.find(d => Number(d.id) === Number(selectedDeceased.id));
@@ -560,6 +599,7 @@ function MainAppContent() {
     }
   }, [displayedList, selectedDeceased]);
 
+  // Save or update deceased record in Supabase & LocalStorage
   const handleSaveDeceased = async (deceasedInput: Deceased) => {
     const deceased = enrichDeceasedTranslations(deceasedInput);
     let updated: Deceased[] = [];
@@ -571,15 +611,23 @@ function MainAppContent() {
       updated = [...masterList, deceased];
     }
 
+    // Save directly to Supabase
     try {
       const { error } = await safeUpsert([deceased]);
-      if (error && isMissingTableError(error)) {
-        setSupabaseTableMissing(true);
+      if (error) {
+        console.error("Supabase Fetch Error:", error);
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Record saved to local database.");
+        } else {
+          console.error("Supabase save error:", error.message || error);
+        }
       }
     } catch (e) {
       console.error("Supabase Fetch Error:", e);
     }
 
+    // Sync to backup server API
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
         await fetch('/api/deceased', {
@@ -592,6 +640,7 @@ function MainAppContent() {
       }
     }
 
+    // Clear caches
     try {
       ['he', 'en', 'ru'].forEach(l => {
         localStorage.removeItem(`eternal_db_translated_${l}`);
@@ -613,13 +662,21 @@ function MainAppContent() {
     }
   };
 
+  // Delete a deceased record from Supabase & LocalStorage
   const handleDeleteDeceased = async (id: number) => {
     const updated = masterList.filter(d => d.id !== id);
 
+    // Delete from Supabase
     try {
       const { error } = await safeDelete('id', id);
-      if (error && isMissingTableError(error)) {
-        setSupabaseTableMissing(true);
+      if (error) {
+        console.error("Supabase Fetch Error:", error);
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Removed from local database.");
+        } else {
+          console.error("Supabase delete error:", error.message || error);
+        }
       }
     } catch (e) {
       console.error("Supabase Fetch Error:", e);
@@ -635,6 +692,7 @@ function MainAppContent() {
       }
     }
 
+    // Clear caches
     try {
       ['he', 'en', 'ru'].forEach(l => {
         localStorage.removeItem(`eternal_db_translated_${l}`);
@@ -655,15 +713,23 @@ function MainAppContent() {
     }
   };
 
+  // Bulk import deceased records with smart deduplication & Supabase sync
   const handleImportDeceased = async (newList: Deceased[]) => {
     const enrichedList = newList.map(item => enrichDeceasedTranslations(item));
     const merged = smartMergeDeceasedLists(masterList, enrichedList);
     const updated = deduplicateSingleList(merged);
 
+    // Bulk upsert to Supabase
     try {
       const { error } = await safeUpsert(enrichedList);
-      if (error && isMissingTableError(error)) {
-        setSupabaseTableMissing(true);
+      if (error) {
+        console.error("Supabase Fetch Error:", error);
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          console.warn("Supabase notice: 'deceased' table missing. Imported to local database.");
+        } else {
+          console.error("Supabase bulk import error:", error.message || error);
+        }
       }
     } catch (e) {
       console.error("Supabase Fetch Error:", e);
@@ -681,6 +747,7 @@ function MainAppContent() {
       }
     }
 
+    // Clear caches
     try {
       localStorage.removeItem('eternal_db_translated_he');
       localStorage.removeItem('eternal_db_translated_en');
@@ -697,6 +764,7 @@ function MainAppContent() {
     }
   };
 
+  // Clean and deduplicate current database
   const handleCleanDuplicates = async () => {
     const cleaned = deduplicateSingleList(masterList);
     setMasterList(cleaned);
@@ -751,8 +819,11 @@ function MainAppContent() {
   const handleResetDatabase = async () => {
     try {
       const { error } = await safeDeleteAll('deceased');
-      if (error && isMissingTableError(error)) {
-        setSupabaseTableMissing(true);
+      if (error) {
+        console.error("Supabase Fetch Error:", error);
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+        }
       }
     } catch (err) {
       console.error("Supabase Fetch Error:", err);
@@ -795,17 +866,29 @@ function MainAppContent() {
   const t = translations[lang];
   const isRtl = lang === 'he';
 
+  // Render standalone memorial page if a specific deceased link is accessed or payload is provided
   if (urlDeceasedId || urlDeceasedFromPayload) {
     let urlDeceased: Deceased | null = urlDeceasedFromPayload;
     if (!urlDeceased && urlDeceasedId) {
-      urlDeceased = masterList.find(d => Number(d.id) === Number(urlDeceasedId)) ||
-                    displayedList.find(d => Number(d.id) === Number(urlDeceasedId)) || null;
+      urlDeceased = masterList.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
+                    displayedList.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
+                    SEED_DATABASE.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) || null;
+      if (!urlDeceased) {
+        try {
+          const stored = localStorage.getItem('eternal_db');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) {
+              urlDeceased = parsed.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) || null;
+            }
+          }
+        } catch (e) {}
+      }
     }
 
     if (urlDeceased) {
-      // תיקון ייצור ה-URL: שימוש ב-encodeURIComponent מושלם לשמירת הקישור תקין לכל הפלטפורמות
-      const currentPayload = encodeURIComponent(encodeDeceasedToUrlPayload(urlDeceased));
-      const targetUrl = `/?data=${currentPayload}${lang !== 'he' ? `&lang=${lang}` : ''}`;
+      // Auto-sync address bar URL to clean ID-only link (?m=12345) without any verbose Base64 data payload
+      const targetUrl = `/?m=${urlDeceased.id}${lang !== 'he' ? `&lang=${lang}` : ''}`;
       if (typeof window !== 'undefined' && (window.location.pathname + window.location.search) !== targetUrl) {
         window.history.replaceState({}, document.title, targetUrl);
       }
@@ -816,8 +899,7 @@ function MainAppContent() {
           lang={lang} 
           onSetLang={(newLang) => {
             setLang(newLang);
-            const updatedPayload = encodeURIComponent(encodeDeceasedToUrlPayload(urlDeceased!));
-            const newUrl = `/?data=${updatedPayload}&lang=${newLang}`;
+            const newUrl = `/?m=${urlDeceased!.id}${newLang !== 'he' ? `&lang=${newLang}` : ''}`;
             window.history.replaceState({}, document.title, newUrl);
           }} 
           onExit={handleExitMemorialPage} 
@@ -825,6 +907,7 @@ function MainAppContent() {
       );
     }
 
+    // Show loading while fetching remote deceased OR while we haven't definitively confirmed remoteDeceasedNotFound
     if (fetchingRemoteDeceased || !remoteDeceasedNotFound) {
       return (
         <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-3">
@@ -836,6 +919,7 @@ function MainAppContent() {
       );
     }
 
+    // Fallback if deceased ID is invalid or deleted
     return (
       <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-4 p-4 text-center">
         <p className="text-base text-amber-400 font-bold">
@@ -859,15 +943,21 @@ function MainAppContent() {
       className="min-h-screen bg-[#0d0d0d] text-[#f0f4f8] selection:bg-[#c8a96e] selection:text-black pb-28 lg:pb-12 transition-all duration-300"
       dir={isRtl ? 'rtl' : 'ltr'}
     >
+      {/* Dynamic Background Grain overlay */}
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(20,30,48,0.5),rgba(13,13,13,1))] pointer-events-none z-0"></div>
 
+      {/* Main Content Area */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         
+        {/* Navigation & Language Header */}
         <header className="flex flex-col items-center justify-center border-b border-[#c8a96e]/20 pb-6 mb-8 gap-6 w-full text-center">
           
+          {/* Centered Logo / Title with Large Live Burning Candle */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 group">
             
+            {/* Beautiful Live Burning Memorial Candle (Animation) */}
             <div className="relative w-16 h-28 flex flex-col items-center justify-end shrink-0 select-none">
+              {/* Flame */}
               <motion.div 
                 className="absolute top-1 w-4 h-7 bg-amber-400 rounded-full blur-[0.5px] shadow-[0_0_15px_#f59e0b,0_0_25px_#f59e0b] origin-bottom animate-pulse"
                 animate={{
@@ -886,16 +976,21 @@ function MainAppContent() {
                 <div className="absolute bottom-0 left-1.5 w-1 h-1.5 bg-blue-500 rounded-full opacity-70"></div>
               </motion.div>
               
+              {/* Candle Body */}
               <div className="w-9 h-14 bg-gradient-to-t from-amber-700 via-amber-600 to-amber-500/80 rounded-md shadow-inner relative overflow-hidden border border-amber-500/20">
+                {/* Wax drips */}
                 <div className="absolute top-0 left-1 w-2 h-4 bg-amber-400/50 rounded-full"></div>
                 <div className="absolute top-0 left-3.5 w-1 h-6 bg-amber-400/30 rounded-full"></div>
                 <div className="absolute top-0 right-1.5 w-1.5 h-3 bg-amber-400/40 rounded-full"></div>
+                {/* Wick */}
                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0.5 h-1.5 bg-gray-900"></div>
               </div>
               
+              {/* Pedestal */}
               <div className="w-14 h-1.5 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 rounded-full shadow-lg"></div>
             </div>
 
+            {/* Title text */}
             <div className="flex flex-col items-center sm:items-start text-center sm:text-right">
               <h1 className="text-3xl sm:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#f0d19e] via-[#c8a96e] to-[#f0d19e] tracking-wide leading-tight">
                 {t.title}
@@ -906,7 +1001,9 @@ function MainAppContent() {
             </div>
           </div>
 
+          {/* Language Selector & Standalone Download Container */}
           <div className="flex flex-col sm:flex-row items-center gap-3 mx-auto">
+            {/* Language Selector Buttons */}
             <div className="flex items-center gap-1.5 bg-[#131a26]/90 border border-[#c8a96e]/20 p-1.5 rounded-xl shadow-inner font-sans">
               <Globe className="w-3.5 h-3.5 text-gray-500 mx-2" />
               <button
@@ -931,6 +1028,7 @@ function MainAppContent() {
           </div>
         </header>
 
+        {/* Dynamic translation progress / feedback panel */}
         {translating && (
           <div className="mb-6 bg-gradient-to-r from-amber-600/10 via-amber-700/10 to-amber-600/10 border border-[#c8a96e]/20 px-4 py-3.5 rounded-xl flex items-center justify-between animate-pulse">
             <div className="flex items-center gap-3">
@@ -956,6 +1054,7 @@ function MainAppContent() {
           </div>
         )}
 
+        {/* Duplicate Entries Alert Banner */}
         {getDuplicateGroups().length > 0 && (
           <div className="mb-6 bg-yellow-950/20 border border-yellow-500/30 px-5 py-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-yellow-200 font-sans shadow-lg relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-yellow-500"></div>
@@ -987,6 +1086,7 @@ function MainAppContent() {
           </div>
         )}
 
+        {/* Notification Permission Banner */}
         {!notifBannerDismissed && (
           <div className="mb-6 w-full bg-[#131a26]/90 border border-[#c8a96e]/30 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-200 font-sans shadow-lg">
             <div className="flex items-center gap-2.5">
@@ -1027,14 +1127,20 @@ function MainAppContent() {
           </div>
         )}
 
+        {/* Real-time Alert Board / Bulletin */}
         <BulletinBoard 
           deceasedList={displayedList} 
           lang={lang} 
           onSelectDeceased={setSelectedDeceased} 
         />
 
+        {/* Two-Column Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Main Content Area (2 cols on large screen) */}
           <div className="lg:col-span-2 space-y-6">
+            
+            {/* View/Tab Switcher */}
             <div className="grid grid-cols-2 sm:flex sm:flex-nowrap w-full bg-[#131a26]/80 p-1.5 rounded-xl border border-[#c8a96e]/15 font-sans gap-1.5 sm:gap-2 shadow-lg">
               <button
                 onClick={() => setActiveTab('calendar')}
@@ -1089,6 +1195,7 @@ function MainAppContent() {
               </button>
             </div>
 
+            {/* Render selected Tab Panel */}
             <div className="transition-all duration-300">
               {activeTab === 'calendar' && (
                 <DynamicCalendar 
@@ -1125,6 +1232,7 @@ function MainAppContent() {
             </div>
           </div>
 
+          {/* Side Control Column (Form / Actions) */}
           <div className="space-y-6">
             {!editingDeceased ? (
               <MemorialForm 
@@ -1156,6 +1264,7 @@ function MainAppContent() {
               </div>
             )}
 
+            {/* Quick stats panel if not editing */}
             {!editingDeceased && (
               <div className="bg-[#131a26]/40 border border-[#c8a96e]/10 p-5 rounded-xl text-center space-y-2 relative overflow-hidden shadow">
                 <div className="absolute top-0 right-0 w-16 h-16 bg-[#c8a96e]/5 blur-xl rounded-full pointer-events-none"></div>
@@ -1181,6 +1290,7 @@ function MainAppContent() {
           </div>
         </div>
 
+        {/* Deceased details modal overlay */}
         {selectedDeceased && (
           <MemorialDetailsModal
             deceased={selectedDeceased}
@@ -1194,6 +1304,7 @@ function MainAppContent() {
           />
         )}
 
+        {/* Dedicated Editing Modal Overlay */}
         {editingDeceased && (
           <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-[#131a26] border-2 border-[#c8a96e] rounded-2xl w-full max-w-xl shadow-2xl relative">
@@ -1210,6 +1321,7 @@ function MainAppContent() {
           </div>
         )}
 
+        {/* Custom Reset Confirmation Modal */}
         {showResetConfirm && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 font-sans">
             <div className="bg-[#131a26] border border-red-500/40 max-w-md w-full rounded-2xl p-6 shadow-2xl relative space-y-4">
@@ -1248,6 +1360,7 @@ function MainAppContent() {
           </div>
         )}
 
+        {/* Duplicates Manager Modal */}
         {showDuplicatesManager && (
           <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 font-sans">
             <div className="bg-[#131a26] border border-[#c8a96e]/30 max-w-2xl w-full rounded-2xl p-6 shadow-2xl relative space-y-4 max-h-[85vh] overflow-y-auto">
@@ -1307,6 +1420,7 @@ function MainAppContent() {
           </div>
         )}
 
+        {/* Supabase SQL Setup Modal */}
         {(showSqlSetupModal || supabaseTableMissing) && (
           <div className="fixed bottom-4 left-4 z-50 font-sans max-w-sm w-full">
             <div className="bg-[#131a26] border border-[#c8a96e]/40 p-3.5 rounded-2xl shadow-2xl space-y-2 text-right">
@@ -1342,6 +1456,7 @@ function MainAppContent() {
           </div>
         )}
 
+        {/* Mobile Floating Action Button (FAB) */}
         <button
           onClick={() => setIsMobileFormOpen(true)}
           className="lg:hidden fixed bottom-18 right-4 z-40 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold p-3.5 rounded-full shadow-[0_0_20px_rgba(200,169,110,0.5)] flex items-center gap-2 border border-[#c8a96e] cursor-pointer transition-transform active:scale-95"
@@ -1351,6 +1466,7 @@ function MainAppContent() {
           <span className="text-xs font-bold pl-1 hidden sm:inline">{lang === 'he' ? 'הוסף נפטר' : 'Add Name'}</span>
         </button>
 
+        {/* Mobile Form Bottom Sheet / Modal */}
         {isMobileFormOpen && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end justify-center sm:items-center p-0 sm:p-4">
             <div className="bg-[#131a26] border-t-2 sm:border-2 border-[#c8a96e] rounded-t-2xl sm:rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-4 relative shadow-2xl animate-in slide-in-from-bottom duration-300">
@@ -1377,6 +1493,7 @@ function MainAppContent() {
           </div>
         )}
 
+        {/* Fixed Mobile Bottom Navigation Bar */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0d0d0d]/95 border-t border-[#c8a96e]/30 backdrop-blur-lg flex items-center justify-around py-2 px-1 shadow-2xl">
           <button
             onClick={() => setActiveTab('calendar')}

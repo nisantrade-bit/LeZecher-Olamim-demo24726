@@ -571,9 +571,9 @@ export const CANONICAL_PHRASE_MAP: Record<string, { he: string; en: string; ru: 
   "бобо борухча": { he: "בובו ברוכצ'ה", en: "Bobo Boruchcha", ru: "Бобо Борухча" },
 
   // 22. Yeshua
-  "ישועה": { he: "ישועה", en: "Yeshua", ru: "Йешуא" },
-  "yeshua": { he: "ישועה", en: "Yeshua", ru: "Йешуא" },
-  "йешуа": { he: "ישועה", en: "Yeshua", ru: "Йешуא" },
+  "ישועה": { he: "ישועה", en: "Yeshua", ru: "Йешуа" },
+  "yeshua": { he: "ישועה", en: "Yeshua", ru: "Йешуа" },
+  "йешуа": { he: "ישועה", en: "Yeshua", ru: "Йешуа" },
 
   // 23. Bibi Esther
   "ביבי אסתר": { he: "ביבי אסתר", en: "Bibi Esther", ru: "Биби Эстер" },

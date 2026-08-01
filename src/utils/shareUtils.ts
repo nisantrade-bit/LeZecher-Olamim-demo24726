@@ -5,6 +5,7 @@
 import { Deceased, Language } from '../types';
 import { formatParentRelation } from './translations';
 import { getLocalizedName } from './transliteration';
+import { ShabbatYahrzeitInfo } from './torahPortionHelper';
 
 export const PUBLIC_PRODUCTION_URL = 'https://peaceful-tarsier-9f8a3d.netlify.app';
 
@@ -76,8 +77,10 @@ export function decodeDeceasedFromUrlPayload(encodedStr: string): Deceased | nul
 
   let cleanedStr = encodedStr.trim();
   try {
-    if (cleanedStr.includes('%')) {
-      cleanedStr = decodeURIComponent(cleanedStr);
+    while (cleanedStr.includes('%')) {
+      const decoded = decodeURIComponent(cleanedStr);
+      if (decoded === cleanedStr) break;
+      cleanedStr = decoded;
     }
   } catch (e) {}
 
@@ -160,15 +163,12 @@ export function decodeDeceasedFromUrlPayload(encodedStr: string): Deceased | nul
  * Automatically adapts dynamically to whatever domain the application is running on.
  */
 export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: string, allDeceasedList?: Deceased[]): string {
-  let deceasedObj: Deceased | null = null;
+  let idVal: number | string | null = null;
 
   if (typeof deceasedOrId === 'object' && deceasedOrId !== null) {
-    deceasedObj = deceasedOrId;
-  } else {
-    const id = Number(deceasedOrId);
-    if (allDeceasedList && Array.isArray(allDeceasedList)) {
-      deceasedObj = allDeceasedList.find(d => Number(d.id) === id) || null;
-    }
+    idVal = deceasedOrId.id || null;
+  } else if (typeof deceasedOrId === 'number' || typeof deceasedOrId === 'string') {
+    idVal = deceasedOrId;
   }
 
   let baseOrigin = '';
@@ -182,25 +182,16 @@ export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: stri
     baseOrigin = PUBLIC_PRODUCTION_URL;
   }
 
-  let dataParam = '';
   let idParam = '';
-  if (deceasedObj) {
-    if (deceasedObj.id) {
-      idParam = `m=${deceasedObj.id}`;
-    }
-    const payload = encodeDeceasedToUrlPayload(deceasedObj);
-    if (payload) {
-      dataParam = `data=${payload}`;
-    }
-  } else if (typeof deceasedOrId === 'number' || (typeof deceasedOrId === 'string' && !isNaN(Number(deceasedOrId)))) {
-    idParam = `m=${deceasedOrId}`;
+  if (idVal !== null && idVal !== undefined && String(idVal).trim() !== '') {
+    idParam = `m=${idVal}`;
   }
 
   const langQuery = (lang && lang !== 'he') ? `lang=${lang}` : '';
-  const params = [idParam, dataParam, langQuery].filter(Boolean);
+  const params = [idParam, langQuery].filter(Boolean);
   const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
 
-  // Always return base origin with root path to avoid 404s on subpaths on static hosts like Vercel
+  // Return clean short memorial URL with ID only — no Base64, JSON, or personal details
   return `${baseOrigin}/${queryStr}`;
 }
 
@@ -220,36 +211,37 @@ export function openWhatsAppShare(text: string) {
 }
 
 /**
- * Generates an elegant, emotional, and persuasive invitation text for sharing via WhatsApp.
+ * Generates a concise, respectful invitation text for sharing via WhatsApp.
+ * Designed to encourage clicking the short memorial link without exposing verbose or personal details.
  */
-export function generateWhatsAppShareText(deceased: Deceased, lang: Language): string {
+export function generateWhatsAppShareText(
+  deceased: Deceased,
+  lang: Language,
+  shabbatInfo?: ShabbatYahrzeitInfo | null
+): string {
   const shortUrl = getShortMemorialUrl(deceased, lang);
   const localizedName = getLocalizedName(deceased, lang);
-  const parentRelation = formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang as 'he' | 'en' | 'ru', deceased);
-  const parentSuffix = parentRelation ? ` (${parentRelation})` : '';
+  const isFemale = deceased.gender === 'female';
+  const isMale = deceased.gender === 'male';
 
   if (lang === 'he') {
-    return `🕯️ *הזמנה לאתר הזיכרון וההנצחה העולמי | לזכר עולמים* 🕯️\n\n` +
-      `מזמינים אתכם להצטרף אלינו, להדליק נר נשמה, לקרוא פרק תהילים ולהקדיש משניות לעילוי נשמתו/ה היקרה של:\n\n` +
-      `✨ *${localizedName}*${parentSuffix} ✨\n\n` +
-      `זוכרים, מנציחים ושומרים את הזיכרון חי בלב כולנו.\n` +
-      `צפו בכרטיס הזיכרון והשתתפו בהנצחה:\n` +
+    const titlePrefix = isFemale ? 'לזכרה של' : isMale ? 'לזכרו של' : 'לזכרו/ה של';
+    const blessingSuffix = isFemale ? 'יהי זכרה ברוך 🙏' : isMale ? 'יהי זכרו ברוך 🙏' : 'יהי זכרו/ה ברוך 🙏';
+
+    return `🕯️ ${titlePrefix} ${localizedName}\n\n` +
+      `מוזמנים להיכנס לכרטיס הזיכרון, להדליק נר ולהקדיש תפילה.\n\n` +
       `🔗 ${shortUrl}\n\n` +
-      `_יהי זכרו/ה ברוך ומנוחתו/ה בגן עדן_ 🙏`;
+      `${blessingSuffix}`;
   } else if (lang === 'ru') {
-    return `🕯️ *Приглашение на страницу памяти и поминовения | Лезэхер Оламим* 🕯️\n\n` +
-      `Приглашаем вас присоединиться к нам, чтобы почтить светлую память нашего дорогого человека:\n\n` +
-      `✨ *${localizedName}*${parentSuffix} ✨\n\n` +
-      `Зажгите виртуальную свечу, оставьте теплые слова и прочитайте псалмы в его/ее память:\n` +
+    return `🕯️ Светлая память – ${localizedName}\n\n` +
+      `Приглашаем вас посетить страницу памяти, зажечь свечу и прочитать молитву.\n\n` +
       `🔗 ${shortUrl}\n\n` +
-      `_Светлая и вечная память_ 🙏`;
+      `Светлая и вечная память 🙏`;
   } else {
-    return `🕯️ *Memorial & Remembrance Invitation | L'Zecher Olamim* 🕯️\n\n` +
-      `You are warmly invited to join us in honoring and keeping alive the sacred memory of our beloved:\n\n` +
-      `✨ *${localizedName}*${parentSuffix} ✨\n\n` +
-      `Light a virtual candle, share loving memories, and participate in holy study for the elevation of their soul:\n` +
+    return `🕯️ In memory of ${localizedName}\n\n` +
+      `You are invited to visit the memorial card, light a candle, and dedicate a prayer.\n\n` +
       `🔗 ${shortUrl}\n\n` +
-      `_May their memory be an eternal blessing_ 🙏`;
+      `May their memory be a blessing 🙏`;
   }
 }
 

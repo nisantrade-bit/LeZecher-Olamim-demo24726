@@ -10,9 +10,10 @@ import { translations, formatParentRelation } from '../utils/translations';
 import { translateText } from '../utils/transliteration';
 import { getHebrewDate, isYahrzeitMatch, HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, normalizeMonthName, getYahrzeitEveDate } from '../utils/hebrewDate';
 import { Bell, Heart, Share2, BookOpen, Calendar, MessageCircle, Info, MapPin, Flame, Sparkles, Clock } from 'lucide-react';
-import { getTorahPortionDetails } from '../utils/torahPortionHelper';
+import { getTorahPortionDetails, getLocalizedEventName, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
 import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
 import { DedicatedStudyModal } from './DedicatedStudyModal';
+import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
 
 const CITIES = [
   { id: 293397, nameHe: "תל אביב", nameEn: "Tel Aviv", nameRu: "Тель-Авив" },
@@ -25,27 +26,53 @@ const CITIES = [
   { id: 703448, nameHe: "קייב", nameEn: "Киев", nameRu: "Киев" }
 ];
 
-const LiveFlame = () => (
-  <div className="relative w-6 h-7 flex items-center justify-center shrink-0 select-none">
-    <motion.div 
-      className="w-4 h-6 bg-gradient-to-t from-amber-600 via-amber-400 to-yellow-100 rounded-full blur-[0.5px] shadow-[0_0_14px_#f59e0b,0_0_24px_#ff9900,0_0_32px_#ffaa00] origin-bottom"
-      animate={{
-        scaleY: [1, 1.25, 0.88, 1.18, 1],
-        scaleX: [1, 0.82, 1.18, 0.88, 1],
-        rotate: [0, -3.5, 3.5, -1.5, 0],
-        x: [0, -0.6, 0.6, -0.6, 0]
-      }}
-      transition={{
-        duration: 1.2,
-        repeat: Infinity,
-        ease: "easeInOut"
-      }}
-    >
-      <div className="absolute bottom-0.5 left-0.5 w-1.5 h-2.5 bg-white rounded-full opacity-95 shadow-[0_0_6px_#fff]"></div>
-      <div className="absolute bottom-0 left-1 w-1 h-1.5 bg-blue-500 rounded-full opacity-80"></div>
-    </motion.div>
-  </div>
-);
+const RealisticFlame = ({ size = "normal", showWax = true, isLit = true }: { size?: "normal" | "large"; showWax?: boolean; isLit?: boolean }) => {
+  const isLarge = size === "large";
+  const actuallyLit = Boolean(isLit);
+  return (
+    <div className={`relative ${isLarge ? 'w-8 h-9' : 'w-6 h-7'} flex flex-col items-center justify-end shrink-0 select-none pointer-events-none`}>
+      {/* Radiant ambient glow - ONLY when lit */}
+      {actuallyLit && (
+        <div className={`absolute ${isLarge ? 'top-0 w-9 h-9 blur-md bg-amber-400/80' : 'top-0 w-5 h-5 blur-sm bg-amber-500/50'} rounded-full animate-pulse`}></div>
+      )}
+      
+      {/* Animated flame body - ONLY when lit */}
+      {actuallyLit && (
+        <motion.div 
+          className={`relative ${isLarge ? 'w-4 h-7' : 'w-2.5 h-4'} bg-gradient-to-t from-amber-600 via-amber-400 to-yellow-100 rounded-full blur-[0.3px] shadow-[0_0_16px_#f59e0b,0_0_28px_#ff9900,0_0_38px_#ffaa00] origin-bottom z-10`}
+          animate={{
+            scaleY: [1, 1.25, 0.88, 1.18, 1],
+            scaleX: [1, 0.82, 1.18, 0.88, 1],
+            rotate: [0, -3.5, 3.5, -1.5, 0],
+            x: [0, -0.6, 0.6, -0.6, 0]
+          }}
+          transition={{
+            duration: 1.2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        >
+          <div className={`absolute bottom-0.5 left-0.5 ${isLarge ? 'w-1.5 h-3.5' : 'w-0.5 h-1.5'} bg-white rounded-full opacity-95 shadow-[0_0_8px_#fff]`}></div>
+          <div className={`absolute bottom-0 left-0.5 ${isLarge ? 'w-1 h-2' : 'w-0.5 h-1'} bg-blue-500 rounded-full opacity-80`}></div>
+        </motion.div>
+      )}
+
+      {/* Clear Wax Candle Body with Wick - ALWAYS visible below wick, but unlit wick only shown when !actuallyLit */}
+      {!actuallyLit ? (
+        <div className="relative flex flex-col items-center shrink-0 z-0">
+          {/* Unlit Wick - no flame */}
+          <div className="w-0.5 h-2.5 bg-gray-400 rounded-t"></div>
+          {/* Candle wax glass/pillar */}
+          <div className="w-4 h-4 bg-gradient-to-t from-amber-900 via-amber-800 to-amber-700/90 rounded-sm shadow-inner border border-amber-600/50 relative overflow-hidden">
+            <div className="absolute top-0 left-0.5 w-1 h-1.5 bg-amber-400/30 rounded-full"></div>
+          </div>
+        </div>
+      ) : (
+        <div className="w-4 h-1.5 bg-gradient-to-t from-amber-900 to-amber-700/90 rounded-sm shadow-inner border border-amber-600/50 shrink-0"></div>
+      )}
+    </div>
+  );
+};
 
 interface BulletinBoardProps {
   deceasedList: Deceased[];
@@ -321,16 +348,16 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
       }
     } else if (lang === 'ru') {
       if (isSaturday) {
-        const badge = isNextShabbat ? "📌 Йארцайт в следующий Шаббат" : "📌 Йארцайт в ближайший Шаббат";
+        const badge = isNextShabbat ? "📌 Йарцайт в следующий Шаббат" : "📌 Йарцайт в ближайший Шаббат";
         return {
           badge,
           text: `Годовщина выпадает на Шаббат${parashaName ? ` (Глава ${parashaName})` : ""}. Зажгите поминальную свечу заранее в пятницу до захода солнца.`
         };
       } else {
-        const badge = isNextShabbat ? "🕯️ Йארцайт в пятницу (следующий Шаббат)" : "🕯️ Йארцайт в пятницу (ближайший Шаббат)";
+        const badge = isNextShabbat ? "🕯️ Йарцайт в пятницу (следующий Шаббат)" : "🕯️ Йарцайт в пятницу (ближайший Шаббат)";
         return {
           badge,
-          text: `Йארцайт начинается в пятницу вечером на закате. Зажгите свечу памяти заранее до наступления Шаббата.`
+          text: `Йарцайт начинается в пятницу вечером на закате. Зажгите свечу памяти заранее до наступления Шаббата.`
         };
       }
     } else {
@@ -358,7 +385,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
     if (lang === 'he') {
       return `אזכרה של ${translatedName} ${parentRel} בתאריך ${day} ב${month}`;
     } else if (lang === 'ru') {
-      return `Йארцайт: ${translatedName} ${parentRel}, дата ${day} ${month}`;
+      return `Йарцайт: ${translatedName} ${parentRel}, дата ${day} ${month}`;
     } else {
       return `Yahrzeit of ${translatedName} ${parentRel} on ${day} of ${month}`;
     }
@@ -367,7 +394,8 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
   // Triggers the WhatsApp share invitation
   const shareOnWhatsApp = (deceased: Deceased, gregDate: Date, hebrewDateStr: string, parashaName: string | null, e: React.MouseEvent) => {
     e.stopPropagation(); // prevent opening details modal
-    const text = generateWhatsAppShareText(deceased, lang);
+    const shabbatInfo = getShabbatYahrzeitInfo(gregDate, hebcalEvents, lang);
+    const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
     openWhatsAppShare(text);
   };
 
@@ -470,7 +498,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                 <span className="text-gray-400 block text-[10px] uppercase font-bold">{bt.parasha}</span>
                 <span className="font-extrabold text-white">
                   {currentParashaItem 
-                    ? (lang === 'he' ? currentParashaItem.hebrew : currentParashaItem.title) 
+                    ? (lang === 'he' ? currentParashaItem.hebrew : getLocalizedEventName(currentParashaItem.title, currentParashaItem.hebrew, lang)) 
                     : (lang === 'he' ? "טוען..." : "Loading...")}
                 </span>
               </div>
@@ -527,7 +555,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                   <div className="flex flex-wrap items-center gap-2 mt-1">
                     {weeklyEventsWithTimes.map((ev, i) => (
                       <div key={`hdr-ev-${i}`} className="flex flex-wrap items-center gap-1.5 bg-gradient-to-r from-amber-950/80 via-black to-amber-950/80 px-2.5 py-1 rounded-lg border border-amber-400/50 shadow-md">
-                        <span className="text-amber-200 font-serif font-bold text-xs">{lang === 'he' ? ev.hebrew : ev.title}:</span>
+                        <span className="text-amber-200 font-serif font-bold text-xs">{lang === 'he' ? ev.hebrew : getLocalizedEventName(ev.title, ev.hebrew, lang)}:</span>
                         <span className="text-amber-300 font-mono text-xs font-black bg-amber-500/20 px-2 py-0.5 rounded border border-amber-400/30">
                           {lang === 'he' ? 'כניסה בערב' : lang === 'ru' ? 'Вход вечером' : 'Eve Entry'}: 🕯️ {ev.entryTime || '--:--'}
                         </span>
@@ -573,7 +601,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                   
                   const precedingShabbat = getPrecedingShabbatParasha(event.gregorianDate);
                   const parashaLabel = precedingShabbat 
-                    ? (lang === 'he' ? precedingShabbat.hebrew : precedingShabbat.title)
+                    ? (lang === 'he' ? precedingShabbat.hebrew : getLocalizedEventName(precedingShabbat.title, precedingShabbat.hebrew, lang))
                     : null;
 
                   const isCandleLit = !!litCandles[event.deceased.id];
@@ -582,17 +610,23 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                     <div 
                       key={`today-${idx}`}
                       onClick={() => onSelectDeceased(event.deceased)}
-                      className={`bg-gradient-to-r from-amber-950/90 via-[#26180a] to-[#131a26] hover:to-[#1a2333] border-2 border-amber-400 rounded-xl p-5 cursor-pointer transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-5 group shadow-[0_0_25px_rgba(245,158,11,0.45)] hover:shadow-[0_0_35px_rgba(245,158,11,0.7)] transform hover:-translate-y-0.5 ${lang === 'he' ? 'text-right' : 'text-left'}`}
+                      className={`bg-gradient-to-r from-amber-950/90 via-[#26180a] to-[#131a26] hover:to-[#1a2333] border-2 border-amber-400 rounded-xl p-5 cursor-pointer transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-5 group animate-yahrzeit-fire transform hover:-translate-y-0.5 ${lang === 'he' ? 'text-right' : 'text-left'}`}
                       dir={lang === 'he' ? 'rtl' : 'ltr'}
                     >
                       <div className="flex items-start gap-4 flex-1">
                         {event.deceased.image ? (
-                          <img 
-                            src={event.deceased.image} 
-                            alt={event.deceased.name} 
-                            referrerPolicy="no-referrer"
-                            className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
-                          />
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <img 
+                              src={event.deceased.image} 
+                              alt={event.deceased.name} 
+                              referrerPolicy="no-referrer"
+                              className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
+                              style={{ objectPosition: event.deceased.imagePosition || 'center top' }}
+                            />
+                            <div className="flex flex-col items-center justify-center bg-black/40 px-2 py-1 rounded-lg border border-amber-500/30">
+                              <RealisticFlame size="normal" isLit={true} />
+                            </div>
+                          </div>
                         ) : (
                           <div className="w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-3xl shadow-[0_0_15px_rgba(251,191,36,0.5)] group-hover:scale-105 transition-transform duration-300 shrink-0">
                             🕯️
@@ -628,9 +662,16 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                           {isCandleLit && (
                             <div className="flex items-center gap-2 text-xs text-amber-300 font-extrabold bg-black/60 px-3 py-1.5 rounded-lg border border-amber-400/50 w-fit shadow-md">
                               <Flame className="w-4 h-4 text-amber-400 fill-amber-400 animate-bounce" />
-                              <span>{lang === 'he' ? 'נר נשמה דולק לעילוי נשמתו/ה ת.נ.צ.ב.ה' : 'Memorial Candle Lit'}</span>
+                              <span>{lang === 'he' ? 'נר נשמה דולק לעילוי נשמתו/ה ת.נ.צ.ב.ה' : lang === 'ru' ? 'Свеча памяти горит (Да святится память)' : 'Memorial Candle Lit'}</span>
                             </div>
                           )}
+
+                          <ShabbatYahrzeitBanner
+                            eventDate={event.gregorianDate}
+                            hebcalEvents={hebcalEvents}
+                            lang={lang}
+                            compact={true}
+                          />
                         </div>
                       </div>
 
@@ -660,35 +701,29 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                           onClick={(e) => toggleCandle(event.deceased.id, e)}
                           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer shadow-lg border ${
                             isCandleLit 
-                              ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.6)]' 
+                              ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black border-yellow-200 shadow-[0_0_22px_rgba(245,158,11,0.85)]' 
                               : 'bg-gradient-to-r from-amber-950/80 to-[#1a1105] text-amber-300 border-amber-500/50 hover:border-amber-300'
                           }`}
                         >
-                          {isCandleLit ? (
-                            <LiveFlame />
-                          ) : (
-                            <Flame className="w-4 h-4 text-amber-400" />
-                          )}
+                          <RealisticFlame size={isCandleLit ? "large" : "normal"} isLit={isCandleLit} showWax={true} />
                           <span>
                             {isCandleLit 
-                              ? (lang === 'he' ? 'נר דולק' : lang === 'ru' ? 'Свеча горит' : 'Candle Lit') 
+                              ? (lang === 'he' ? 'נר נשמה דולק' : lang === 'ru' ? 'Свеча памяти горит' : 'Candle Lit') 
                               : (lang === 'he' ? 'הדלקת נר נשמה' : lang === 'ru' ? 'Зажечь свечу' : 'Light Candle')}
                           </span>
                         </motion.button>
 
-                        {/* WhatsApp Official Green Button with WhatsApp Badge */}
+                        {/* Aesthetic WhatsApp Share Button */}
                         <motion.button
                           type="button"
                           whileHover={{ scale: 1.06, y: -1 }}
                           whileTap={{ scale: 0.94 }}
-                          onClick={(e) => shareOnWhatsApp(event.deceased, event.gregorianDate, event.hebrewDateStr, parashaLabel, e)}
-                          className="flex items-center gap-2 bg-gradient-to-r from-[#25D366] via-[#20bd5a] to-[#128C7E] hover:from-[#20bd5a] hover:to-[#0e7065] text-white px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer shadow-[0_0_15px_rgba(37,211,102,0.4)] hover:shadow-[0_0_25px_rgba(37,211,102,0.7)] border border-emerald-300/40"
-                          title={bt.shareWhatsApp}
+                          onClick={(e) => shareOnWhatsApp(event.deceased, event.gregorianDate, dayStr, parashaLabel, e)}
+                          className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600/30 via-emerald-500/20 to-emerald-600/30 hover:from-emerald-600 hover:to-emerald-500 text-emerald-300 hover:text-white font-black px-3 py-2 rounded-xl text-xs transition-all duration-200 cursor-pointer shadow-md border border-emerald-500/50 hover:border-emerald-300"
+                          title={lang === 'he' ? `שליחת כרטיס זיכרון בוואטסאפ` : `Share via WhatsApp`}
                         >
-                          <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                            <MessageCircle className="w-3.5 h-3.5 text-white fill-white" />
-                          </div>
-                          <span>{bt.shareWhatsApp}</span>
+                          <MessageCircle className="w-4 h-4 text-emerald-400" />
+                          <span>{lang === 'he' ? 'שיתוף בוואטסאפ' : lang === 'ru' ? 'Поделиться в WhatsApp' : 'Share WhatsApp'}</span>
                         </motion.button>
 
                         <span className="text-xs font-mono text-amber-300 bg-amber-500/20 px-3 py-2 rounded-xl border border-amber-400/40 font-black">
@@ -720,31 +755,41 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                   
                   const precedingShabbat = getPrecedingShabbatParasha(event.gregorianDate);
                   const parashaLabel = precedingShabbat 
-                    ? (lang === 'he' ? precedingShabbat.hebrew : precedingShabbat.title)
+                    ? (lang === 'he' ? precedingShabbat.hebrew : getLocalizedEventName(precedingShabbat.title, precedingShabbat.hebrew, lang))
                     : null;
 
                   const isCandleLit = !!litCandles[event.deceased.id];
                   const isEveToday = event.daysCount === 1; // Tomorrow's Yahrzeit starts TODAY at sunset!
 
+                  const isFireGlow = event.daysCount >= 0 && event.daysCount <= 3;
+                  const isCyanGlow = event.daysCount >= 4 && event.daysCount <= 9;
+                  const cardGlowClass = isFireGlow
+                    ? 'animate-yahrzeit-fire border-amber-500 bg-gradient-to-r from-[#2a1d0f]/90 via-[#1f150a]/90 to-[#131a26] shadow-[0_0_22px_rgba(245,158,11,0.5)]'
+                    : isCyanGlow
+                    ? 'animate-yahrzeit-upcoming border-cyan-500/80 bg-gradient-to-r from-[#170e2b]/90 via-[#0e1726]/90 to-[#131a26] shadow-[0_0_20px_rgba(6,182,212,0.4)]'
+                    : 'border-[#c8a96e]/20 hover:border-[#c8a96e]/50 bg-[#131a26]/80';
+
                   return (
                     <div 
                       key={`upcoming-${idx}`}
                       onClick={() => onSelectDeceased(event.deceased)}
-                      className={`bg-[#131a26]/80 hover:bg-[#131a26] border rounded-xl p-4 cursor-pointer transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-4 group ${
-                        isEveToday 
-                          ? 'border-amber-500/80 bg-amber-950/40 shadow-[0_0_18px_rgba(245,158,11,0.3)]' 
-                          : 'border-[#c8a96e]/20 hover:border-[#c8a96e]/50'
-                      } ${lang === 'he' ? 'text-right' : 'text-left'}`}
+                      className={`hover:bg-[#131a26] border rounded-xl p-4 cursor-pointer transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-4 group ${cardGlowClass} ${lang === 'he' ? 'text-right' : 'text-left'}`}
                       dir={lang === 'he' ? 'rtl' : 'ltr'}
                     >
                       <div className="flex items-start gap-4">
                         {event.deceased.image ? (
-                          <img 
-                            src={event.deceased.image} 
-                            alt={event.deceased.name} 
-                            referrerPolicy="no-referrer"
-                            className="w-11 h-11 rounded-full object-cover border border-[#c8a96e]/40 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-md"
-                          />
+                          <div className="flex items-center gap-2 shrink-0">
+                            <img 
+                              src={event.deceased.image} 
+                              alt={event.deceased.name} 
+                              referrerPolicy="no-referrer"
+                              className="w-11 h-11 rounded-full object-cover border border-[#c8a96e]/40 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-md"
+                              style={{ objectPosition: event.deceased.imagePosition || 'center top' }}
+                            />
+                            <div className="flex flex-col items-center justify-center bg-black/40 px-1.5 py-0.5 rounded-md border border-amber-500/20">
+                              <RealisticFlame size="normal" isLit={true} />
+                            </div>
+                          </div>
                         ) : (
                           <div className="w-11 h-11 rounded-full bg-[#f0f4f8]/5 flex items-center justify-center text-xl shadow-inner group-hover:bg-[#c8a96e]/10 transition-all duration-300 shrink-0">
                             🕯️
@@ -754,7 +799,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                           {isEveToday && (
                             <div className="inline-flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/50 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-amber-300">
                               <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-                              <span>{lang === 'he' ? '🕯️ נכנס מהיום בערב (ערב יארצייט)' : '🕯️ Starts this evening at sunset'}</span>
+                              <span>{lang === 'he' ? '🕯️ נכנס מהיום בערב (ערב יארצייט)' : lang === 'ru' ? '🕯️ Начинается сегодня вечером (на закате)' : '🕯️ Starts this evening at sunset'}</span>
                             </div>
                           )}
 
@@ -772,9 +817,16 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                           {isCandleLit && (
                             <div className="flex items-center gap-1.5 text-xs text-amber-300 font-bold bg-black/40 px-2.5 py-0.5 rounded border border-amber-500/30 w-fit">
                               <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-bounce" />
-                              <span>{lang === 'he' ? 'נר נשמה דולק' : 'Memorial Candle Lit'}</span>
+                              <span>{lang === 'he' ? 'נר נשמה דולק' : lang === 'ru' ? 'Свеча памяти горит' : 'Memorial Candle Lit'}</span>
                             </div>
                           )}
+
+                          <ShabbatYahrzeitBanner
+                            eventDate={event.gregorianDate}
+                            hebcalEvents={hebcalEvents}
+                            lang={lang}
+                            compact={true}
+                          />
                         </div>
                       </div>
 
@@ -804,25 +856,25 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                           onClick={(e) => toggleCandle(event.deceased.id, e)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
                             isCandleLit 
-                              ? 'bg-amber-500 text-black border border-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.5)]' 
+                              ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black border border-yellow-200 shadow-[0_0_18px_rgba(245,158,11,0.8)]' 
                               : 'bg-amber-950/40 hover:bg-amber-900/70 text-amber-300 border border-amber-500/40'
                           }`}
                         >
-                          {isCandleLit ? <LiveFlame /> : <Flame className="w-3.5 h-3.5 text-amber-400" />}
-                          <span>{isCandleLit ? (lang === 'he' ? '🕯️ נר דולק' : lang === 'ru' ? '🕯️ Свеча горит' : 'Candle Lit') : (lang === 'he' ? '🕯️ הדלקת נר נשמה' : lang === 'ru' ? '🕯️ Зажечь свечу' : 'Light Candle')}</span>
+                          <RealisticFlame size={isCandleLit ? "large" : "normal"} isLit={isCandleLit} showWax={true} />
+                          <span>{isCandleLit ? (lang === 'he' ? 'נר נשמה דולק' : lang === 'ru' ? 'Свеча памяти горит' : 'Candle Lit') : (lang === 'he' ? 'הדלקת נר נשמה' : lang === 'ru' ? 'Зажечь свечу' : 'Light Candle')}</span>
                         </motion.button>
 
-                        {/* WhatsApp Official Green Button */}
+                        {/* Aesthetic WhatsApp Share Button */}
                         <motion.button
                           type="button"
                           whileHover={{ scale: 1.06, y: -1 }}
                           whileTap={{ scale: 0.94 }}
-                          onClick={(e) => shareOnWhatsApp(event.deceased, event.gregorianDate, event.hebrewDateStr, parashaLabel, e)}
-                          className="flex items-center gap-1.5 bg-gradient-to-r from-[#25D366] to-[#128C7E] hover:from-[#20bd5a] hover:to-[#0e7065] text-white px-3 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer shadow-[0_0_12px_rgba(37,211,102,0.3)] hover:shadow-[0_0_20px_rgba(37,211,102,0.6)] border border-emerald-300/40"
-                          title={bt.shareWhatsApp}
+                          onClick={(e) => shareOnWhatsApp(event.deceased, event.gregorianDate, `${event.deceased.day} ${event.deceased.month}`, null, e)}
+                          className="flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500 border border-emerald-500/40 hover:border-emerald-300 text-emerald-300 hover:text-white font-bold px-3 py-1.5 rounded-xl text-xs transition-all duration-200 cursor-pointer shadow-md"
+                          title={lang === 'he' ? `שליחת כרטיס זיכרון בוואטסאפ` : `Share via WhatsApp`}
                         >
-                          <MessageCircle className="w-3.5 h-3.5 fill-white" />
-                          <span>{bt.shareWhatsApp}</span>
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{lang === 'he' ? 'שיתוף בוואטסאפ' : lang === 'ru' ? 'WhatsApp' : 'WhatsApp'}</span>
                         </motion.button>
 
                         <span className="text-xs font-mono text-[#c8a96e]/90 bg-[#c8a96e]/10 px-2.5 py-1.5 rounded-xl border border-[#c8a96e]/20 whitespace-nowrap font-bold">
