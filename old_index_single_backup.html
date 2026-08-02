@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>לזכר עולמים - ספר זיכרון דיגיטלי ומעקב יארצייט</title>
+  
+  <!-- CSS Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- React and Babel CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Tailwind Custom Configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            serif: ['Cinzel', 'Georgia', 'serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Premium custom styling and flame animations */
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.6)); }
+      50% { transform: scale(1.1) translateY(-1px); filter: drop-shadow(0 0 22px rgba(251, 191, 36, 0.9)); }
+    }
+    @keyframes flicker {
+      0%, 100% { transform: rotate(0deg) scaleX(1); }
+      25% { transform: rotate(-2deg) scaleX(0.93); }
+      50% { transform: rotate(1deg) scaleX(1.05); }
+      75% { transform: rotate(-1deg) scaleX(0.97); }
+    }
+    .flame-animate {
+      animation: pulse-glow 1.4s ease-in-out infinite, flicker 1s ease-in-out infinite;
+    }
+    
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d0d0d;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c8a96e;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #e5cf9c;
+    }
+    
+    .glow-gold {
+      box-shadow: 0 0 20px rgba(200, 169, 110, 0.15);
+    }
+  </style>
+</head>
+<body class="bg-[#0d0d0d] text-[#f0f4f8] min-h-screen selection:bg-[#c8a96e] selection:text-black font-sans relative overflow-x-hidden">
+
+  <!-- Dynamic Background Grain overlay -->
+  <div class="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(20,30,48,0.5),rgba(13,13,13,1))] pointer-events-none z-0"></div>
+
+  <div id="root"></div>
+
+  <!-- React JSX Application Script -->
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // --- TRANSLATIONS & DICTIONARY ---
+    const translations = {
+      he: {
+        title: "לזכר עולמים",
+        subtitle: "ספר זיכרון דיגיטלי ומעקב יארצייט משפחתי",
+        langToggle: "שפה",
+        bulletinBoard: "לוח מודעות",
+        memorialBook: "ספר הזיכרון החודשי",
+        calendar: "לוח שנה דינמי",
+        quick30Grid: "לוח 30 ימי חודש עברי",
+        addMemorial: "הוספת יקיר",
+        importBulk: "ייבוא וגיבוי",
+        fullName: "שם מלא של הנפטר",
+        gender: "מגדר (לפי נוסח תפילה)",
+        fatherName: "שם האב (לנוסח מלא)",
+        motherName: "שם האם",
+        hebrewDay: "יום פטירה עברי (1 עד 30)",
+        hebrewMonth: "חודש פטירה עברי",
+        contactPhone: "טלפון של קרוב משפחה",
+        lifeStory: "מורשת וסיפור חיים",
+        uploadImage: "קישור לתמונה (אופציונלי)",
+        submitAdd: "הוסף לספר הזיכרון",
+        submitSave: "שמור שינויים",
+        cancel: "ביטול",
+        delete: "מחק",
+        edit: "עריכה",
+        confirmDelete: "האם למחוק?",
+        confirmDeleteText: "פעולה זו היא בלתי הפיכה ותמחוק את הנפטר לחלוטין.",
+        search: "חיפוש יקיר לפי שם...",
+        male: "זכר (בן)",
+        female: "נקבה (בת)",
+        todayMemorials: "אזכרות שחלות היום (יארצייט)",
+        upcomingMemorials: "אזכרות קרובות החודש",
+        noMemorialsToday: "אין אזכרות משפחתיות היום. שנשמע רק בשורות טובות.",
+        tomorrow: "מחר",
+        inNDays: "בעוד {n} ימים",
+        prevMonth: "החודש הקודם",
+        nextMonth: "החודש הבא",
+        importTitle: "ייבוא והעתקת נתונים",
+        csvUploadLabel: "העלה קובץ גיבוי",
+        bulkPasteLabel: "או הדבק נתוני גיבוי בפורמט JSON:",
+        bulkPastePlaceholder: '[{"name": "ישראל ישראלי", ...}]',
+        importButton: "ייבא נתונים עכשיו",
+        importSuccess: "הנתונים יובאו בהצלחה!",
+        importError: "שגיאה בייבוא הנתונים. ודא שהפורמט תקין.",
+        downloadTemplate: "הורד קובץ גיבוי מלא",
+        namePlaceholder: "לדוגמה: יצחק אברהמי",
+        fatherPlaceholder: "שם האב בלבד (לדוגמה: משה)",
+        motherPlaceholder: "שם האם בלבד (לדוגמה: רחל)",
+        phonePlaceholder: "לדוגמה: 050-1234567",
+        notesPlaceholder: "ספר את סיפור חייו, מורשתו או פרטי חלקת הקבר שלו...",
+        yahrzeitDate: "תאריך האזכרה הבא (לועזי)",
+        relationTextMale: "נפטר לעילוי נשמת",
+        relationTextFemale: "נפטרה לעילוי נשמת",
+        backToDashboard: "← חזרה ללוח הראשי",
+        hebrewDateOfPassing: "תאריך פטירה עברי",
+        noRecords: "אין כרגע יקירים רשומים. לחץ על 'הוספת יקיר' כדי להתחיל."
+      },
+      en: {
+        title: "L'Zecher Olamim",
+        subtitle: "Digital Memorial Book & Family Yahrzeit Tracker",
+        langToggle: "Language",
+        bulletinBoard: "Bulletin Board",
+        memorialBook: "Monthly Memorial Book",
+        calendar: "Dynamic Calendar",
+        quick30Grid: "Hebrew Month Day 30-Grid",
+        addMemorial: "Add Beloved",
+        importBulk: "Backup & Import",
+        fullName: "Full Name of Deceased",
+        gender: "Gender",
+        fatherName: "Father's Name",
+        motherName: "Mother's Name",
+        hebrewDay: "Hebrew Day of Passing (1-30)",
+        hebrewMonth: "Hebrew Month of Passing",
+        contactPhone: "Relative's Contact Phone",
+        lifeStory: "Legacy & Life Story",
+        uploadImage: "Image Link (Optional)",
+        submitAdd: "Add to Memorial Book",
+        submitSave: "Save Changes",
+        cancel: "Cancel",
+        delete: "Delete",
+        edit: "Edit",
+        confirmDelete: "Are you sure?",
+        confirmDeleteText: "This action is permanent and will remove this record forever.",
+        search: "Search by name...",
+        male: "Male (Son of)",
+        female: "Female (Daughter of)",
+        todayMemorials: "Memorials Observed Today (Yahrzeit)",
+        upcomingMemorials: "Upcoming Memorials This Month",
+        noMemorialsToday: "No family memorials today. May we hear only good news.",
+        tomorrow: "Tomorrow",
+        inNDays: "In {n} days",
+        prevMonth: "Previous Month",
+        nextMonth: "Next Month",
+        importTitle: "Import & Backup Data",
+        csvUploadLabel: "Upload backup file",
+        bulkPasteLabel: "Or paste JSON backup data directly:",
+        bulkPastePlaceholder: '[{"name": "John Doe", ...}]',
+        importButton: "Import Now",
+        importSuccess: "Data imported successfully!",
+        importError: "Import failed. Please check the JSON syntax.",
+        downloadTemplate: "Download Full Database Backup",
+        namePlaceholder: "E.g. Abraham Lincoln",
+        fatherPlaceholder: "Father's name (e.g. Thomas)",
+        motherPlaceholder: "Mother's name (e.g. Nancy)",
+        phonePlaceholder: "E.g. +1-555-1234567",
+        notesPlaceholder: "Share their life story, legacy, or resting cemetery information...",
+        yahrzeitDate: "Next observed Yahrzeit date",
+        relationTextMale: "May his soul ascend",
+        relationTextFemale: "May her soul ascend",
+        backToDashboard: "← Back to Dashboard",
+        hebrewDateOfPassing: "Hebrew Date of Passing",
+        noRecords: "No registered beloved ones yet. Click 'Add Beloved' to begin."
+      },
+      ru: {
+        title: "Лезэхер Оламим",
+        subtitle: "Цифровая книга памяти и семейный трекер Йорцайтов",
+        langToggle: "Язык",
+        bulletinBoard: "Доска памяти",
+        memorialBook: "Книга Памяти",
+        calendar: "Календарь",
+        quick30Grid: "Сетка 30 Дней",
+        addMemorial: "Добавить запись",
+        importBulk: "Бэкап и импорт",
+        fullName: "Полное имя усопшего",
+        gender: "Пол",
+        fatherName: "Имя отца",
+        motherName: "Имя матери",
+        hebrewDay: "Еврейский день кончины (1-30)",
+        hebrewMonth: "Еврейский месяц кончины",
+        contactPhone: "Телефон родственника",
+        lifeStory: "История жизни и наследие",
+        uploadImage: "Ссылка на фото (опционально)",
+        submitAdd: "Добавить в книгу",
+        submitSave: "Сохранить",
+        cancel: "Отмена",
+        delete: "Удалить",
+        edit: "Редактировать",
+        confirmDelete: "Вы уверены?",
+        confirmDeleteText: "Это действие необратимо и полностью удалит запись.",
+        search: "Поиск по имени...",
+        male: "Мужчина (сын)",
+        female: "Женщина (дочь)",
+        todayMemorials: "Дни поминовения сегодня (Йорцайт)",
+        upcomingMemorials: "Ближайшие годовщины в этом месяце",
+        noMemorialsToday: "Сегодня нет семейных Йорцайтов. Желаем только добрых вестей.",
+        tomorrow: "Завтра",
+        inNDays: "Через {n} дн.",
+        prevMonth: "Предыдущий месяц",
+        nextMonth: "Следующий месяц",
+        importTitle: "Резервное копирование и импорт",
+        csvUploadLabel: "Выгрузить файл бэкапа",
+        bulkPasteLabel: "Или вставьте данные бэкапа JSON напрямую:",
+        bulkPastePlaceholder: '[{"name": "Иван Иванов", ...}]',
+        importButton: "Импортировать",
+        importSuccess: "Данные успешно импортированы!",
+        importError: "Ошибка импорта. Проверьте структуру JSON.",
+        downloadTemplate: "Скачать полный бэкап данных",
+        namePlaceholder: "Например: Авраам Петров",
+        fatherPlaceholder: "Имя отца (например: Петр)",
+        motherPlaceholder: "Имя матери (например: Сара)",
+        phonePlaceholder: "Например: +7-999-123-4567",
+        notesPlaceholder: "Расскажите историю его жизни, наследие или информацию о могиле...",
+        yahrzeitDate: "Следующая дата поминовения",
+        relationTextMale: "Да будет душа его завязана в узле жизни",
+        relationTextFemale: "Да будет душа ее завязана в узле жизни",
+        backToDashboard: "← На главную",
+        hebrewDateOfPassing: "Еврейская дата кончины",
+        noRecords: "Нет зарегистрированных записей. Нажмите 'Добавить запись' для начала."
+      }
+    };
+
+    const HEBREW_MONTHS_HE = ["תשרי", "חשוון", "כסלו", "טבת", "שבט", "אדר א׳", "אדר ב׳", "ניסן", "אייר", "סיון", "תמוז", "אב", "אלול"];
+    const HEBREW_MONTHS_EN = ["Tishrei", "Cheshvan", "Kislev", "Tevet", "Shevat", "Adar I", "Adar II", "Nisan", "Iyar", "Sivan", "Tammuz", "Av", "Elul"];
+    const HEBREW_MONTHS_RU = ["Тишрей", "Хешван", "Кислев", "Тевет", "Шват", "Адар I", "Адар II", "Нисан", "Ияр", "Сиван", "Таммуз", "Ав", "Элул"];
+
+    // --- MOCK SPIRITUAL CONTENT ---
+    const PSALM_23 = {
+      he: {
+        title: "תהלים כ״ג - מִזְמוֹר לְדָוִד",
+        text: `ה' רֹעִי לֹא אֶחְסָר. בִּנְאוֹת דֶּשֶׁא יַרְבִּיצֵנִי עַל מֵי מְנֻחוֹת יְנַהֲלֵנִי. נַפְשִׁי יְשׁוֹבֵב יַנְחֵנִי בְמַעְגְּלֵי צֶדֶק לְמַעַן שְׁמוֹ. גַּם כִּי אֵלֵךְ בְּגֵיא צַלְמָוֶת לֹא אִירָא רָע כִּי אַתָּה עִמָּדִי שִׁבְטְךָ וּמִשְׁעַנְתֶּךָ הֵמָּה יְנַחֲמֻנִי. תַּעֲרֹךְ לְפָנַי שֻׁלְחָן נֶגֶד צֹרְרָי דִּשַּׁנְתָּ בַשֶּׁמֶן רֹאשִׁי כּוֹסִי רְוָיָה. אַךְ טוֹב וָחֶסֶד יִרְדְּפוּנִי כָּל יְמֵי חַיָּי וְשַׁבְתִּי בְּבֵית ה' לְאֹרֶךְ יָמִים.`
+      },
+      en: {
+        title: "Psalm 23 - A Psalm of David",
+        text: `The Lord is my shepherd; I shall not want. He makes me lie down in green pastures; He leads me beside still waters. He restores my soul; He guides me in straight paths for His name's sake. Yea, though I walk through the valley of the shadow of death, I will fear no evil, for You are with me; Your rod and Your staff, they comfort me. You prepare a table before me in the presence of my enemies; You have anointed my head with oil; my cup runs over. Surely goodness and mercy shall follow me all the days of my life; and I shall dwell in the house of the Lord forever.`
+      },
+      ru: {
+        title: "Псалом 23 - Псалом Давида",
+        text: `Господь — Пастырь мой; я ни в чем не буду нуждаться. Он покоит меня на злачных пажитях и водит меня к водам тихим. Душу мою оживляет, направляет меня на стези правды ради имени Своего. Если я пойду и долиною смертной тени, не убоюсь зла, потому что Ты со мной; Твой жезл и Твой посох — они успокаивают меня. Ты приготовил предо мною трапезу в виду врагов моих; умастил елеем голову мою; чаша моя преисполнена. Так, благость и милость да сопровождают меня во все дни жизни моей, и я пребуду в доме Господнем многие дни.`
+      }
+    };
+
+    const MISHNAH_EXAMPLE = {
+      he: {
+        title: "משנה - מסכת אבות, פרק א׳, משנה ב׳",
+        text: `שִׁמְעוֹן הַצַּדִּיק הָיָה מִשְּׁיָרֵי כְנֶסֶת הַגְּדוֹלָה. הוּא הָיָה אוֹםֵר, עַל שְׁלֹשָׁה דְבָרִים הָעוֹלָם עוֹמֵד, עַל הַתּוֹרָה וְעַל הָעֲבוֹדָה וְעַל גְּמִילוּת חֲסָדִים.`,
+        explanation: "לימוד המשנה (אותיות נשמ\"ה) מהווה עילוי רוחני עצום לנשמת הנפטר ביום השנה שלו."
+      },
+      en: {
+        title: "Mishnah - Pirkei Avot 1:2",
+        text: `Shimon the Righteous was one of the last survivors of the Great Assembly. He used to say: On three things the world stands: on the Torah, on the service, and on acts of loving-kindness.`,
+        explanation: "The letters of 'Mishnah' (משנה) rearrange to spell 'Neshama' (נשמה - soul). Studying it elevates the departed soul."
+      },
+      ru: {
+        title: "Мишна - Пиркей Авот 1:2",
+        text: `Шимон Праведник был одним из последних мужей Великого Собрания. Он говаривал: на трех вещах стоит мир: на Торе, на служении и на добрых делах.`,
+        explanation: "Буквы слова 'Мишна' совпадают с буквами слова 'Нешама' (душа). Изучение Мишны возвышает душу усопшего."
+      }
+    };
+
+    const HALAKHA_INFO = {
+      he: {
+        title: "הלכות יארצייט ומנהגים",
+        text: "ביום היארצייט (יום השנה) נוהגים להדליק נר נשמה של 24 שעות, לעלות לקבר, ללמוד משניות, לעבור לפני התיבה לתפילות המניין, ולתת צדקה לעילוי נשמתו."
+      },
+      en: {
+        title: "Yahrzeit Laws and Customs",
+        text: "On the Yahrzeit (anniversary of passing), it is customary to light a 24-hour memorial candle, visit the gravesite, study Mishnah, lead congregational prayers if qualified, and distribute charity."
+      },
+      ru: {
+        title: "Законы и обычаи Йорцайта",
+        text: "В день Йорцайта принято зажигать 24-часовую поминальную свечу, посещать могилу, учить Мишну, читать Кадиш в миньяне и жертвовать на благотворительность (цдаку)."
+      }
+    };
+
+    // --- VECTOR CUSTOM SVGS TO AVOID CDN DEPENDENCY ---
+    function Icon({ name, className = "w-5 h-5" }) {
+      const paths = {
+        globe: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21a9 9 0 100-18 9 9 0 000 18zm0 0V3m0 18a9 9 0 01-9-9m9 9a9 9 0 009-9M3 12h18" />,
+        calendar: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
+        book: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />,
+        grid: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />,
+        plus: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />,
+        search: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
+        trash: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />,
+        edit: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />,
+        import: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />,
+        download: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      };
+
+      return (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          {paths[name] || null}
+        </svg>
+      );
+    }
+
+    // --- HEBREW DATE FORMULAS & HELPERS ---
+    function normalizeMonthName(name) {
+      if (!name) return "תשרי";
+      const clean = name.replace(/['"״׳]/g, '').trim().toLowerCase();
+      if (clean.includes("תשרי") || clean.includes("tishri") || clean.includes("тишрей")) return "תשרי";
+      if (clean.includes("חשון") || clean.includes("חשוון") || clean.includes("мархешван") || clean.includes("cheshvan")) return "חשוון";
+      if (clean.includes("כסלו") || clean.includes("kislev") || clean.includes("кислев")) return "כסלו";
+      if (clean.includes("טבת") || clean.includes("tevet") || clean.includes("тевет")) return "טבת";
+      if (clean.includes("שבט") || clean.includes("shevat") || clean.includes("шват")) return "שבט";
+      if (clean.includes("אדר א") || clean.includes("adar i") || clean.includes("адар i")) return "אדר א׳";
+      if (clean.includes("אדר ב") || clean.includes("adar ii") || clean.includes("адар ii")) return "אדר ב׳";
+      if (clean === "אדר" || clean === "adar" || clean === "адар") return "אדר ב׳";
+      if (clean.includes("ניסן") || clean.includes("nisan") || clean.includes("нисан")) return "ניסן";
+      if (clean.includes("אייר") || clean.includes("iyar") || clean.includes("ияр")) return "אייר";
+      if (clean.includes("סיון") || clean.includes("sivan") || clean.includes("сиван")) return "סיון";
+      if (clean.includes("תמוז") || clean.includes("tammuz") || clean.includes("таммуз")) return "תמוז";
+      if (clean.includes("אב") || clean.includes("av") || clean.includes("ав")) return "אב";
+      if (clean.includes("אלול") || clean.includes("elul") || clean.includes("элул")) return "אלול";
+      return "תשרי";
+    }
+
+    function isHebrewLeapYear(year) {
+      return [0, 3, 6, 8, 11, 14, 17].includes(year % 19);
+    }
+
+    // Standardized parser using Intl API
+    function getHebrewDateInfo(date) {
+      const formatter = new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn', {
+        day: 'numeric', month: 'long', year: 'numeric'
+      });
+      const parts = formatter.formatToParts(date);
+      let day = 1, monthName = "תשרי", year = 5786;
+      for (const part of parts) {
+        if (part.type === 'day') day = parseInt(part.value, 10);
+        else if (part.type === 'month') monthName = part.value;
+        else if (part.type === 'year') year = parseInt(part.value, 10);
+      }
+      return { day, monthName, year, normalizedMonth: normalizeMonthName(monthName), isLeapYear: isHebrewLeapYear(year) };
+    }
+
+    function gimatriya(num) {
+      const lookup = {
+        1: "א׳", 2: "ב׳", 3: "ג׳", 4: "ד׳", 5: "ה׳", 6: "ו׳", 7: "ז׳", 8: "ח׳", 9: "ט׳",
+        10: "י׳", 11: "יא׳", 12: "יב׳", 13: "יג׳", 14: "יד׳", 15: "טו׳", 16: "טז׳", 17: "יז׳", 18: "יח׳", 19: "יט׳",
+        20: "כ׳", 21: "כא׳", 22: "כב׳", 23: "כג׳", 24: "כד׳", 25: "כה׳", 26: "כו׳", 27: "כז׳", 28: "כח׳", 29: "כט׳", 30: "ל׳"
+      };
+      return lookup[num] || num.toString();
+    }
+
+    function getLocalizedHebrewDate(dayNum, monthName, lang) {
+      const normalized = normalizeMonthName(monthName);
+      const idx = HEBREW_MONTHS_HE.indexOf(normalized);
+      const monthStr = lang === 'he' ? HEBREW_MONTHS_HE[idx] : lang === 'en' ? HEBREW_MONTHS_EN[idx] : HEBREW_MONTHS_RU[idx];
+      const dayStr = lang === 'he' ? gimatriya(dayNum) : dayNum.toString();
+      return lang === 'he' ? `${dayStr} ב${monthStr}` : `${dayStr} ${monthStr}`;
+    }
+
+    function formatParentRelation(gender, fatherName, motherName, lang) {
+      const isMale = gender === 'male';
+      const sonDtr = isMale ? 
+        (lang === 'he' ? 'בן' : lang === 'en' ? 'son of' : 'сын') : 
+        (lang === 'he' ? 'בת' : lang === 'en' ? 'daughter of' : 'дочь');
+      const father = fatherName ? fatherName.trim() : (lang === 'he' ? 'אברהם' : 'Abraham');
+      const mother = motherName ? ` ו${motherName.trim()}` : '';
+      return `${sonDtr} ${father}${mother}`;
+    }
+
+    // Precise calculation of upcoming Gregorian Gregorian Date of Yahrzeit
+    function getNextYahrzeitGregorian(deceasedDay, deceasedMonthName) {
+      const currentYear = new Date().getFullYear();
+      const normMonth = normalizeMonthName(deceasedMonthName);
+      
+      // Look in current year first, if already passed, look in next year
+      for (let offset = 0; offset <= 1; offset++) {
+        const targetYear = currentYear + offset;
+        const start = new Date(targetYear, 0, 1);
+        const end = new Date(targetYear, 11, 31);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const hb = getHebrewDateInfo(d);
+          if (hb.day === Number(deceasedDay) && hb.normalizedMonth === normMonth) {
+            if (offset === 1 || d >= new Date().setHours(0,0,0,0)) {
+              return new Date(d);
+            }
+          }
+        }
+      }
+      return new Date();
+    }
+
+
+    // --- MAIN APP ---
+    function App() {
+      const [lang, setLang] = useState('he');
+      const [activeTab, setActiveTab] = useState('bulletin');
+      const [masterList, setMasterList] = useState([]);
+      const [editingDeceased, setEditingDeceased] = useState(null);
+      const [selectedDeceased, setSelectedDeceased] = useState(null);
+      const [searchQuery, setSearchQuery] = useState('');
+      
+      const [formData, setFormData] = useState({
+        name: '', gender: 'male', fatherName: '', motherName: '', day: 1, month: 'תשרי', contactPhone: '', notes: '', image: ''
+      });
+
+      const t = translations[lang] || translations.he;
+
+      // Handle URL Sharing / Deceased Details Directly
+      useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const deceasedId = params.get('deceased') || params.get('id');
+        if (deceasedId && masterList.length > 0) {
+          const found = masterList.find(d => d.id === parseInt(deceasedId, 10));
+          if (found) setSelectedDeceased(found);
+        }
+      }, [masterList]);
+
+      // Load DB from LocalStorage
+      useEffect(() => {
+        const stored = localStorage.getItem('eternal_db_single');
+        if (stored) {
+          try {
+            setMasterList(JSON.parse(stored));
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          // Add default premium seed values immediately
+          const seed = [
+            {
+              id: 1,
+              name: "שמעון הצדיק",
+              gender: "male",
+              fatherName: "חוניו",
+              motherName: "מרים",
+              day: 29,
+              month: "תשרי",
+              notes: "משיירי כנסת הגדולה, שימש ככהן גדול ארבעים שנה.",
+              contactPhone: "052-1234567"
+            },
+            {
+              id: 2,
+              name: "שרה אמנו",
+              gender: "female",
+              fatherName: "הרן",
+              motherName: "מלכה",
+              day: 23,
+              month: "חשוון",
+              notes: "אם האומה, נפטרה בקרית ארבע היא חברון.",
+              contactPhone: "050-7654321"
+            }
+          ];
+          setMasterList(seed);
+          localStorage.setItem('eternal_db_single', JSON.stringify(seed));
+        }
+      }, []);
+
+      const saveDeceased = (e) => {
+        e.preventDefault();
+        let updated;
+        if (editingDeceased) {
+          updated = masterList.map(d => d.id === editingDeceased.id ? { ...editingDeceased, ...formData } : d);
+        } else {
+          updated = [...masterList, { ...formData, id: Date.now() }];
+        }
+        setMasterList(updated);
+        localStorage.setItem('eternal_db_single', JSON.stringify(updated));
+        setEditingDeceased(null);
+        setFormData({ name: '', gender: 'male', fatherName: '', motherName: '', day: 1, month: 'תשרי', contactPhone: '', notes: '', image: '' });
+        setActiveTab('bulletin');
+      };
+
+      const triggerEdit = (deceased) => {
+        setEditingDeceased(deceased);
+        setFormData(deceased);
+        setActiveTab('add');
+        setSelectedDeceased(null);
+      };
+
+      const triggerDelete = (id) => {
+        if (confirm(t.confirmDeleteText)) {
+          const updated = masterList.filter(d => d.id !== id);
+          setMasterList(updated);
+          localStorage.setItem('eternal_db_single', JSON.stringify(updated));
+          setSelectedDeceased(null);
+        }
+      };
+
+      // Export / Backup Download
+      const downloadBackup = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(masterList, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", "memorial_database_backup.json");
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      };
+
+      // Filtered list by search
+      const filteredList = useMemo(() => {
+        return masterList.filter(d => 
+          d.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+          (d.notes && d.notes.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+      }, [masterList, searchQuery]);
+
+      // Calculate Today & Upcoming (Observed within next 30 days)
+      const currentHebrew = useMemo(() => getHebrewDateInfo(new Date()), []);
+      
+      const todayMemorialsList = useMemo(() => {
+        return masterList.filter(d => {
+          return Number(d.day) === currentHebrew.day && normalizeMonthName(d.month) === currentHebrew.normalizedMonth;
+        });
+      }, [masterList, currentHebrew]);
+
+      return (
+        <div className="relative z-10 max-w-7xl mx-auto px-4 py-8" dir={lang === 'he' ? 'rtl' : 'ltr'}>
+          
+          {/* Header */}
+          <header className="flex flex-col items-center justify-center border-b border-[#c8a96e]/20 pb-8 mb-8 text-center">
+            
+            {/* Elegant Burning Candle */}
+            <div className="relative w-16 h-28 flex flex-col items-center justify-end shrink-0 select-none mb-4">
+              <div className="absolute top-1 w-4 h-7 bg-amber-400 rounded-full blur-[0.5px] flame-animate origin-bottom">
+                <div className="absolute bottom-1 left-1 w-2 h-3 bg-yellow-100 rounded-full opacity-95"></div>
+                <div className="absolute bottom-0 left-1.5 w-1 h-1.5 bg-blue-500 rounded-full opacity-70"></div>
+              </div>
+              <div className="w-9 h-14 bg-gradient-to-t from-amber-700 via-amber-600 to-amber-500/80 rounded-md border border-amber-500/20 relative overflow-hidden">
+                <div className="absolute top-0 left-1 w-2 h-4 bg-amber-400/50 rounded-full"></div>
+                <div className="absolute top-0 left-3.5 w-1 h-6 bg-amber-400/30 rounded-full"></div>
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0.5 h-1.5 bg-gray-900"></div>
+              </div>
+              <div className="w-14 h-1.5 bg-gray-800 rounded-full"></div>
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#f0d19e] via-[#c8a96e] to-[#f0d19e] tracking-wide mb-2">
+              {t.title}
+            </h1>
+            <p className="text-sm sm:text-base text-[#c8a96e]/80 max-w-lg leading-relaxed">
+              {t.subtitle}
+            </p>
+
+            {/* Language Selector */}
+            <div className="flex gap-1.5 mt-6 bg-[#131a26]/95 border border-[#c8a96e]/20 p-1.5 rounded-xl">
+              <button onClick={() => setLang('he')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold ${lang === 'he' ? 'bg-[#c8a96e] text-black font-bold' : 'text-gray-400 hover:text-white'}`}>עברית</button>
+              <button onClick={() => setLang('en')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold ${lang === 'en' ? 'bg-[#c8a96e] text-black font-bold' : 'text-gray-400 hover:text-white'}`}>English</button>
+              <button onClick={() => setLang('ru')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold ${lang === 'ru' ? 'bg-[#c8a96e] text-black font-bold' : 'text-gray-400 hover:text-white'}`}>Русский</button>
+            </div>
+          </header>
+
+          {selectedDeceased ? (
+            /* --- DETAILED MEMORIAL / SHARING PAGE --- */
+            <div className="bg-[#131a26] border border-[#c8a96e]/30 rounded-2xl p-6 sm:p-10 shadow-2xl relative overflow-hidden max-w-4xl mx-auto glow-gold animate-fade-in">
+              <button onClick={() => setSelectedDeceased(null)} className="absolute top-6 left-6 text-gray-400 hover:text-white flex items-center gap-2 bg-[#1b2536] px-4 py-2 rounded-lg border border-gray-800 transition-all">
+                <span>{t.backToDashboard}</span>
+              </button>
+
+              <div className="flex flex-col items-center text-center mt-8">
+                {/* Memorial Photo Frame */}
+                <div className="relative w-36 h-36 rounded-full overflow-hidden border-4 border-[#c8a96e]/50 shadow-xl mb-6 bg-gray-900 flex items-center justify-center">
+                  {selectedDeceased.image ? (
+                    <img src={selectedDeceased.image} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="text-6xl text-[#c8a96e]">🕯️</span>
+                  )}
+                </div>
+
+                <h2 className="text-3xl sm:text-4xl font-serif font-bold text-amber-100 mb-2">{selectedDeceased.name}</h2>
+                <div className="text-lg font-serif font-medium text-[#c8a96e] bg-amber-500/5 px-5 py-2 rounded-full border border-amber-500/10 mb-6">
+                  {formatParentRelation(selectedDeceased.gender, selectedDeceased.fatherName, selectedDeceased.motherName, lang)}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg mb-8">
+                  <div className="bg-[#1b2536] p-4 rounded-xl border border-gray-800">
+                    <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">{t.hebrewDateOfPassing}</p>
+                    <p className="text-[#c8a96e] text-xl font-bold">{getLocalizedHebrewDate(selectedDeceased.day, selectedDeceased.month, lang)}</p>
+                  </div>
+                  <div className="bg-[#1b2536] p-4 rounded-xl border border-gray-800">
+                    <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">{t.yahrzeitDate}</p>
+                    <p className="text-amber-100 text-lg font-bold">
+                      {getNextYahrzeitGregorian(selectedDeceased.day, selectedDeceased.month).toLocaleDateString(lang === 'he' ? 'he-IL' : lang === 'ru' ? 'ru-RU' : 'en-US')}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedDeceased.notes && (
+                  <div className="bg-[#1c2638] border border-gray-800/80 p-6 rounded-xl max-w-2xl text-right leading-relaxed mb-8 text-gray-300 w-full shadow-inner">
+                    <p className="font-serif italic text-center text-lg">"{selectedDeceased.notes}"</p>
+                  </div>
+                )}
+
+                {/* Study & Prayers Sections */}
+                <div className="w-full border-t border-[#c8a96e]/20 pt-8 text-right">
+                  <h3 className="text-2xl font-serif text-[#c8a96e] mb-6 text-center">לימוד ותפילה לעילוי נשמה</h3>
+                  
+                  {/* Psalm */}
+                  <div className="bg-[#1b2536] p-6 rounded-xl border border-gray-800 mb-4">
+                    <h4 className="text-[#c8a96e] font-serif font-bold mb-3 text-lg">{PSALM_23[lang].title}</h4>
+                    <p className="text-gray-200 font-amiri text-xl leading-loose text-center md:text-right whitespace-pre-wrap">{PSALM_23[lang].text}</p>
+                  </div>
+
+                  {/* Mishnah */}
+                  <div className="bg-[#1b2536] p-6 rounded-xl border border-gray-800 mb-4">
+                    <h4 className="text-[#c8a96e] font-serif font-bold mb-3 text-lg">{MISHNAH_EXAMPLE[lang].title}</h4>
+                    <p className="text-gray-200 font-serif leading-relaxed mb-4 text-center md:text-right text-lg">{MISHNAH_EXAMPLE[lang].text}</p>
+                    <p className="text-amber-100/70 text-sm border-t border-gray-800 pt-3">{MISHNAH_EXAMPLE[lang].explanation}</p>
+                  </div>
+
+                  {/* Laws & Customs */}
+                  <div className="bg-[#1b2536] p-6 rounded-xl border border-gray-800 mb-8">
+                    <h4 className="text-[#c8a96e] font-serif font-bold mb-2 text-lg">{HALAKHA_INFO[lang].title}</h4>
+                    <p className="text-gray-300 leading-relaxed">{HALAKHA_INFO[lang].text}</p>
+                  </div>
+                </div>
+
+                {/* Edit & Delete Actions */}
+                <div className="flex gap-4 w-full justify-center">
+                  <button onClick={() => triggerEdit(selectedDeceased)} className="bg-amber-600 hover:bg-amber-700 text-black font-bold px-8 py-3 rounded-xl transition-all shadow-lg">{t.edit}</button>
+                  <button onClick={() => triggerDelete(selectedDeceased.id)} className="bg-red-950/40 hover:bg-red-900 border border-red-700/60 text-white px-8 py-3 rounded-xl transition-all">{t.delete}</button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* --- DASHBOARD TAB SYSTEM --- */
+            <div>
+              {/* Search Bar */}
+              <div className="max-w-md mx-auto mb-8 relative">
+                <input 
+                  type="text" 
+                  placeholder={t.search} 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-[#131a26] border border-[#c8a96e]/30 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-[#c8a96e] transition-all text-gray-100"
+                />
+              </div>
+
+              {/* Responsive Tabs Navigation */}
+              <div className="flex border-b border-gray-800 mb-8 overflow-x-auto gap-2">
+                <button onClick={() => setActiveTab('bulletin')} className={`flex-1 min-w-[120px] py-3 text-center border-b-2 font-serif text-base font-semibold transition-all ${activeTab === 'bulletin' ? 'border-[#c8a96e] text-[#c8a96e]' : 'border-transparent text-gray-400 hover:text-white'}`}>
+                  <div className="flex items-center justify-center gap-2">
+                    <Icon name="globe" />
+                    <span>{t.bulletinBoard}</span>
+                  </div>
+                </button>
+                <button onClick={() => setActiveTab('book')} className={`flex-1 min-w-[120px] py-3 text-center border-b-2 font-serif text-base font-semibold transition-all ${activeTab === 'book' ? 'border-[#c8a96e] text-[#c8a96e]' : 'border-transparent text-gray-400 hover:text-white'}`}>
+                  <div className="flex items-center justify-center gap-2">
+                    <Icon name="book" />
+                    <span>{t.memorialBook}</span>
+                  </div>
+                </button>
+                <button onClick={() => setActiveTab('grid')} className={`flex-1 min-w-[120px] py-3 text-center border-b-2 font-serif text-base font-semibold transition-all ${activeTab === 'grid' ? 'border-[#c8a96e] text-[#c8a96e]' : 'border-transparent text-gray-400 hover:text-white'}`}>
+                  <div className="flex items-center justify-center gap-2">
+                    <Icon name="grid" />
+                    <span>{t.quick30Grid}</span>
+                  </div>
+                </button>
+                <button onClick={() => setActiveTab('add')} className={`flex-1 min-w-[120px] py-3 text-center border-b-2 font-serif text-base font-semibold transition-all ${activeTab === 'add' ? 'border-[#c8a96e] text-[#c8a96e]' : 'border-transparent text-gray-400 hover:text-white'}`}>
+                  <div className="flex items-center justify-center gap-2">
+                    <Icon name="plus" />
+                    <span>{editingDeceased ? t.submitSave : t.addMemorial}</span>
+                  </div>
+                </button>
+                <button onClick={() => setActiveTab('import')} className={`flex-1 min-w-[120px] py-3 text-center border-b-2 font-serif text-base font-semibold transition-all ${activeTab === 'import' ? 'border-[#c8a96e] text-[#c8a96e]' : 'border-transparent text-gray-400 hover:text-white'}`}>
+                  <div className="flex items-center justify-center gap-2">
+                    <Icon name="import" />
+                    <span>{t.importBulk}</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* TAB 1: BULLETIN BOARD / ACTIVE OBSERVANCES */}
+              {activeTab === 'bulletin' && (
+                <div className="space-y-8">
+                  {/* Today's Yahrzeits Banner */}
+                  <div className="bg-[#131a26]/80 border border-[#c8a96e]/30 rounded-2xl p-6 shadow-xl">
+                    <h3 className="text-xl font-serif text-[#c8a96e] mb-4 border-b border-[#c8a96e]/10 pb-2">{t.todayMemorials}</h3>
+                    {todayMemorialsList.length === 0 ? (
+                      <p className="text-gray-400 text-center py-6">{t.noMemorialsToday}</p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {todayMemorialsList.map(deceased => (
+                          <div 
+                            key={deceased.id} 
+                            onClick={() => setSelectedDeceased(deceased)}
+                            className="bg-[#1b2536] hover:bg-[#202b3d] border border-amber-500/40 hover:border-amber-400 p-5 rounded-xl cursor-pointer transition-all flex items-center gap-4 glow-gold animate-pulse"
+                          >
+                            <span className="text-3xl">🕯️</span>
+                            <div className="text-right">
+                              <h4 className="font-serif font-bold text-lg text-amber-100">{deceased.name}</h4>
+                              <p className="text-xs text-[#c8a96e] mt-0.5">{formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang)}</p>
+                              <p className="text-xs text-gray-400 mt-1">{getLocalizedHebrewDate(deceased.day, deceased.month, lang)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* All Memorial Records */}
+                  <div className="bg-[#131a26] border border-gray-800/80 rounded-2xl p-6 shadow-xl">
+                    <h3 className="text-xl font-serif text-amber-100 mb-6">{lang === 'he' ? 'כל היקירים שבספר הזיכרון' : 'All Memorial Records'}</h3>
+                    {filteredList.length === 0 ? (
+                      <p className="text-gray-400 text-center py-6">{t.noRecords}</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredList.map(deceased => (
+                          <div 
+                            key={deceased.id}
+                            onClick={() => setSelectedDeceased(deceased)}
+                            className="bg-[#1b2536] hover:bg-[#202b3d] border border-gray-800 hover:border-[#c8a96e]/30 p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-900 border border-[#c8a96e]/20 flex items-center justify-center">
+                                {deceased.image ? (
+                                  <img src={deceased.image} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-lg">🕯️</span>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <h4 className="font-serif font-bold text-amber-100">{deceased.name}</h4>
+                                <p className="text-xs text-gray-400">{getLocalizedHebrewDate(deceased.day, deceased.month, lang)}</p>
+                              </div>
+                            </div>
+                            <span className="text-[#c8a96e] text-xs font-serif font-medium bg-[#c8a96e]/5 px-2 py-1 rounded border border-[#c8a96e]/10">
+                              {gimatriya(deceased.day)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: MEMORIAL BOOK (GROUPED BY HEBREW MONTHS) */}
+              {activeTab === 'book' && (
+                <div className="space-y-6">
+                  {HEBREW_MONTHS_HE.map(monthName => {
+                    const monthDeceased = filteredList.filter(d => normalizeMonthName(d.month) === normalizeMonthName(monthName));
+                    if (monthDeceased.length === 0) return null;
+                    return (
+                      <div key={monthName} className="bg-[#131a26] border border-gray-800 rounded-xl p-6 shadow-lg">
+                        <h3 className="text-xl font-serif font-bold text-[#c8a96e] border-b border-gray-800 pb-2 mb-4 text-right">
+                          חודש {monthName}
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {monthDeceased.map(deceased => (
+                            <div 
+                              key={deceased.id} 
+                              onClick={() => setSelectedDeceased(deceased)}
+                              className="bg-[#1b2536] hover:bg-[#202b3d] border border-gray-800 hover:border-[#c8a96e]/30 p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-4 text-right">
+                                <span className="text-2xl">🕯️</span>
+                                <div>
+                                  <h4 className="font-serif font-bold text-amber-100">{deceased.name}</h4>
+                                  <p className="text-xs text-[#c8a96e]/80">{formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang)}</p>
+                                </div>
+                              </div>
+                              <div className="text-left text-[#c8a96e] font-serif font-bold text-lg">
+                                יום {gimatriya(deceased.day)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* TAB 3: 30-DAY HEBREW GRID */}
+              {activeTab === 'grid' && (
+                <div className="bg-[#131a26] border border-gray-800 rounded-2xl p-6 shadow-xl">
+                  <h3 className="text-xl font-serif text-[#c8a96e] mb-6 text-center">{t.quick30Grid}</h3>
+                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
+                    {Array.from({ length: 30 }, (_, i) => i + 1).map(dayNum => {
+                      const dayObs = filteredList.filter(d => Number(d.day) === dayNum);
+                      return (
+                        <div 
+                          key={dayNum}
+                          className={`aspect-square rounded-xl border flex flex-col items-center justify-center cursor-pointer transition-all p-2 text-center ${dayObs.length > 0 ? 'bg-amber-500/10 border-[#c8a96e] text-[#c8a96e]' : 'bg-[#1b2536] border-gray-800 text-gray-400 hover:border-gray-600'}`}
+                          onClick={() => {
+                            if (dayObs.length > 0) {
+                              setSelectedDeceased(dayObs[0]);
+                            } else {
+                              alert(lang === 'he' ? `אין אזכרות משפחתיות ביום זה (${dayNum})` : `No observances for day ${dayNum}`);
+                            }
+                          }}
+                        >
+                          <span className="text-xs text-gray-500 block mb-1">{dayNum}</span>
+                          <span className="text-base font-serif font-bold block">{gimatriya(dayNum)}</span>
+                          {dayObs.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-[#c8a96e] mt-1"></span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: ADD/EDIT FORM */}
+              {activeTab === 'add' && (
+                <div className="bg-[#131a26] border border-[#c8a96e]/20 rounded-2xl p-6 shadow-xl max-w-2xl mx-auto">
+                  <h3 className="text-2xl font-serif text-[#c8a96e] mb-6 text-center">
+                    {editingDeceased ? t.submitSave : t.addMemorial}
+                  </h3>
+                  
+                  <form onSubmit={saveDeceased} className="space-y-4 text-right">
+                    
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 mb-1">{t.fullName}</label>
+                      <input 
+                        type="text" 
+                        required 
+                        value={formData.name}
+                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        className="w-full bg-[#1b2536] border border-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:border-[#c8a96e] text-right" 
+                        placeholder={t.namePlaceholder} 
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-1">{t.gender}</label>
+                        <select 
+                          value={formData.gender}
+                          onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                          className="w-full bg-[#1b2536] border border-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:border-[#c8a96e] text-right"
+                        >
+                          <option value="male">{t.male}</option>
+                          <option value="female">{t.female}</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-1">{t.hebrewDay}</label>
+                        <input 
+                          type="number" 
+                          min="1" 
+                          max="30" 
+                          required
+                          value={formData.day}
+                          onChange={(e) => setFormData({...formData, day: parseInt(e.target.value, 10)})}
+                          className="w-full bg-[#1b2536] border border-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:border-[#c8a96e] text-right" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-1">{t.fatherName}</label>
+                        <input 
+                          type="text" 
+                          value={formData.fatherName}
+                          onChange={(e) => setFormData({...formData, fatherName: e.target.value})}
+                          className="w-full bg-[#1b2536] border border-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:border-[#c8a96e] text-right" 
+                          placeholder={t.fatherPlaceholder} 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-1">{t.motherName}</label>
+                        <input 
+                          type="text" 
+                          value={formData.motherName}
+                          onChange={(e) => setFormData({...formData, motherName: e.target.value})}
+                          className="w-full bg-[#1b2536] border border-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:border-[#c8a96e] text-right" 
+                          placeholder={t.motherPlaceholder} 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-1">{t.hebrewMonth}</label>
+                        <select 
+                          value={formData.month}
+                          onChange={(e) => setFormData({...formData, month: e.target.value})}
+                          className="w-full bg-[#1b2536] border border-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:border-[#c8a96e] text-right"
+                        >
+                          {HEBREW_MONTHS_HE.map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-1">{t.contactPhone}</label>
+                        <input 
+                          type="text" 
+                          value={formData.contactPhone}
+                          onChange={(e) => setFormData({...formData, contactPhone: e.target.value})}
+                          className="w-full bg-[#1b2536] border border-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:border-[#c8a96e] text-right" 
+                          placeholder={t.phonePlaceholder} 
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 mb-1">{t.uploadImage}</label>
+                      <input 
+                        type="text" 
+                        value={formData.image}
+                        onChange={(e) => setFormData({...formData, image: e.target.value})}
+                        className="w-full bg-[#1b2536] border border-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:border-[#c8a96e] text-right" 
+                        placeholder="https://example.com/photo.jpg" 
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 mb-1">{t.lifeStory}</label>
+                      <textarea 
+                        rows="3"
+                        value={formData.notes}
+                        onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                        className="w-full bg-[#1b2536] border border-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:border-[#c8a96e] text-right" 
+                        placeholder={t.notesPlaceholder}
+                      ></textarea>
+                    </div>
+
+                    <div className="flex gap-4 pt-4">
+                      <button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700 text-black font-bold py-3 rounded-xl transition-all">{editingDeceased ? t.submitSave : t.submitAdd}</button>
+                      <button type="button" onClick={() => { setEditingDeceased(null); setActiveTab('bulletin'); }} className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all">{t.cancel}</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* TAB 5: BACKUP & DATA IMPORT */}
+              {activeTab === 'import' && (
+                <div className="bg-[#131a26] border border-gray-800 rounded-2xl p-6 shadow-xl max-w-2xl mx-auto text-right">
+                  <h3 className="text-2xl font-serif text-[#c8a96e] mb-4 text-center">{t.importTitle}</h3>
+                  <p className="text-sm text-gray-400 mb-6 text-center">השתמש בגיבוי זה כדי להעביר את כל רשימת הנפטרים של המשפחה בין מחשבים וטלפונים שונים.</p>
+                  
+                  <div className="space-y-6">
+                    <div className="border-2 border-dashed border-gray-700 rounded-xl p-6 text-center hover:border-[#c8a96e]/50 transition-all">
+                      <button onClick={downloadBackup} className="bg-amber-600/10 hover:bg-amber-600/20 border border-[#c8a96e]/30 text-[#c8a96e] font-bold px-6 py-3 rounded-xl transition-all inline-flex items-center gap-2">
+                        <Icon name="download" />
+                        <span>{t.downloadTemplate}</span>
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 mb-2">{t.bulkPasteLabel}</label>
+                      <textarea 
+                        rows="6"
+                        id="pasteArea"
+                        className="w-full bg-[#1b2536] border border-gray-700 rounded-xl p-4 font-mono text-xs focus:outline-none focus:border-[#c8a96e] text-left"
+                        placeholder={t.bulkPastePlaceholder}
+                      ></textarea>
+                      <button 
+                        onClick={() => {
+                          const val = document.getElementById('pasteArea').value;
+                          try {
+                            const parsed = JSON.parse(val);
+                            if (Array.isArray(parsed)) {
+                              setMasterList(parsed);
+                              localStorage.setItem('eternal_db_single', JSON.stringify(parsed));
+                              alert(t.importSuccess);
+                              setActiveTab('bulletin');
+                            } else {
+                              alert(t.importError);
+                            }
+                          } catch (e) {
+                            alert(t.importError);
+                          }
+                        }}
+                        className="w-full bg-[#c8a96e] hover:bg-[#e5cf9c] text-black font-bold py-3 rounded-xl transition-all mt-4"
+                      >
+                        {t.importButton}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Render App
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "לזכר עולמים - L'Zecher Olamim",
+  "description": "A digital family memorial book and dynamic Yahrzeit tracker supporting Hebrew, English, and Russian with automatic AI translations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
