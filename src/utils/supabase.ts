@@ -1,16 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
 const metaEnv = (import.meta as unknown as { env?: Record<string, string> }).env || {};
+const envUrl = metaEnv.VITE_SUPABASE_URL || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_URL : '');
+const envKey = metaEnv.VITE_SUPABASE_ANON_KEY || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_ANON_KEY : '');
 
-const envUrl =
-  metaEnv.VITE_SUPABASE_URL ||
-  metaEnv.NEXT_PUBLIC_SUPABASE_URL ||
-  '';
-
-const envKey =
-  metaEnv.VITE_SUPABASE_ANON_KEY ||
-  metaEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  '';
 const supabaseUrl = envUrl && envUrl.trim() !== ''
   ? envUrl.trim()
   : 'https://placeholder.supabase.co';
