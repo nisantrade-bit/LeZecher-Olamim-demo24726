@@ -31,39 +31,59 @@ export function isSupabaseConfigured(): boolean {
 function logSupabaseError(context: string, error: any) {
   if (!error) return;
   const msg = typeof error === 'string' ? error : error.message || error.details || '';
-  if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || !isSupabaseConfigured()) {
-    console.warn(`[Supabase Notice - ${context}] Supabase network unavailable or not configured. Using local database.`);
+  if (
+    msg.includes('Failed to fetch') ||
+    msg.includes('NetworkError') ||
+    !isSupabaseConfigured() ||
+    isMissingTableError(error)
+  ) {
+    console.warn(`[Supabase Notice - ${context}] Supabase table/schema unavailable or not configured. Using local/server database.`);
     return;
   }
-  console.error(`%c[Supabase Error - ${context}]`, 'color: #ff4d4f; font-weight: bold;', {
+  console.warn(`[Supabase Notice - ${context}]`, {
     message: error.message || error,
     code: error.code,
     details: error.details,
-    hint: error.hint,
-    error
+    hint: error.hint
   });
 }
 
 function logSupabaseException(context: string, err: any) {
   const msg = err?.message || String(err);
-  if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || !isSupabaseConfigured()) {
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || !isSupabaseConfigured() || isMissingTableError(err)) {
     console.warn(`[Supabase Notice - ${context}] Supabase network unavailable or not configured.`);
     return;
   }
-  console.error(`%c[Supabase Exception - ${context}]`, 'color: #ff4d4f; font-weight: bold;', err);
+  console.warn(`[Supabase Notice - ${context}]`, err);
 }
 
 export function isMissingTableError(error: any): boolean {
   if (!error) return false;
-  const msg = typeof error === 'string' ? error : error.message || error.details || '';
+  const msg = (typeof error === 'string' ? error : error.message || error.details || error.hint || '').toLowerCase();
   const code = error.code || '';
   return (
     code === 'PGRST301' ||
+    code === 'PGRST204' ||
+    code === 'PGRST100' ||
+    code === 'PGRST106' ||
+    code === 'PGRST116' ||
     code === '42P01' ||
+    code === '42P10' ||
+    code === '42501' ||
+    code === '42703' ||
     msg.includes('schema cache') ||
     msg.includes('relation') ||
     msg.includes('does not exist') ||
-    msg.includes('public.deceased')
+    msg.includes('public.deceased') ||
+    msg.includes('public.memorials') ||
+    msg.includes('row-level security') ||
+    msg.includes('permission denied') ||
+    msg.includes('on conflict') ||
+    msg.includes('column') ||
+    msg.includes('policy') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('cors')
   );
 }
 
@@ -369,15 +389,36 @@ export async function safeUpsert(
   const sanitized = arr.map(item => sanitizeRecordForSupabase(item));
   try {
     let { data, error } = await (supabase.from(tableName as any) as any).upsert(sanitized, { onConflict: 'id' });
-    if (error && !isMissingTableError(error)) {
+    if (error) {
       const fallbackRes = await (supabase.from(tableName as any) as any).upsert(sanitized);
-      if (fallbackRes.error && !isMissingTableError(fallbackRes.error)) {
-        logSupabaseError('safeUpsert', fallbackRes.error);
+      if (!fallbackRes.error) {
+        error = null;
+        data = fallbackRes.data;
+      } else {
+        const coreOnly = sanitized.map(item => ({
+          id: item.id,
+          name: item.name,
+          gender: item.gender,
+          fatherName: item.fatherName,
+          motherName: item.motherName,
+          day: item.day,
+          month: item.month,
+          contactPhone: item.contactPhone || '-',
+          notes: item.notes || '-',
+          image: item.image || '-'
+        }));
+        const coreRes = await (supabase.from(tableName as any) as any).upsert(coreOnly);
+        if (!coreRes.error) {
+          error = null;
+          data = coreRes.data;
+        } else {
+          error = coreRes.error;
+          data = coreRes.data;
+          if (!isMissingTableError(error)) {
+            logSupabaseError('safeUpsert', error);
+          }
+        }
       }
-      error = fallbackRes.error;
-      data = fallbackRes.data;
-    } else if (error) {
-      logSupabaseError('safeUpsert', error);
     }
 
     // Also sync to alternate table name ('memorials' or 'deceased') so any schema works

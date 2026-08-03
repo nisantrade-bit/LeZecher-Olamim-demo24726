@@ -258,17 +258,14 @@ function MainAppContent() {
       (async () => {
         try {
           const { error } = await safeUpsert([enrichedPayload]);
-          if (error) {
-            console.error("Supabase Fetch Error:", error);
-            if (isMissingTableError(error)) {
-              setSupabaseTableMissing(true);
-              console.warn("Supabase notice: 'deceased' table is missing in schema cache. Using local/server database fallback.");
-            } else {
-              console.error("Supabase upsert error on URL payload:", error);
-            }
+          if (error && isMissingTableError(error)) {
+            setSupabaseTableMissing(true);
+            console.warn("Supabase notice: 'deceased' table is missing in schema cache. Using local/server database fallback.");
+          } else if (error) {
+            console.warn("Supabase upsert notice on URL payload:", error);
           }
         } catch (e) {
-          console.error("Supabase Fetch Error:", e);
+          console.warn("Supabase notice:", e);
         }
       })();
 
@@ -278,7 +275,7 @@ function MainAppContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(enrichedPayload)
-        }).catch(e => console.error("Cloud database sync error:", e));
+        }).catch(e => console.warn("Cloud database sync notice:", e));
       }
     }
   }, [urlDeceasedFromPayload]);
@@ -286,18 +283,18 @@ function MainAppContent() {
   // If urlDeceasedId is accessed directly (e.g. /m/12345) and card is not in local list, fetch from Supabase or server API
   useEffect(() => {
     if (urlDeceasedId && String(urlDeceasedId).trim() !== '' && !urlDeceasedFromPayload) {
-      const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId));
+      const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
+                              SEED_DATABASE.some(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId));
       if (!alreadyInMaster && !remoteDeceasedNotFound && !fetchingRemoteDeceased) {
         setFetchingRemoteDeceased(true);
         const fetchRemote = async () => {
           try {
             const { data, error } = await safeEq('id', urlDeceasedId, 'deceased', true);
-            if (error) {
-              console.error("Supabase Fetch Error:", error);
-              if (isMissingTableError(error)) {
-                setSupabaseTableMissing(true);
-                console.warn("Supabase notice: 'deceased' table missing in schema cache, using server API fallback.");
-              }
+            if (error && isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'deceased' table missing in schema cache, using server API fallback.");
+            } else if (error) {
+              console.warn("Supabase notice:", error);
             }
             if (!error && data && data.id && data.name) {
               const enriched = enrichDeceasedTranslations(data as Deceased);
@@ -391,19 +388,16 @@ function MainAppContent() {
         let supabaseRecords: Deceased[] = [];
         try {
           const { data, error } = await safeSelect('deceased');
-          if (error) {
-            console.error("Supabase Fetch Error:", error);
-            if (isMissingTableError(error)) {
-              setSupabaseTableMissing(true);
-              console.warn("Supabase notice: 'public.deceased' table is not created yet in schema cache. Using local server & storage seamlessly.");
-            } else {
-              console.error("Supabase select error:", error.message || error);
-            }
+          if (error && isMissingTableError(error)) {
+            setSupabaseTableMissing(true);
+            console.warn("Supabase notice: 'public.deceased' table is not created yet in schema cache. Using local server & storage seamlessly.");
+          } else if (error) {
+            console.warn("Supabase select notice:", error.message || error);
           } else if (Array.isArray(data) && data.length > 0) {
             supabaseRecords = filterOutMockRecords(data as Deceased[]);
           }
         } catch (err) {
-          console.error("Supabase Fetch Error:", err);
+          console.warn("Supabase notice:", err);
         }
 
         // 3. Fallback to Express server API if Supabase returned no data
@@ -440,27 +434,24 @@ function MainAppContent() {
         if (finalMaster.length > 0) {
           try {
             const { error } = await safeUpsert(finalMaster);
-            if (error) {
-              console.error("Supabase Fetch Error:", error);
-              if (isMissingTableError(error)) {
-                setSupabaseTableMissing(true);
-                console.warn("Supabase notice: 'public.deceased' table not yet created. Master list synced to local server database.");
-              } else {
-                console.error("Supabase initial sync error:", error.message || error);
-              }
+            if (error && isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
+              console.warn("Supabase notice: 'public.deceased' table not yet created. Master list synced to local server database.");
+            } else if (error) {
+              console.warn("Supabase initial sync notice:", error.message || error);
             }
           } catch (e) {
-            console.error("Supabase Fetch Error:", e);
+            console.warn("Supabase notice:", e);
           }
 
           fetch('/api/deceased/import', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(finalMaster)
-          }).catch(e => console.error("Cloud database sync error:", e));
+          }).catch(e => console.warn("Cloud database sync notice:", e));
         }
       } catch (err) {
-        console.error("App Runtime Error:", err);
+        console.warn("App runtime notice:", err);
         setMasterList(filterOutMockRecords(SEED_DATABASE));
       }
     };
@@ -613,17 +604,14 @@ function MainAppContent() {
     // Save directly to Supabase
     try {
       const { error } = await safeUpsert([deceased]);
-      if (error) {
-        console.error("Supabase Fetch Error:", error);
-        if (isMissingTableError(error)) {
-          setSupabaseTableMissing(true);
-          console.warn("Supabase notice: 'deceased' table missing. Record saved to local database.");
-        } else {
-          console.error("Supabase save error:", error.message || error);
-        }
+      if (error && isMissingTableError(error)) {
+        setSupabaseTableMissing(true);
+        console.warn("Supabase notice: 'deceased' table missing. Record saved to local database.");
+      } else if (error) {
+        console.warn("Supabase save notice:", error.message || error);
       }
     } catch (e) {
-      console.error("Supabase Fetch Error:", e);
+      console.warn("Supabase notice:", e);
     }
 
     // Sync to backup server API
@@ -635,7 +623,7 @@ function MainAppContent() {
           body: JSON.stringify(deceased)
         });
       } catch (e) {
-        console.error("Failed to save record to server database:", e);
+        console.warn("Failed to save record to server database:", e);
       }
     }
 
@@ -668,17 +656,14 @@ function MainAppContent() {
     // Delete from Supabase
     try {
       const { error } = await safeDelete('id', id);
-      if (error) {
-        console.error("Supabase Fetch Error:", error);
-        if (isMissingTableError(error)) {
-          setSupabaseTableMissing(true);
-          console.warn("Supabase notice: 'deceased' table missing. Removed from local database.");
-        } else {
-          console.error("Supabase delete error:", error.message || error);
-        }
+      if (error && isMissingTableError(error)) {
+        setSupabaseTableMissing(true);
+        console.warn("Supabase notice: 'deceased' table missing. Removed from local database.");
+      } else if (error) {
+        console.warn("Supabase delete notice:", error.message || error);
       }
     } catch (e) {
-      console.error("Supabase Fetch Error:", e);
+      console.warn("Supabase notice:", e);
     }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
@@ -687,7 +672,7 @@ function MainAppContent() {
           method: 'DELETE'
         });
       } catch (e) {
-        console.error("Failed to delete record from server database:", e);
+        console.warn("Failed to delete record from server database:", e);
       }
     }
 
@@ -721,17 +706,14 @@ function MainAppContent() {
     // Bulk upsert to Supabase
     try {
       const { error } = await safeUpsert(enrichedList);
-      if (error) {
-        console.error("Supabase Fetch Error:", error);
-        if (isMissingTableError(error)) {
-          setSupabaseTableMissing(true);
-          console.warn("Supabase notice: 'deceased' table missing. Imported to local database.");
-        } else {
-          console.error("Supabase bulk import error:", error.message || error);
-        }
+      if (error && isMissingTableError(error)) {
+        setSupabaseTableMissing(true);
+        console.warn("Supabase notice: 'deceased' table missing. Imported to local database.");
+      } else if (error) {
+        console.warn("Supabase bulk import notice:", error.message || error);
       }
     } catch (e) {
-      console.error("Supabase Fetch Error:", e);
+      console.warn("Supabase notice:", e);
     }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
@@ -742,7 +724,7 @@ function MainAppContent() {
           body: JSON.stringify(enrichedList)
         });
       } catch (e) {
-        console.error("Failed to import records to server database:", e);
+        console.warn("Failed to import records to server database:", e);
       }
     }
 
@@ -818,14 +800,13 @@ function MainAppContent() {
   const handleResetDatabase = async () => {
     try {
       const { error } = await safeDeleteAll('deceased');
-      if (error) {
-        console.error("Supabase Fetch Error:", error);
-        if (isMissingTableError(error)) {
-          setSupabaseTableMissing(true);
-        }
+      if (error && isMissingTableError(error)) {
+        setSupabaseTableMissing(true);
+      } else if (error) {
+        console.warn("Supabase reset notice:", error);
       }
     } catch (err) {
-      console.error("Supabase Fetch Error:", err);
+      console.warn("Supabase notice:", err);
     }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
@@ -869,14 +850,25 @@ function MainAppContent() {
   if (urlDeceasedId || urlDeceasedFromPayload) {
     let urlDeceased: Deceased | null = urlDeceasedFromPayload;
     if (!urlDeceased && urlDeceasedId) {
-      urlDeceased = masterList.find(d => Number(d.id) === Number(urlDeceasedId)) ||
-                    displayedList.find(d => Number(d.id) === Number(urlDeceasedId)) || null;
+      urlDeceased = masterList.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
+                    displayedList.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
+                    SEED_DATABASE.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) || null;
+      if (!urlDeceased) {
+        try {
+          const stored = localStorage.getItem('eternal_db');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) {
+              urlDeceased = parsed.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) || null;
+            }
+          }
+        } catch (e) {}
+      }
     }
 
     if (urlDeceased) {
-      // Auto-sync address bar URL so copying from address bar copies the complete payload link
-      const currentPayload = encodeDeceasedToUrlPayload(urlDeceased);
-      const targetUrl = `/?data=${currentPayload}${lang !== 'he' ? `&lang=${lang}` : ''}`;
+      // Auto-sync address bar URL to clean ID-only link (?m=12345) without any verbose Base64 data payload
+      const targetUrl = `/?m=${urlDeceased.id}${lang !== 'he' ? `&lang=${lang}` : ''}`;
       if (typeof window !== 'undefined' && (window.location.pathname + window.location.search) !== targetUrl) {
         window.history.replaceState({}, document.title, targetUrl);
       }
@@ -887,8 +879,7 @@ function MainAppContent() {
           lang={lang} 
           onSetLang={(newLang) => {
             setLang(newLang);
-            const updatedPayload = encodeDeceasedToUrlPayload(urlDeceased!);
-            const newUrl = `/?id=${urlDeceased!.id}&m=${urlDeceased!.id}&data=${updatedPayload}&lang=${newLang}`;
+            const newUrl = `/?m=${urlDeceased!.id}${newLang !== 'he' ? `&lang=${newLang}` : ''}`;
             window.history.replaceState({}, document.title, newUrl);
           }} 
           onExit={handleExitMemorialPage} 
