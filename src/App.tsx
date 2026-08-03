@@ -286,8 +286,7 @@ function MainAppContent() {
   // If urlDeceasedId is accessed directly (e.g. /m/12345) and card is not in local list, fetch from Supabase or server API
   useEffect(() => {
     if (urlDeceasedId && String(urlDeceasedId).trim() !== '' && !urlDeceasedFromPayload) {
-      const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
-                              SEED_DATABASE.some(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId));
+      const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId));
       if (!alreadyInMaster && !remoteDeceasedNotFound && !fetchingRemoteDeceased) {
         setFetchingRemoteDeceased(true);
         const fetchRemote = async () => {
@@ -870,25 +869,14 @@ function MainAppContent() {
   if (urlDeceasedId || urlDeceasedFromPayload) {
     let urlDeceased: Deceased | null = urlDeceasedFromPayload;
     if (!urlDeceased && urlDeceasedId) {
-      urlDeceased = masterList.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
-                    displayedList.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
-                    SEED_DATABASE.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) || null;
-      if (!urlDeceased) {
-        try {
-          const stored = localStorage.getItem('eternal_db');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed)) {
-              urlDeceased = parsed.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) || null;
-            }
-          }
-        } catch (e) {}
-      }
+      urlDeceased = masterList.find(d => Number(d.id) === Number(urlDeceasedId)) ||
+                    displayedList.find(d => Number(d.id) === Number(urlDeceasedId)) || null;
     }
 
     if (urlDeceased) {
-      // Auto-sync address bar URL to clean ID-only link (?m=12345) without any verbose Base64 data payload
-      const targetUrl = `/?m=${urlDeceased.id}${lang !== 'he' ? `&lang=${lang}` : ''}`;
+      // Auto-sync address bar URL so copying from address bar copies the complete payload link
+      const currentPayload = encodeDeceasedToUrlPayload(urlDeceased);
+      const targetUrl = `/?data=${currentPayload}${lang !== 'he' ? `&lang=${lang}` : ''}`;
       if (typeof window !== 'undefined' && (window.location.pathname + window.location.search) !== targetUrl) {
         window.history.replaceState({}, document.title, targetUrl);
       }
@@ -899,7 +887,8 @@ function MainAppContent() {
           lang={lang} 
           onSetLang={(newLang) => {
             setLang(newLang);
-            const newUrl = `/?m=${urlDeceased!.id}${newLang !== 'he' ? `&lang=${newLang}` : ''}`;
+            const updatedPayload = encodeDeceasedToUrlPayload(urlDeceased!);
+            const newUrl = `/?id=${urlDeceased!.id}&m=${urlDeceased!.id}&data=${updatedPayload}&lang=${newLang}`;
             window.history.replaceState({}, document.title, newUrl);
           }} 
           onExit={handleExitMemorialPage} 

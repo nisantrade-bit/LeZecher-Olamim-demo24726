@@ -163,12 +163,15 @@ export function decodeDeceasedFromUrlPayload(encodedStr: string): Deceased | nul
  * Automatically adapts dynamically to whatever domain the application is running on.
  */
 export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: string, allDeceasedList?: Deceased[]): string {
-  let idVal: number | string | null = null;
+  let deceasedObj: Deceased | null = null;
 
   if (typeof deceasedOrId === 'object' && deceasedOrId !== null) {
-    idVal = deceasedOrId.id || null;
-  } else if (typeof deceasedOrId === 'number' || typeof deceasedOrId === 'string') {
-    idVal = deceasedOrId;
+    deceasedObj = deceasedOrId;
+  } else {
+    const id = Number(deceasedOrId);
+    if (allDeceasedList && Array.isArray(allDeceasedList)) {
+      deceasedObj = allDeceasedList.find(d => Number(d.id) === id) || null;
+    }
   }
 
   let baseOrigin = '';
@@ -182,16 +185,25 @@ export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: stri
     baseOrigin = PUBLIC_PRODUCTION_URL;
   }
 
+  let dataParam = '';
   let idParam = '';
-  if (idVal !== null && idVal !== undefined && String(idVal).trim() !== '') {
-    idParam = `m=${idVal}`;
+  if (deceasedObj) {
+    if (deceasedObj.id) {
+      idParam = `id=${deceasedObj.id}&m=${deceasedObj.id}`;
+    }
+    const payload = encodeDeceasedToUrlPayload(deceasedObj);
+    if (payload) {
+      dataParam = `data=${payload}`;
+    }
+  } else if (typeof deceasedOrId === 'number' || (typeof deceasedOrId === 'string' && !isNaN(Number(deceasedOrId)))) {
+    idParam = `id=${deceasedOrId}&m=${deceasedOrId}`;
   }
 
   const langQuery = (lang && lang !== 'he') ? `lang=${lang}` : '';
-  const params = [idParam, langQuery].filter(Boolean);
+  const params = [idParam, dataParam, langQuery].filter(Boolean);
   const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
 
-  // Return clean short memorial URL with ID only — no Base64, JSON, or personal details
+  // Return clean short domain & path params URL
   return `${baseOrigin}/${queryStr}`;
 }
 
@@ -211,8 +223,7 @@ export function openWhatsAppShare(text: string) {
 }
 
 /**
- * Generates a concise, respectful invitation text for sharing via WhatsApp.
- * Designed to encourage clicking the short memorial link without exposing verbose or personal details.
+ * Generates an elegant, emotional, and persuasive invitation text for sharing via WhatsApp.
  */
 export function generateWhatsAppShareText(
   deceased: Deceased,
@@ -221,27 +232,64 @@ export function generateWhatsAppShareText(
 ): string {
   const shortUrl = getShortMemorialUrl(deceased, lang);
   const localizedName = getLocalizedName(deceased, lang);
-  const isFemale = deceased.gender === 'female';
-  const isMale = deceased.gender === 'male';
+  const parentRelation = formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang as 'he' | 'en' | 'ru', deceased);
+  const parentSuffix = parentRelation ? ` (${parentRelation})` : '';
 
   if (lang === 'he') {
-    const titlePrefix = isFemale ? 'לזכרה של' : isMale ? 'לזכרו של' : 'לזכרו/ה של';
-    const blessingSuffix = isFemale ? 'יהי זכרה ברוך 🙏' : isMale ? 'יהי זכרו ברוך 🙏' : 'יהי זכרו/ה ברוך 🙏';
+    let shabbatBlock = '';
+    if (shabbatInfo?.isShabbat) {
+      shabbatBlock =
+        `📌 *אזכרה החלה בשבת — תזכורת כפולה לשתי השבתות:*\n` +
+        `• *עלייה לקבר:* מוקדמת ליום שישי או נדחית ליום ראשון\n` +
+        `• *1️⃣ שבת הכנה (השבת שלפני):* פרשת ${shabbatInfo.prepParashaName} (${shabbatInfo.prepDateStrFormatted}) — תזכורת להערכות, הזמנת עולים לתורה, תיאום מניין וסעודה\n` +
+        `• *2️⃣ שבת האזכרה (השבת עצמה):* פרשת ${shabbatInfo.memorialParashaName} (${shabbatInfo.memorialDateStrFormatted}) — תזכורת להדלקת נר נשמה בערב שבת לפני השקיעה, תפילת קדיש ולימוד\n` +
+        `⚠️ *שימו לב:* חובה להקדים ולהדליק נר נשמה בערב שבת מבעוד מועד לפני כניסת השבת!\n\n`;
+    }
 
-    return `🕯️ ${titlePrefix} ${localizedName}\n\n` +
-      `מוזמנים להיכנס לכרטיס הזיכרון, להדליק נר ולהקדיש תפילה.\n\n` +
+    return `🕯️ *הזמנה לאתר הזיכרון וההנצחה העולמי | לזכר עולמים* 🕯️\n\n` +
+      `מזמינים אתכם להצטרף אלינו, להדליק נר נשמה, לקרוא פרק תהילים ולהקדיש משניות לעילוי נשמתו/ה היקרה של:\n\n` +
+      `✨ *${localizedName}*${parentSuffix} ✨\n\n` +
+      shabbatBlock +
+      `זוכרים, מנציחים ושומרים את הזיכרון חי בלב כולנו.\n` +
+      `צפו בכרטיס הזיכרון והשתתפו בהנצחה:\n` +
       `🔗 ${shortUrl}\n\n` +
-      `${blessingSuffix}`;
+      `_יהי זכרו/ה ברוך ומנוחתו/ה בגן עדן_ 🙏`;
   } else if (lang === 'ru') {
-    return `🕯️ Светлая память – ${localizedName}\n\n` +
-      `Приглашаем вас посетить страницу памяти, зажечь свечу и прочитать молитву.\n\n` +
+    let shabbatBlock = '';
+    if (shabbatInfo?.isShabbat) {
+      shabbatBlock =
+        `📌 *Йарцайт в Шаббат — Двойное напоминание:*\n` +
+        `• *Посещение могилы:* переносится на пятницу или откладывается на воскресенье\n` +
+        `• *1️⃣ Шаббат подготовки (Шаббат до годовщины):* Парашат ${shabbatInfo.prepParashaName} (${shabbatInfo.prepDateStrFormatted}) — координация миньяна, вызова к Торе (Алийот) и трапезы\n` +
+        `• *2️⃣ Шаббат памяти (Шаббат годовщины):* Парашат ${shabbatInfo.memorialParashaName} (${shabbatInfo.memorialDateStrFormatted}) — зажечь поминальную свечу в пятницу до захода солнца, Кадиш и изучение Торы\n` +
+        `⚠️ *Внимание:* Поминальную свечу необходимо зажечь в пятницу вечером до захода солнца и начала Шаббата!\n\n`;
+    }
+
+    return `🕯️ *Приглашение на страницу памяти и поминовения | Лезэхер Оламим* 🕯️\n\n` +
+      `Приглашаем вас присоединиться к нам, чтобы почтить светлую память нашего дорогого человека:\n\n` +
+      `✨ *${localizedName}*${parentSuffix} ✨\n\n` +
+      shabbatBlock +
+      `Зажгите виртуальную свечу, оставьте теплые слова и прочитайте псалмы в его/ее память:\n` +
       `🔗 ${shortUrl}\n\n` +
-      `Светлая и вечная память 🙏`;
+      `_Светлая и вечная память_ 🙏`;
   } else {
-    return `🕯️ In memory of ${localizedName}\n\n` +
-      `You are invited to visit the memorial card, light a candle, and dedicate a prayer.\n\n` +
+    let shabbatBlock = '';
+    if (shabbatInfo?.isShabbat) {
+      shabbatBlock =
+        `📌 *Yahrzeit on Shabbat — Double Shabbat Reminder:*\n` +
+        `• *Grave Visit:* Brought forward to Friday or postponed to Sunday\n` +
+        `• *1️⃣ Preparation Shabbat (Shabbat Before):* Parashat ${shabbatInfo.prepParashaName} (${shabbatInfo.prepDateStrFormatted}) — reminder for preparation: inviting Torah readers (Aliyot), coordinating minyan and meal\n` +
+        `• *2️⃣ Memorial Shabbat (Yahrzeit Shabbat):* Parashat ${shabbatInfo.memorialParashaName} (${shabbatInfo.memorialDateStrFormatted}) — reminder to light a memorial candle on Friday before sunset, Kaddish, and Torah study\n` +
+        `⚠️ *Please Note:* A memorial candle must be lit on Friday evening before sunset prior to the start of Shabbat!\n\n`;
+    }
+
+    return `🕯️ *Memorial & Remembrance Invitation | L'Zecher Olamim* 🕯️\n\n` +
+      `You are warmly invited to join us in honoring and keeping alive the sacred memory of our beloved:\n\n` +
+      `✨ *${localizedName}*${parentSuffix} ✨\n\n` +
+      shabbatBlock +
+      `Light a virtual candle, share loving memories, and participate in holy study for the elevation of their soul:\n` +
       `🔗 ${shortUrl}\n\n` +
-      `May their memory be a blessing 🙏`;
+      `_May their memory be an eternal blessing_ 🙏`;
   }
 }
 
