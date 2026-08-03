@@ -883,7 +883,28 @@ export function enrichDeceasedTranslations(item: Deceased): Deceased {
     if (!result.notesRu) {
       result.notesRu = isCyrillicText(result.notes) ? result.notes : translateText(result.notes, 'ru');
     }
+  } else {
+    result.notesHe = result.notesHe || '';
+    result.notesEn = result.notesEn || '';
+    result.notesRu = result.notesRu || '';
   }
+
+  // 5. Ensure all translation fields are defined
+  result.nameHe = result.nameHe || result.name || '';
+  result.nameEn = result.nameEn || result.name || '';
+  result.nameRu = result.nameRu || result.name || '';
+  result.fatherNameHe = result.fatherNameHe || result.fatherName || '-';
+  result.fatherNameEn = result.fatherNameEn || result.fatherName || '-';
+  result.fatherNameRu = result.fatherNameRu || result.fatherName || '-';
+  result.motherNameHe = result.motherNameHe || result.motherName || '-';
+  result.motherNameEn = result.motherNameEn || result.motherName || '-';
+  result.motherNameRu = result.motherNameRu || result.motherName || '-';
+
+  // 6. Image & imageUrl & photoUrl fields
+  const imgStr = result.imageUrl || result.photoUrl || result.image || '';
+  result.imageUrl = imgStr;
+  result.photoUrl = imgStr;
+  result.image = imgStr;
 
   return result;
 }

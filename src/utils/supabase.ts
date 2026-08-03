@@ -142,6 +142,8 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
     notesRu: '-',
     contactPhone: '-',
     image: '-',
+    imageUrl: '-',
+    photoUrl: '-',
     birthDate: '-'
   };
 

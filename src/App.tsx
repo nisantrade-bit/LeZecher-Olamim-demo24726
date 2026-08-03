@@ -17,7 +17,7 @@ import { MemorialDetailsModal } from './components/MemorialDetailsModal';
 import { Flame, Calendar, BookOpen, LayoutGrid, FileDown, Globe, Sparkles, AlertTriangle, Bell, Plus, X, CheckCircle2 } from 'lucide-react';
 import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
 import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
-import { translateDeceasedListClientSide } from './utils/transliteration';
+import { translateDeceasedListClientSide, enrichDeceasedTranslations } from './utils/transliteration';
 import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
 import { getUpcomingYahrzeits, requestNotificationPermission, sendYahrzeitNotification, UpcomingYahrzeitNotice } from './utils/notifications';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,7 +26,7 @@ import INITIAL_DATABASE from '../database.json';
 import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById } from './utils/supabase';
 export { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById };
 
-const SEED_DATABASE: Deceased[] = (INITIAL_DATABASE || []) as unknown as Deceased[];
+const SEED_DATABASE: Deceased[] = ((INITIAL_DATABASE || []) as unknown as Deceased[]).map(d => enrichDeceasedTranslations(d));
 
 const MOCK_IDS = new Set([1718882041001, 1718882041002, 1718882041003, 1718882041004, 1718882041005, 1718882041006]);
 const MOCK_NAMES = new Set(["אברהם אבינו", "שרה אמנו", "יוסף בן יעקב", "לאה אמנו", "אלעזר בן אהרן", "מרים הנביאה"]);
@@ -40,13 +40,6 @@ function filterOutMockRecords(list: Deceased[]): Deceased[] {
     return true;
   });
 }
-
-// Helper to enrich single deceased item with multi-language fields
-const enrichDeceasedTranslations = (item: Deceased): Deceased => {
-  if (!item) return item;
-  const list = translateDeceasedListClientSide([item], 'he');
-  return list && list.length > 0 ? list[0] : item;
-};
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;

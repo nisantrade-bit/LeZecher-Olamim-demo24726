@@ -16,6 +16,8 @@ export interface Deceased {
   contactPhone?: string; // Optional relative phone
   notes?: string; // Optional story / cemetery location
   image?: string; // Optional Base64 image
+  imageUrl?: string; // Optional image URL
+  photoUrl?: string; // Optional photo URL
   imagePosition?: string; // Optional CSS object-position (e.g. 'center top', 'center 20%') to prevent cropping head/face
   ageAtDeath?: number; // Optional age at death
   birthDate?: string; // Optional Gregorian birth date
