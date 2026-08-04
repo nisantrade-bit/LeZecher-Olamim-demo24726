@@ -616,33 +616,33 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                       <div className="flex items-start gap-4 flex-1">
                         {event.deceased.image ? (
                           <div className="flex items-center gap-2.5 shrink-0">
-                            <img 
-  src={event.deceased.image || "https://aoendfkvzsywrykmcloy.supabase.co/storage/v1/object/public/memorial-images/WhatsApp%20Image%202026-07-30%20at%2018.31.10.jpeg"}
-                              referrerPolicy="no-referrer"
-                              className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
-                              style={{ objectPosition: event.deceased.imagePosition || 'center top' }}
-                            />
-                            <div className="flex flex-col items-center justify-center bg-black/40 px-2 py-1 rounded-lg border border-amber-500/30">
-                              <RealisticFlame size="normal" isLit={true} />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-3xl shadow-[0_0_15px_rgba(251,191,36,0.5)] group-hover:scale-105 transition-transform duration-300 shrink-0">
-                            🕯️
-                          </div>
-                        )}
-                        <div className="space-y-2 flex-1">
-                          {/* Original, deeply moving Hebrew Eve Alert Banner */}
-                          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500/30 via-amber-500/20 to-amber-500/10 border border-amber-400/70 px-3 py-1 rounded-full text-xs font-black text-amber-200 shadow-md">
-                            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0"></span>
-                            <span>
-                              {lang === 'he' 
-                                ? '✨ יארצייט קדוש ומרומם: האזכרה נכנסת מהיום בערב (משקיעת החמה) - מדליקים נר נשמה, אומרים קדיש ולומדים משנה לעילוי הנשמה 🕯️' 
-                                : lang === 'ru' 
-                                ? '✨ Священный Ярцайт: Начинается сегодня вечером (на закате) — Зажгите поминальную свечу и прочтите Псалмы 🕯️' 
-                                : '✨ Sacred Yahrzeit: Begins this evening at sunset — Light a memorial candle & recite Psalms in loving memory 🕯️'}
-                            </span>
-                          </div>
+                          <img 
+                src={event.deceased.image || "https://aoendfkvzsywrykmcloy.supabase.co/storage/v1/object/public/memorial-images/WhatsApp%20Image%202026-07-30%20at%2018.31.10.jpeg"}
+                referrerPolicy="no-referrer"
+                className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
+                style={{ objectPosition: event.deceased.imagePosition || 'center top' }}
+              />
+              <div className="flex flex-col items-center justify-center bg-black/40 px-2 py-1 rounded-lg border border-amber-500/30">
+                <RealisticFlame size="normal" isLit={true} />
+              </div>
+            </div>
+          ) : (
+            <div className="w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-3xl shadow-[0_0_15px_rgba(251,191,36,0.5)] group-hover:scale-105 transition-transform duration-300 shrink-0">
+              🕯️
+            </div>
+          )}
+          <div className="space-y-2 flex-1">
+            {/* Original, deeply moving Hebrew Eve Alert Banner */}
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500/30 via-amber-500/20 to-amber-500/10 border border-amber-400/70 px-3 py-1 rounded-full text-xs font-bold text-amber-200 shadow-sm animate-pulse">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0"></span>
+              <span>
+                {lang === 'he' 
+                  ? '🕯️ יארצייט קדוש ומרומם: האזכרה נכנסת מהיום בערב (שקיעת החמה) - מדליקים נר נשמה, אומרים קדיש ולומדים משנה לעילוי הנשמה 🕯️'
+                  : lang === 'ru'
+                  ? '🕯️ Священный Ярцайт: Начинается сегодня вечером (на закате) – Зажгите поминальную свечу и прочтите Псалмы 🕯️'
+                  : '🕯️ Sacred Yahrzeit: Begins this evening at sunset – Light a memorial candle & recite Psalms in loving memory 🕯️'}
+              </span>
+            </div>
 
                           {/* Distinctive, prominent typography for the deceased name */}
                           <div className="space-y-0.5">

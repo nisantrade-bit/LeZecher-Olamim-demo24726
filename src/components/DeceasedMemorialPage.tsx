@@ -625,17 +625,17 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
     </div>
   </div>
 
-  {/* Deceased name in Display typography */}
-                  onChange={(e) => setSelectedYahrzeitYear(Number(e.target.value))}
-                  className="w-full py-1.5 px-2 bg-black/60 text-[#c8a96e] font-sans font-semibold border border-[#c8a96e]/30 rounded outline-none cursor-pointer focus:border-[#c8a96e]"
-                >
-                  {Array.from({ length: 200 }, (_, i) => currentYear + i).map((yr) => (
-                    <option key={yr} value={yr} className="bg-[#131a26] text-white">
-                      {yr}
-                    </option>
-                  ))}
-                </select>
-              </div>
+ <select
+  value={selectedYahrzeitYear}
+  onChange={(e) => setSelectedYahrzeitYear(Number(e.target.value))}
+  className="w-full py-1.5 px-2 bg-black/60 text-[#c8a96e] font-sans font-semibold border border-[#c8a96e]/30 rounded outline-none cursor-pointer focus:border-[#c8a96e]"
+>
+  {Array.from({ length: 200 }, (_, i) => currentYear + i).map((yr) => (
+    <option key={yr} value={yr} className="bg-[#131a26] text-white">
+      {yr}
+    </option>
+  ))}
+</select>
 
               {/* Custom Selector */}
               <div className="space-y-1">
