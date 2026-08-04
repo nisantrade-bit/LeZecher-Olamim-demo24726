@@ -726,15 +726,8 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
             </p>
 
             {yahrzeitGregDate && (
-              <ShabbatYahrzeitBanner
-                eventDate={yahrzeitGregDate}
-                hebcalEvents={hebcalItems}
-                lang={lang}
-                compact={false}
-              />
-            )}
-          </div>
-
+            <ShabbatYahrzeitBanner yahrzeitDate={yahrzeitGregDate} lang={lang} />
+          )}
           {/* Right Column: Interactive Spiritual Corner (Mishnah & Psalms) */}
           <div className={`bg-[#2a1d0f]/50 border-2 border-[#c8a96e]/30 p-6 rounded-2xl space-y-5 font-sans ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
             <h2 className="text-lg font-serif font-bold text-[#c8a96e] border-b border-[#c8a96e]/20 pb-2.5 flex items-center justify-between">
