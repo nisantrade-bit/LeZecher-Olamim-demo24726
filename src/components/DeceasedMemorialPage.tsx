@@ -212,7 +212,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
       const ogDesc = document.querySelector('meta[property="og:description"]');
       if (ogDesc) ogDesc.setAttribute('content', `נר נשמה דולק לעילוי נשמת ${deceased.name} ז״ל | השתתפות בהנצחה, תהילים ומשנה`);
       const ogImg = document.querySelector('meta[property="og:image"]');
-      if (ogImg) ogImg.setAttribute('content', deceased.image || '/icon-192.png');
+      if (ogImg) ogImg.setAttribute('content', deceased.image || "https://aoendfkvzsywrykmcloy.supabase.co/storage/v1/object/public/memorial-images/WhatsApp%20Image%202026-07-30%20at%2018.31.10.jpeg");
     } catch (e) {}
   }, [deceased.id, deceased.day, deceased.month, deceased.name, deceased.image]);
 
@@ -594,7 +594,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
               <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl border-2 border-[#c8a96e] shadow-[0_0_30px_rgba(200,169,110,0.5)] overflow-hidden bg-black/60 shrink-0 group">
                 <img
                   src={deceased.image}
-                  alt={deceased.name}
+                  alt={deceased.name}src={deceased.image || "https://aoendfkvzsywrykmcloy.supabase.co/storage/v1/object/public/memorial-images/WhatsApp%20Image%202026-07-30%20at%2018.31.10.jpeg"}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   style={{ objectPosition: deceased.imagePosition || 'center top' }}
                   referrerPolicy="no-referrer"
