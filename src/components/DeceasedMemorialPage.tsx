@@ -588,18 +588,15 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
           <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-[#c8a96e]/50 rounded-br-xl pointer-events-none"></div>
 
           {/* Hero Center Display: Framed Photo with Memorial Candle Beside It */}
-          {deceased.image ? (
-            <div className="flex flex-row items-center justify-center gap-6 sm:gap-12 mb-6 relative z-10">
-              {/* Deceased Portrait in Memorial Frame */}
-              <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl border-2 border-[#c8a96e] shadow-[0_0_30px_rgba(200,169,110,0.5)] overflow-hidden bg-black/60 shrink-0 group">
-                <img
-                  src={deceased.image}
-                  alt={deceased.name}src={deceased.image || "https://aoendfkvzsywrykmcloy.supabase.co/storage/v1/object/public/memorial-images/WhatsApp%20Image%202026-07-30%20at%2018.31.10.jpeg"}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  style={{ objectPosition: deceased.imagePosition || 'center top' }}
-                  referrerPolicy="no-referrer"
-                />
-              </div>
+          {/* Deceased Portrait in Memorial Frame */}
+          <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-2xl border-2 border-[#c8a96e] shadow-[0_0_30px_rgba(200,169,110,0.5)] overflow-hidden bg-black/60 shrink-0 group">
+            <img
+              src={deceased.image || "https://aoendfkvzsywrykmcloy.supabase.co/storage/v1/object/public/memorial-images/WhatsApp%20Image%202026-07-30%20at%2018.31.10.jpeg"}
+              alt={deceased.name}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              style={{ objectPosition: deceased.imagePosition || 'center top' }}
+            />
+          </div>
 
               {/* Memorial Candle Burning Beside Portrait ("לצד התמונה") */}
               <div className="flex flex-col items-center justify-center shrink-0">
