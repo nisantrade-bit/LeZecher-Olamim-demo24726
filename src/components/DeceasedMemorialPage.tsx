@@ -588,54 +588,228 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
           <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-[#c8a96e]/50 rounded-br-xl pointer-events-none"></div>
 
           {/* Hero Center Display: Framed Photo with Memorial Candle Beside It */}
-          {/* Deceased Portrait in Memorial Frame */}
-          <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-2xl border-2 border-[#c8a96e] shadow-[0_0_30px_rgba(200,169,110,0.5)] overflow-hidden bg-black/60 shrink-0 group">
-            <img
-              src={deceased.image || "https://aoendfkvzsywrykmcloy.supabase.co/storage/v1/object/public/memorial-images/WhatsApp%20Image%202026-07-30%20at%2018.31.10.jpeg"}
-              alt={deceased.name}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              style={{ objectPosition: deceased.imagePosition || 'center top' }}
-            />
+          <div className="flex flex-row items-center justify-center gap-6 sm:gap-12 mb-6 relative z-10">
+            {/* Deceased Portrait in Memorial Frame */}
+            <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-2xl border-2 border-[#c8a96e] shadow-[0_0_30px_rgba(200,169,110,0.5)] overflow-hidden bg-black/60 shrink-0 group">
+              <img
+                src={deceased.image || "https://aoendfkvzsywrykmcloy.supabase.co/storage/v1/object/public/memorial-images/WhatsApp%20Image%202026-07-30%20at%2018.31.10.jpeg"}
+                alt={deceased.name}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                style={{ objectPosition: deceased.imagePosition || 'center top' }}
+                referrerPolicy="no-referrer"
+              />
+            </div>
+
+            {/* Memorial Candle Burning Beside Portrait ("לצד התמונה") */}
+            <div className="flex flex-col items-center justify-center shrink-0">
+              <div className="relative w-28 h-32 flex flex-col items-center justify-center">
+                <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-2xl animate-pulse"></div>
+                
+                <motion.div 
+                  className="relative w-12 h-20 bg-gradient-to-t from-amber-600 via-amber-400 to-yellow-100 rounded-full blur-[0.5px] shadow-[0_0_25px_#f59e0b,0_0_45px_#ff9900,0_0_60px_#ffaa00] origin-bottom z-10"
+                  animate={{
+                    scaleY: [1, 1.25, 0.88, 1.18, 1],
+                    scaleX: [1, 0.82, 1.18, 0.88, 1],
+                    rotate: [0, -3.5, 3.5, -1.5, 0],
+                    x: [0, -0.8, 0.8, -0.8, 0]
+                  }}
+                  transition={{
+                    duration: 1.2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <div className="absolute bottom-1 left-2.5 w-6 h-10 bg-white rounded-full opacity-95 shadow-[0_0_12px_#fff]"></div>
+                  <div className="absolute bottom-0 left-4 w-3 h-5 bg-blue-500 rounded-full opacity-85"></div>
+                </motion.div>
+                
+                <div className="w-10 h-2 bg-gradient-to-r from-amber-900 via-amber-700 to-amber-900 rounded-full shadow-lg mt-1 border border-amber-500/30"></div>
+              </div>
+              <span className="text-xs uppercase font-mono tracking-widest text-[#c8a96e] mt-1 block font-bold">
+                {lang === 'he' ? '🔥 נר נשמה דולק' : lang === 'ru' ? '🔥 Свеча памяти горит' : '🔥 Memorial Candle Lit'}
+              </span>
+            </div>
           </div>
 
-              {/* Memorial Candle Burning Beside Portrait ("לצד התמונה") */}
-              <div className="flex flex-col items-center justify-center shrink-0">
-                <div className="relative w-28 h-32 flex flex-col items-center justify-center">
-                  <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-2xl animate-pulse"></div>
-                  
-                  <motion.div 
-                    className="relative w-12 h-20 bg-gradient-to-t from-amber-600 via-amber-400 to-yellow-100 rounded-full blur-[0.5px] shadow-[0_0_25px_#f59e0b,0_0_45px_#ff9900,0_0_60px_#ffaa00] origin-bottom z-10"
-                    animate={{
-                      scaleY: [1, 1.25, 0.88, 1.18, 1],
-                      scaleX: [1, 0.82, 1.18, 0.88, 1],
-                      rotate: [0, -3.5, 3.5, -1.5, 0],
-                      x: [0, -0.8, 0.8, -0.8, 0]
-                    }}
-                    transition={{
-                      duration: 1.2,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    <div className="absolute bottom-1 left-2.5 w-6 h-10 bg-white rounded-full opacity-95 shadow-[0_0_12px_#fff]"></div>
-                    <div className="absolute bottom-0 left-4 w-3 h-5 bg-blue-500 rounded-full opacity-85"></div>
-                  </motion.div>
-                  
-                 </div>
-    </div>
-  </div>
+          {/* Deceased name in Display typography */}
+          <h1 className="text-3xl sm:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#f0d19e] via-[#c8a96e] to-[#f0d19e] mb-3 leading-tight tracking-wide">
+            {lang === 'he' ? deceased.name : translateText(deceased.name, lang as 'en' | 'ru')}
+          </h1>
 
- <select
-  value={selectedYahrzeitYear}
-  onChange={(e) => setSelectedYahrzeitYear(Number(e.target.value))}
-  className="w-full py-1.5 px-2 bg-black/60 text-[#c8a96e] font-sans font-semibold border border-[#c8a96e]/30 rounded outline-none cursor-pointer focus:border-[#c8a96e]"
->
-  {Array.from({ length: 200 }, (_, i) => currentYear + i).map((yr) => (
-    <option key={yr} value={yr} className="bg-[#131a26] text-white">
-      {yr}
-    </option>
-  ))}
-</select>
+          <div className="text-gray-300 font-sans text-sm sm:text-base space-y-1 mb-6 flex flex-col items-center">
+            <span className="text-xl sm:text-2xl font-serif font-bold italic text-amber-100 bg-amber-500/5 px-5 py-2 rounded-full border border-amber-500/10 shadow-inner">
+              {formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang)}
+            </span>
+            <div className="pt-2 text-gray-300 text-sm sm:text-base flex items-center justify-center gap-1.5">
+              <Calendar className="w-4.5 h-4.5 text-[#c8a96e]" />
+              <span>
+                {mt.passedAway} <strong className="text-amber-200 text-base sm:text-lg font-black">{lang === 'he' ? `${getLocalizedDay()} ב${getLocalizedMonth()}` : `${getLocalizedDay()} ${getLocalizedMonth()}`}</strong>
+              </span>
+            </div>
+
+            {/* Custom attributes: Gender, Birth Date, Age at Death, Age Today */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-3 max-w-lg">
+              <div className="bg-[#101726]/60 px-3 py-1.5 rounded-lg border border-[#c8a96e]/10 text-xs text-center">
+                <span className="text-[#c8a96e] block text-[9px] font-semibold uppercase mb-0.5">
+                  {lang === 'he' ? 'מין' : lang === 'ru' ? 'Пол' : 'Gender'}
+                </span>
+                <span className="text-white font-bold">
+                  {deceased.gender === 'male' 
+                    ? (lang === 'he' ? 'זכר' : lang === 'ru' ? 'Мужчина' : 'Male')
+                    : (lang === 'he' ? 'נקבה' : lang === 'ru' ? 'Женщина' : 'Female')}
+                </span>
+              </div>
+
+              {deceased.ageAtDeath !== undefined && deceased.ageAtDeath !== null && (
+                <div className="bg-[#101726]/60 px-3 py-1.5 rounded-lg border border-[#c8a96e]/10 text-xs text-center">
+                  <span className="text-[#c8a96e] block text-[9px] font-semibold uppercase mb-0.5">
+                    {lang === 'he' ? 'גיל פטירה' : lang === 'ru' ? 'Возраст смерти' : 'Age at Death'}
+                  </span>
+                  <span className="text-white font-bold">
+                    {deceased.ageAtDeath}
+                  </span>
+                </div>
+              )}
+
+              {deceased.birthDate && (
+                <div className="bg-[#101726]/60 px-3 py-1.5 rounded-lg border border-[#c8a96e]/10 text-xs text-center">
+                  <span className="text-[#c8a96e] block text-[9px] font-semibold uppercase mb-0.5">
+                    {lang === 'he' ? 'תאריך לידה' : lang === 'ru' ? 'Дата рождения' : 'Date of Birth'}
+                  </span>
+                  <span className="text-white font-bold">
+                    {deceased.birthDate}
+                  </span>
+                </div>
+              )}
+
+              {deceased.birthDate && (() => {
+                const ageToday = getAgeIfAliveToday(deceased.birthDate);
+                if (ageToday !== null) {
+                  return (
+                    <div className="bg-[#c8a96e]/10 px-3 py-1.5 rounded-lg border border-[#c8a96e]/30 text-xs text-center">
+                      <span className="text-amber-400 block text-[9px] font-bold uppercase mb-0.5">
+                        {lang === 'he' ? 'גיל נוכחי לו היה בחיים' : lang === 'ru' ? 'Был бы жив сегодня' : 'Age if Alive Today'}
+                      </span>
+                      <span className="text-white font-extrabold">
+                        {ageToday} {lang === 'he' ? 'שנים' : lang === 'ru' ? 'лет' : 'years'}
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          </div>
+
+          {/* Countdown & Annual Anniversary Banner with Erev Yahrzeit Display */}
+          {(() => {
+            const targetDate = countdown.date;
+            const eveDate = targetDate ? getYahrzeitEveDate(targetDate) : null;
+            const eveFormatted = eveDate
+              ? (lang === 'he'
+                  ? `${eveDate.toLocaleDateString('he-IL', { weekday: 'long' })} בערב, ${eveDate.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })} (בשקיעה)`
+                  : lang === 'ru'
+                  ? `${eveDate.toLocaleDateString('ru-RU', { weekday: 'long' })} вечером, ${eveDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })} (на закате)`
+                  : `${eveDate.toLocaleDateString('en-US', { weekday: 'long' })} evening, ${eveDate.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })} (at sunset)`)
+              : '';
+
+            return (
+              <div className="w-full max-w-md bg-black/50 border border-[#c8a96e]/30 p-5 rounded-2xl flex flex-col items-center space-y-3 shadow-xl text-center">
+                <span className="text-xs font-bold text-[#c8a96e] uppercase tracking-wider">{mt.yahrzeitTitle}</span>
+                
+                {eveDate && (
+                  <div className="w-full bg-amber-950/40 border border-amber-500/30 p-2.5 rounded-xl text-right" dir={lang === 'he' ? 'rtl' : 'ltr'}>
+                    <span className="block text-[10px] text-amber-400 font-bold">
+                      {lang === 'he' ? '🕯️ תחילת האזכרה והדלקת נר נשמה (ערב האזכרה):' : lang === 'ru' ? '🕯️ Начало поминания и зажигание свечи (накануне):' : '🕯️ Memorial & Candle Lighting Begins (Eve):'}
+                    </span>
+                    <span className="text-xs font-bold text-amber-100 block mt-0.5">
+                      {eveFormatted}
+                    </span>
+                  </div>
+                )}
+
+                <div className="w-full bg-red-950/20 border border-red-500/20 p-2.5 rounded-xl text-right" dir="rtl">
+                  <span className="block text-[10px] text-red-300 font-bold">
+                    {lang === 'he' ? '📅 יום האזכרה בלועזי (במהלך היום):' : '📅 Gregorian Anniversary Day:'}
+                  </span>
+                  <span className="text-xs font-bold text-white block mt-0.5">
+                    {formatGregorianDate(targetDate)}
+                  </span>
+                </div>
+
+                {countdown.isToday ? (
+                  <span className="text-xs bg-red-950/60 border border-red-500/50 text-red-200 py-1.5 px-5 rounded-full font-bold animate-pulse">
+                    {mt.todayYahrzeit}
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-[#c8a96e] font-serif text-lg font-bold pt-1">
+                    <span className="text-2xl text-white font-mono">{countdown.days}</span>
+                    <span>{mt.daysRemaining}</span>
+                  </div>
+                )}
+
+                <p className="text-[10px] text-amber-200/80 leading-relaxed pt-1" dir="rtl">
+                  {lang === 'he'
+                    ? '💡 היות והיום העברי מתחיל בשקיעת החמה, נר הנשמה מודלק והאזכרה מתחילה בערב שלפני.'
+                    : '💡 As the Hebrew day begins at sunset, the memorial candle is lit on the preceding evening.'}
+                </p>
+              </div>
+            );
+          })()}
+
+          {/* Total candles indicator */}
+          <div className="mt-5 text-gray-400 text-xs flex items-center justify-center gap-2">
+            <Heart className="w-4 h-4 text-red-500 fill-red-500 animate-pulse" />
+            <span>
+              {mt.candleCount}: <strong className="text-white text-sm">{memories.length + 5}</strong>
+            </span>
+          </div>
+
+          {/* WhatsApp Share Button */}
+          <div className="mt-6 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={shareMemorialPage}
+              className="inline-flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm py-3 px-6 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer border border-emerald-500/30"
+            >
+              <MessageCircle className="w-5 h-5 shrink-0" />
+              <span>{mt.sharePage}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* TWO COLUMN CONTENT: Shabbat & Torah, Spiritual Study */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* Left Column: Torah Portion preceding Yahrzeit (עליה לתורה) */}
+          <div className="bg-[#101726]/80 border border-[#c8a96e]/15 p-6 rounded-2xl space-y-4">
+            <h2 className="text-lg font-serif font-bold text-[#c8a96e] border-b border-[#c8a96e]/15 pb-2.5 flex items-center gap-2 justify-between">
+              <span className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-[#c8a96e]" />
+                {mt.title}
+              </span>
+              <span className="text-[10px] bg-[#c8a96e]/10 text-[#c8a96e] px-2 py-0.5 rounded">
+                {lang === 'he' ? 'עליה לתורה' : lang === 'ru' ? 'Вызов к Торе' : 'Torah Aliyah'}
+              </span>
+            </h2>
+
+            {/* Config controls */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Year Selector */}
+              <div className="space-y-1">
+                <label className="text-gray-400 block text-[10px]">{mt.selectYear}</label>
+                <select
+                  value={selectedYahrzeitYear}
+                  onChange={(e) => setSelectedYahrzeitYear(Number(e.target.value))}
+                  className="w-full py-1.5 px-2 bg-black/60 text-[#c8a96e] font-sans font-semibold border border-[#c8a96e]/30 rounded outline-none cursor-pointer focus:border-[#c8a96e]"
+                >
+                  {Array.from({ length: 200 }, (_, i) => currentYear + i).map((yr) => (
+                    <option key={yr} value={yr} className="bg-[#131a26] text-white">
+                      {yr}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               {/* Custom Selector */}
               <div className="space-y-1">
@@ -726,8 +900,10 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
             </p>
 
             {yahrzeitGregDate && (
-            <ShabbatYahrzeitBanner yahrzeitDate={yahrzeitGregDate} lang={lang} />
-          )}
+              <ShabbatYahrzeitBanner yahrzeitDate={yahrzeitGregDate} lang={lang} />
+            )}
+          </div>
+
           {/* Right Column: Interactive Spiritual Corner (Mishnah & Psalms) */}
           <div className={`bg-[#2a1d0f]/50 border-2 border-[#c8a96e]/30 p-6 rounded-2xl space-y-5 font-sans ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
             <h2 className="text-lg font-serif font-bold text-[#c8a96e] border-b border-[#c8a96e]/20 pb-2.5 flex items-center justify-between">
