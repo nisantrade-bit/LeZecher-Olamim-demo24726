@@ -618,7 +618,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
                           <div className="flex items-center gap-2.5 shrink-0">
                             <img 
                               src={event.deceased.image} 
-                              alt={event.deceased.name} 
+  src={event.deceased.image || "https://aoendfkvzsywrykmcloy.supabase.co/storage/v1/object/public/memorial-images/WhatsApp%20Image%202026-07-30%20at%2018.31.10.jpeg"}
                               referrerPolicy="no-referrer"
                               className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
                               style={{ objectPosition: event.deceased.imagePosition || 'center top' }}
