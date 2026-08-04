@@ -169,9 +169,13 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
   }, [selectedCity.id]);
 
   // Helper to compute preceding Shabbat's parasha for a given Yahrzeit date
-  const getPrecedingShabbatParasha = (gregDate: Date) => {
-    const dayOfWeek = gregDate.getDay();
-    const prevSat = new Date(gregDate);
+  const getPrecedingShabbatParasha = (gregDate?: Date | null) => {
+    if (!gregDate) return null;
+    const dateObj = gregDate instanceof Date ? gregDate : new Date(gregDate);
+    if (isNaN(dateObj.getTime())) return null;
+
+    const dayOfWeek = dateObj.getDay();
+    const prevSat = new Date(dateObj);
     const daysToSubtract = dayOfWeek === 6 ? 7 : dayOfWeek + 1;
     prevSat.setDate(prevSat.getDate() - daysToSubtract);
     
@@ -310,8 +314,12 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
   const upcomingList = matchedEvents.filter(e => e.daysCount > 0);
 
   // Helper to construct a professional Shabbat alert banner for a Yahrzeit falling on Friday/Shabbat
-  const getShabbatAlertText = (eventDate: Date, daysCount: number, parashaName: string | null) => {
-    const dayOfWeek = eventDate.getDay(); // 0 = Sun, 5 = Fri, 6 = Sat
+  const getShabbatAlertText = (eventDate?: Date | null, daysCount: number = 0, parashaName: string | null = null) => {
+    if (!eventDate) return null;
+    const dateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
+    if (isNaN(dateObj.getTime())) return null;
+
+    const dayOfWeek = dateObj.getDay(); // 0 = Sun, 5 = Fri, 6 = Sat
     const isSaturday = dayOfWeek === 6;
     const isFriday = dayOfWeek === 5;
 

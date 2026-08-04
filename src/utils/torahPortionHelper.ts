@@ -362,19 +362,23 @@ export interface ShabbatYahrzeitInfo {
 }
 
 export function getShabbatYahrzeitInfo(
-  eventDate: Date,
-  hebcalEvents: any[],
-  lang: 'he' | 'en' | 'ru'
+  eventDate?: Date | null,
+  hebcalEvents: any[] = [],
+  lang: 'he' | 'en' | 'ru' = 'he'
 ): ShabbatYahrzeitInfo | null {
-  const dayOfWeek = eventDate.getDay();
+  if (!eventDate) return null;
+  const dateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
+  if (isNaN(dateObj.getTime())) return null;
+
+  const dayOfWeek = dateObj.getDay();
   if (dayOfWeek !== 6) {
     return null;
   }
 
-  const prepShabbatDate = new Date(eventDate);
+  const prepShabbatDate = new Date(dateObj);
   prepShabbatDate.setDate(prepShabbatDate.getDate() - 7);
 
-  const memorialShabbatDate = new Date(eventDate);
+  const memorialShabbatDate = new Date(dateObj);
 
   const toYmd = (dt: Date) => {
     const yyyy = dt.getFullYear();

@@ -398,9 +398,13 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
   };
 
   // Preceding Shabbat calculation logic
-  const getPrecedingShabbat = (yahrzeitDate: Date): Date => {
-    const dayOfWeek = yahrzeitDate.getDay();
-    const prevSat = new Date(yahrzeitDate);
+  const getPrecedingShabbat = (yahrzeitDate?: Date | null): Date => {
+    if (!yahrzeitDate) return new Date();
+    const dateObj = yahrzeitDate instanceof Date ? yahrzeitDate : new Date(yahrzeitDate);
+    if (isNaN(dateObj.getTime())) return new Date();
+
+    const dayOfWeek = dateObj.getDay();
+    const prevSat = new Date(dateObj);
     const daysToSubtract = dayOfWeek === 6 ? 7 : dayOfWeek + 1;
     prevSat.setDate(prevSat.getDate() - daysToSubtract);
     return prevSat;
@@ -900,7 +904,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
             </p>
 
             {yahrzeitGregDate && (
-              <ShabbatYahrzeitBanner yahrzeitDate={yahrzeitGregDate} lang={lang} />
+              <ShabbatYahrzeitBanner eventDate={yahrzeitGregDate} yahrzeitDate={yahrzeitGregDate} lang={lang} />
             )}
           </div>
 

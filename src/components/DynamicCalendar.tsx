@@ -395,7 +395,7 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
 
               const totalYahrzeits = cellYahrzeits.length + eveYahrzeits.length;
               const shabbatObj = hebcalData[cell.dateStr] || {};
-              const dayOfWeek = cell.date.getDay();
+              const dayOfWeek = cell.date ? cell.date.getDay() : 0;
 
               return (
                 <div
@@ -598,7 +598,7 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
                           yahrzeits: cellYahrzeits,
                           eveYahrzeits,
                           shabbatObj,
-                          dayOfWeek: date.getDay()
+                          dayOfWeek: date ? date.getDay() : 0
                         });
                       }}
                       className={`p-3 bg-[#0d0d0d]/80 border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#c8a96e]/40 transition-all cursor-pointer ${
@@ -699,8 +699,9 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
           Object.keys(hebcalData).sort().forEach(key => {
             const data = hebcalData[key];
             const d = new Date(key);
-            const isFriday = d.getDay() === 5;
-            const isSaturday = d.getDay() === 6;
+            const isValidD = d && !isNaN(d.getTime());
+            const isFriday = isValidD ? d.getDay() === 5 : false;
+            const isSaturday = isValidD ? d.getDay() === 6 : false;
             
             if (data.holiday || (isFriday && data.candles) || (isSaturday && data.havdalah)) {
               list.push({
@@ -722,13 +723,15 @@ export const DynamicCalendar: React.FC<DynamicCalendarProps> = ({ deceasedList, 
           return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {list.map((item, index) => {
-                const isFriday = item.date.getDay() === 5;
-                const isSaturday = item.date.getDay() === 6;
-                const formattedDate = item.date.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', {
+                const itemDate = item?.date ? (item.date instanceof Date ? item.date : new Date(item.date)) : null;
+                const isValidDate = itemDate && !isNaN(itemDate.getTime());
+                const isFriday = isValidDate ? itemDate.getDay() === 5 : false;
+                const isSaturday = isValidDate ? itemDate.getDay() === 6 : false;
+                const formattedDate = isValidDate ? itemDate.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', {
                   month: 'short',
                   day: 'numeric',
                   weekday: 'short'
-                });
+                }) : '';
 
                 return (
                   <div 

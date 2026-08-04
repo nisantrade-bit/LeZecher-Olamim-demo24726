@@ -288,13 +288,15 @@ export const Quick30Grid: React.FC<Quick30GridProps> = ({ deceasedList, lang, on
           return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {list.map((item, index) => {
-                const isFriday = item.date.getDay() === 5;
-                const isSaturday = item.date.getDay() === 6;
-                const formattedDate = item.date.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', {
+                const itemDate = item?.date ? (item.date instanceof Date ? item.date : new Date(item.date)) : null;
+                const isValidDate = itemDate && !isNaN(itemDate.getTime());
+                const isFriday = isValidDate ? itemDate.getDay() === 5 : false;
+                const isSaturday = isValidDate ? itemDate.getDay() === 6 : false;
+                const formattedDate = isValidDate ? itemDate.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', {
                   month: 'short',
                   day: 'numeric',
                   weekday: 'short'
-                });
+                }) : '';
 
                 return (
                   <div 

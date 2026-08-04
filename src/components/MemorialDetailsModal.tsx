@@ -164,9 +164,13 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
 
   const st = studyT[lang];
 
-  const getPrecedingShabbat = (yahrzeitDate: Date): Date => {
-    const dayOfWeek = yahrzeitDate.getDay();
-    const prevSat = new Date(yahrzeitDate);
+  const getPrecedingShabbat = (yahrzeitDate?: Date | null): Date => {
+    if (!yahrzeitDate) return new Date();
+    const dateObj = yahrzeitDate instanceof Date ? yahrzeitDate : new Date(yahrzeitDate);
+    if (isNaN(dateObj.getTime())) return new Date();
+
+    const dayOfWeek = dateObj.getDay();
+    const prevSat = new Date(dateObj);
     const daysToSubtract = dayOfWeek === 6 ? 7 : dayOfWeek + 1;
     prevSat.setDate(prevSat.getDate() - daysToSubtract);
     return prevSat;

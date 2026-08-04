@@ -4,19 +4,26 @@ import { translations, formatShabbatReminderText } from '../utils/translations';
 import { BookOpen, Calendar, AlertCircle, Sparkles } from 'lucide-react';
 
 export interface ShabbatYahrzeitBannerProps {
-  eventDate: Date;
-  hebcalEvents: any[];
+  eventDate?: Date | null;
+  yahrzeitDate?: Date | null;
+  hebcalEvents?: any[];
   lang: 'he' | 'en' | 'ru';
   compact?: boolean;
 }
 
 export const ShabbatYahrzeitBanner: React.FC<ShabbatYahrzeitBannerProps> = ({
   eventDate,
-  hebcalEvents,
+  yahrzeitDate,
+  hebcalEvents = [],
   lang,
   compact = false,
 }) => {
-  const info = getShabbatYahrzeitInfo(eventDate, hebcalEvents, lang);
+  const targetDate = eventDate || yahrzeitDate;
+  if (!targetDate) return null;
+  const dateObj = targetDate instanceof Date ? targetDate : new Date(targetDate);
+  if (isNaN(dateObj.getTime())) return null;
+
+  const info = getShabbatYahrzeitInfo(dateObj, hebcalEvents, lang);
   if (!info) {
     return null;
   }

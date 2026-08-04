@@ -16,11 +16,15 @@ interface MemorialBookProps {
   onSelectDeceased: (deceased: Deceased) => void;
 }
 
-const getDayOfWeekName = (date: Date, lang: Language): string => {
+const getDayOfWeekName = (date?: Date | null, lang: Language = 'he'): string => {
+  if (!date) return '';
+  const dateObj = date instanceof Date ? date : new Date(date);
+  if (isNaN(dateObj.getTime())) return '';
+
   const daysHe = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
   const daysEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const daysRu = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
-  const dayIndex = date.getDay();
+  const dayIndex = dateObj.getDay();
   if (lang === 'he') return `יום ${daysHe[dayIndex]}`;
   if (lang === 'ru') return daysRu[dayIndex];
   return daysEn[dayIndex];
