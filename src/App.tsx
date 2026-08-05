@@ -23,8 +23,8 @@ import { getUpcomingYahrzeits, requestNotificationPermission, sendYahrzeitNotifi
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-import { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById } from './utils/supabase';
-export { supabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById };
+import { supabase, isSupabaseConfigured, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById } from './utils/supabase';
+export { supabase, isSupabaseConfigured, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById };
 
 const SEED_DATABASE: Deceased[] = ((INITIAL_DATABASE || []) as unknown as Deceased[]).map(d => enrichDeceasedTranslations(d));
 
@@ -718,28 +718,67 @@ function MainAppContent() {
     }
   };
 
-  // Bulk import deceased records with smart deduplication & Supabase sync
+  // Bulk import deceased records with direct Supabase insert/upsert & error feedback
   const handleImportDeceased = async (newList: Deceased[]) => {
+    // 1. Prepare exact Supabase records using English schema columns and proper number conversions
+    const supabaseRecords = newList.map(item => ({
+      id: Number(item.id) || (Date.now() + Math.floor(Math.random() * 100000)),
+      name: item.name || 'לא צוין',
+      gender: item.gender || 'male',
+      fatherName: item.fatherName || '-',
+      motherName: item.motherName || '-',
+      passDate: item.passDate || item.hebrewDate || '-',
+      hebrewDate: item.hebrewDate || item.passDate || '-',
+      bio: item.bio || item.notes || '-',
+      imageUrl: item.imageUrl || item.image || item.photoUrl || item.photo || '-',
+      candlesCount: typeof item.candlesCount === 'number' ? item.candlesCount : Number(item.candlesCount || 0)
+    }));
+
+    // 2. Direct Supabase Upsert / Insert with detailed error reporting
+    if (isSupabaseConfigured()) {
+      try {
+        let { data, error } = await supabase.from('deceased').upsert(supabaseRecords, { onConflict: 'id' });
+        if (error) {
+          console.warn("[Supabase Import Notice] Upsert with onConflict failed, retrying plain upsert:", error);
+          const fallbackRes = await supabase.from('deceased').upsert(supabaseRecords);
+          if (!fallbackRes.error) {
+            error = null;
+            data = fallbackRes.data;
+          } else {
+            error = fallbackRes.error;
+          }
+        }
+
+        if (error) {
+          console.error("[Supabase Import Error]", error);
+          if (isMissingTableError(error)) {
+            setSupabaseTableMissing(true);
+            alert(lang === 'he' ? "שגיאה ב-Supabase: הטבלה 'deceased' אינה קיימת בממסד הנתונים." : "Supabase Error: 'deceased' table missing.");
+          } else {
+            const errorMsg = error.message || error.details || error.hint || JSON.stringify(error);
+            alert(lang === 'he' 
+              ? `שגיאת הזנה ב-Supabase: ${errorMsg}` 
+              : lang === 'ru'
+              ? `Ошибка записи в Supabase: ${errorMsg}`
+              : `Supabase import error: ${errorMsg}`);
+          }
+        } else {
+          console.log("[Supabase Import Success] Inserted/upserted records successfully:", data);
+          await refreshFromSupabase();
+        }
+      } catch (e: any) {
+        console.error("[Supabase Import Exception]", e);
+        const errMsg = e?.message || String(e);
+        alert(lang === 'he' ? `שגיאת תקשורת עם Supabase: ${errMsg}` : `Supabase connection error: ${errMsg}`);
+      }
+    } else {
+      console.warn("Supabase credentials not configured in environment.");
+    }
+
+    // 3. Sync to local state & Express backend for offline/dual resilience
     const enrichedList = newList.map(item => enrichDeceasedTranslations(item));
     const merged = smartMergeDeceasedLists(masterList, enrichedList);
     const updated = deduplicateSingleList(merged);
-
-    // Bulk upsert to Supabase with error alert and instant re-fetch
-    try {
-      const { error } = await safeUpsert(enrichedList);
-      if (error) {
-        if (isMissingTableError(error)) {
-          setSupabaseTableMissing(true);
-          alert(lang === 'he' ? "שגיאה ב-Supabase: הטבלה 'deceased' אינה קיימת בממסד הנתונים." : "Supabase Error: 'deceased' table missing.");
-        } else {
-          alert(lang === 'he' ? `שגיאת ייבוא ב-Supabase: ${error.message || JSON.stringify(error)}` : `Supabase import error: ${error.message || JSON.stringify(error)}`);
-        }
-      } else {
-        await refreshFromSupabase();
-      }
-    } catch (e: any) {
-      alert(`Supabase import error: ${e.message || String(e)}`);
-    }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {

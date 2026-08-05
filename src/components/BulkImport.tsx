@@ -78,17 +78,19 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
   const processLines = (rows: string[][]): Deceased[] => {
     if (!rows || rows.length === 0) return [];
 
+    let idIdx = -1;
     let nameIdx = -1;
     let genderIdx = -1;
     let fatherIdx = -1;
     let motherIdx = -1;
-    let hebrewDateIdx = -1;
     let passDateIdx = -1;
+    let hebrewDateIdx = -1;
     let dayIdx = -1;
     let monthIdx = -1;
     let phoneIdx = -1;
-    let notesIdx = -1;
+    let bioIdx = -1;
     let imageIdx = -1;
+    let candlesIdx = -1;
 
     let startRow = 0;
 
@@ -101,14 +103,9 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
                         firstRowStr.includes('имя') || 
                         firstRowStr.includes('fio') ||
                         firstRowStr.includes('фио') ||
-                        firstRowStr.includes('пол') ||
                         firstRowStr.includes('gender') ||
                         firstRowStr.includes('מין') ||
-                        firstRowStr.includes('יום') ||
-                        firstRowStr.includes('day') ||
-                        firstRowStr.includes('photo') ||
-                        firstRowStr.includes('image') ||
-                        firstRowStr.includes('תמונה') ||
+                        firstRowStr.includes('id') ||
                         firstRowStr.includes('bio') ||
                         firstRowStr.includes('date');
 
@@ -117,18 +114,20 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       // Dynamically match columns if header names exist
       firstRow.forEach((cell, idx) => {
         const c = (cell || '').toLowerCase().trim();
-        if ((c === 'name' || c.includes('full name') || c.includes('שם מלא') || c.includes('полное имя') || c.includes('фио') || c === 'שם' || c === 'имя') && !c.includes('father') && !c.includes('mother') && !c.includes('אב') && !c.includes('אם') && !c.includes('отца') && !c.includes('матери')) {
+        if (c === 'id' || c.includes('id_') || c.includes('_id')) {
+          idIdx = idx;
+        } else if ((c === 'name' || c.includes('full name') || c.includes('שם מלא') || c.includes('полное имя') || c.includes('фиו') || c === 'שם' || c === 'имя') && !c.includes('father') && !c.includes('mother') && !c.includes('אב') && !c.includes('אם') && !c.includes('отца') && !c.includes('матери')) {
           nameIdx = idx;
         } else if (c === 'gender' || c.includes('sex') || c.includes('מין') || c.includes('пол')) {
           genderIdx = idx;
-        } else if (c === 'fathername' || c.includes('father') || c.includes('שם אב') || c.includes('שם האב') || c.includes('שם אבא') || c.includes('אב') || c.includes('אבא') || c.includes('отца') || c.includes('отец')) {
+        } else if (c === 'fathername' || c.includes('father_name') || c.includes('father name') || c.includes('father') || c.includes('שם אב') || c.includes('שם האב') || c.includes('אב') || c.includes('отца') || c.includes('отец')) {
           fatherIdx = idx;
-        } else if (c === 'mothername' || c.includes('mother') || c.includes('שם אם') || c.includes('שם האם') || c.includes('שם אמא') || c.includes('אם') || c.includes('אמא') || c.includes('матери') || c.includes('мать')) {
+        } else if (c === 'mothername' || c.includes('mother_name') || c.includes('mother name') || c.includes('mother') || c.includes('שם אם') || c.includes('שם האם') || c.includes('אם') || c.includes('матери') || c.includes('мать')) {
           motherIdx = idx;
-        } else if (c === 'hebrewdate' || c.includes('hebrew_date') || c.includes('hebrew date') || c.includes('תאריך עברי')) {
-          hebrewDateIdx = idx;
-        } else if (c === 'passdate' || c.includes('pass_date') || c.includes('pass date') || c.includes('תאריך פטירה')) {
+        } else if (c === 'passdate' || c.includes('pass_date') || c.includes('pass date') || c.includes('תאריך פטירה') || c.includes('дата кончины')) {
           passDateIdx = idx;
+        } else if (c === 'hebrewdate' || c.includes('hebrew_date') || c.includes('hebrew date') || c.includes('תאריך עברי') || c.includes('еврейская дата')) {
+          hebrewDateIdx = idx;
         } else if (c === 'day' || c.includes('hebrewday') || c.includes('יום') || c.includes('день')) {
           dayIdx = idx;
         } else if (c === 'month' || c.includes('hebrewmonth') || c.includes('חודש') || c.includes('месяц')) {
@@ -136,20 +135,40 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         } else if (c.includes('phone') || c.includes('contact') || c.includes('טלפון') || c.includes('телефон')) {
           phoneIdx = idx;
         } else if (c === 'bio' || c === 'notes' || c.includes('story') || c.includes('הערות') || c.includes('סיפור') || c.includes('קורות חיים') || c.includes('история') || c.includes('примечания')) {
-          notesIdx = idx;
-        } else if (c === 'imageurl' || c === 'image' || c === 'photourl' || c === 'photo' || c.includes('image_url') || c.includes('photo_url') || c.includes('תמונה') || c.includes('фото')) {
+          bioIdx = idx;
+        } else if (c === 'imageurl' || c === 'image_url' || c === 'image' || c === 'photourl' || c === 'photo_url' || c === 'photo' || c.includes('תמונה') || c.includes('фото')) {
           imageIdx = idx;
+        } else if (c === 'candlescount' || c.includes('candles_count') || c.includes('candles count') || c.includes('candles') || c.includes('נרות') || c.includes('свечи')) {
+          candlesIdx = idx;
         }
       });
     }
 
     // Fallbacks if header positions weren't detected
-    if (nameIdx === -1) nameIdx = 0;
-    if (genderIdx === -1) genderIdx = 1;
-    if (fatherIdx === -1) fatherIdx = 2;
-    if (motherIdx === -1) motherIdx = 3;
-    if (dayIdx === -1 && hebrewDateIdx === -1) dayIdx = 4;
-    if (monthIdx === -1 && hebrewDateIdx === -1) monthIdx = 5;
+    if (nameIdx === -1) {
+      if (firstRow[0] && (firstRow[0].toLowerCase() === 'id' || !isNaN(Number(firstRow[0])))) {
+        idIdx = 0;
+        nameIdx = 1;
+        genderIdx = 2;
+        fatherIdx = 3;
+        motherIdx = 4;
+        passDateIdx = 5;
+        hebrewDateIdx = 6;
+        bioIdx = 7;
+        imageIdx = 8;
+        candlesIdx = 9;
+      } else {
+        nameIdx = 0;
+        genderIdx = 1;
+        fatherIdx = 2;
+        motherIdx = 3;
+        passDateIdx = 4;
+        hebrewDateIdx = 5;
+        bioIdx = 6;
+        imageIdx = 7;
+        candlesIdx = 8;
+      }
+    }
 
     const result: Deceased[] = [];
 
@@ -157,19 +176,42 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       const row = rows[index];
       if (!row || row.length === 0) continue;
 
-      const rawName = (row[nameIdx] || '').trim();
+      const rawIdStr = idIdx !== -1 ? row[idIdx] || '' : '';
+      const rawName = (nameIdx !== -1 ? row[nameIdx] || '' : '').trim();
       const rawGender = (genderIdx !== -1 ? row[genderIdx] || '' : '').toLowerCase().trim();
       const rawFather = fatherIdx !== -1 ? row[fatherIdx] || '' : '';
       const rawMother = motherIdx !== -1 ? row[motherIdx] || '' : '';
-      const rawHebrewDate = hebrewDateIdx !== -1 ? (row[hebrewDateIdx] || '').trim() : '';
       const rawPassDate = passDateIdx !== -1 ? (row[passDateIdx] || '').trim() : '';
+      const rawHebrewDate = hebrewDateIdx !== -1 ? (row[hebrewDateIdx] || '').trim() : '';
       const rawDay = dayIdx !== -1 ? (row[dayIdx] || '').trim() : '';
       const rawMonth = monthIdx !== -1 ? (row[monthIdx] || '').trim() : '';
       const rawPhone = phoneIdx !== -1 ? (row[phoneIdx] || '').trim() : '';
-      const rawNotes = notesIdx !== -1 ? (row[notesIdx] || '').trim() : '';
+      const rawBio = bioIdx !== -1 ? (row[bioIdx] || '').trim() : '';
       const rawImage = imageIdx !== -1 ? (row[imageIdx] || '').trim() : '';
+      const rawCandles = candlesIdx !== -1 ? (row[candlesIdx] || '').trim() : '';
 
       if (!rawName) continue; // skip empty names
+
+      // Parse ID integer
+      let parsedId: number | undefined = undefined;
+      if (rawIdStr) {
+        const clean = String(rawIdStr).replace(/\D/g, '');
+        if (clean) {
+          const p = parseInt(clean, 10);
+          if (!isNaN(p) && p > 0) parsedId = p;
+        }
+      }
+      const finalId = parsedId || (Date.now() + Math.floor(Math.random() * 1000000) + index);
+
+      // Parse candlesCount integer
+      let parsedCandles = 0;
+      if (rawCandles) {
+        const clean = String(rawCandles).replace(/\D/g, '');
+        if (clean) {
+          const p = parseInt(clean, 10);
+          if (!isNaN(p)) parsedCandles = p;
+        }
+      }
 
       // Normalize gender
       let gender: Gender = 'male';
@@ -206,15 +248,15 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
 
       const hebrewDateVal = rawHebrewDate || `${dayNum} ${normalizedMonth}`;
       const passDateVal = rawPassDate || hebrewDateVal;
-      const bioVal = rawNotes || undefined;
-      const imgVal = rawImage || undefined;
+      const bioVal = rawBio || '-';
+      const imgVal = rawImage || '-';
 
       const newItem: Deceased = {
-        id: Date.now() + Math.floor(Math.random() * 1000000) + index,
+        id: Number(finalId),
         name: rawName,
         gender,
-        fatherName: sanitizeParentName(rawFather),
-        motherName: sanitizeParentName(rawMother),
+        fatherName: sanitizeParentName(rawFather) || '-',
+        motherName: sanitizeParentName(rawMother) || '-',
         day: dayNum,
         month: normalizedMonth,
         hebrewDate: hebrewDateVal,
@@ -226,6 +268,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         imageUrl: imgVal,
         photoUrl: imgVal,
         photo: imgVal,
+        candlesCount: Number(parsedCandles)
       };
 
       result.push(newItem);

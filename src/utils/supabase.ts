@@ -236,9 +236,16 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
   if (!copy.imageUrl && copy.image) {
     copy.imageUrl = copy.image;
   }
-  if (copy.candlesCount === undefined && copy.candles_count !== undefined) {
-    copy.candlesCount = Number(copy.candles_count);
+
+  // 5. Ensure id and candlesCount are sent as numbers
+  if (copy.id !== undefined && copy.id !== null) {
+    const parsedId = Number(copy.id);
+    if (!isNaN(parsedId) && parsedId > 0) {
+      copy.id = parsedId;
+    }
   }
+  const parsedCandles = Number(copy.candlesCount !== undefined ? copy.candlesCount : (copy.candles_count !== undefined ? copy.candles_count : 0));
+  copy.candlesCount = !isNaN(parsedCandles) ? parsedCandles : 0;
 
   return copy as T;
 }
