@@ -139,7 +139,7 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
-            const MAX_SIZE = 500;
+            const MAX_SIZE = 400;
             if (width > height) {
               if (width > MAX_SIZE) {
                 height = Math.round((height * MAX_SIZE) / width);
@@ -156,7 +156,7 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
             const ctx = canvas.getContext('2d');
             if (ctx) {
               ctx.drawImage(img, 0, 0, width, height);
-              const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+              const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
               setImageBase64(compressedDataUrl);
             } else {
               setImageBase64(reader.result as string);
