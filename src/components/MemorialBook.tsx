@@ -9,6 +9,7 @@ import { translations, formatParentRelation } from '../utils/translations';
 import { translateText } from '../utils/transliteration';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, normalizeMonthName, findYahrzeitGregorianDate } from '../utils/hebrewDate';
 import { ChevronDown, ChevronUp, Search, Eye, Flame } from 'lucide-react';
+import { DeceasedPhotoFrame } from './YahrzeitCandle';
 
 interface MemorialBookProps {
   deceasedList: Deceased[];
@@ -172,21 +173,8 @@ export const MemorialBook: React.FC<MemorialBookProps> = ({ deceasedList, lang, 
                             className={`py-3 px-3 my-1 flex items-center justify-between cursor-pointer transition-all duration-300 group rounded-lg ${borderClass}`}
                           >
                             <div className="flex items-center gap-4">
-                              {/* Thumbnail Image or Candle Placeholder */}
-                              {deceased.image ? (
-                                <div className="w-10 h-10 rounded-full overflow-hidden border border-[#c8a96e]/20 flex items-center justify-center bg-black">
-                                  <img 
-                                    src={deceased.image} 
-                                    alt={deceased.name} 
-                                    referrerPolicy="no-referrer"
-                                    className="w-full h-full object-cover" 
-                                  />
-                                </div>
-                              ) : (
-                                <div className="w-10 h-10 rounded-full border border-[#c8a96e]/20 bg-amber-500/10 flex items-center justify-center">
-                                  <Flame className="w-5 h-5 text-amber-400 animate-pulse" />
-                                </div>
-                              )}
+                              {/* Thumbnail Image or Animated Yahrzeit Candle Placeholder */}
+                              <DeceasedPhotoFrame deceased={deceased} size="thumb" lang={lang} />
                               
                               <div>
                                 <h4 className="text-sm font-semibold text-white group-hover:text-[#c8a96e] transition-colors">

@@ -17,6 +17,7 @@ import {
 } from '../utils/memorialStudy';
 import { FullReadingModal } from './FullReadingModal';
 import { formatParentRelation } from '../utils/translations';
+import { DeceasedPhotoFrame } from './YahrzeitCandle';
 
 interface DedicatedStudyModalProps {
   deceased: Deceased;
@@ -48,18 +49,7 @@ export const DedicatedStudyModal: React.FC<DedicatedStudyModalProps> = ({ deceas
         {/* Header */}
         <div className="bg-gradient-to-r from-amber-950 via-[#2a1c0d] to-amber-950 border-b border-[#c8a96e]/30 p-5 relative flex items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 flex-1 min-w-0">
-            {deceased.image ? (
-              <img 
-                src={deceased.image} 
-                alt={deceased.name} 
-                referrerPolicy="no-referrer"
-                className="w-14 h-14 rounded-full object-cover border-2 border-amber-400/80 shadow-md shrink-0"
-              />
-            ) : (
-              <div className="w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-400/60 flex items-center justify-center text-2xl shrink-0 shadow-inner">
-                🕯️
-              </div>
-            )}
+            <DeceasedPhotoFrame deceased={deceased} size="card" lang={lang} />
             <div className="min-w-0 flex-1">
               <div className="inline-flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/40 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-amber-300 mb-1">
                 <Sparkles className="w-3 h-3 text-amber-400" />

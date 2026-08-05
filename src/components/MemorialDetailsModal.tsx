@@ -15,6 +15,7 @@ import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
 import { getRandomMishnah, getRandomPsalm, getRandomHalakha, getRandomPirkeiAvot, getRandomGeneralMishnah, MishnahRecord, PsalmRecord, HalakhaRecord } from '../utils/memorialStudy';
 import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
 import { FullReadingModal } from './FullReadingModal';
+import { DeceasedPhotoFrame } from './YahrzeitCandle';
 
 interface MemorialDetailsModalProps {
   deceased: Deceased;
@@ -335,58 +336,13 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
             {/* Ambient gold glow behind portrait and candle */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
-            {deceased.image ? (
-              <div className="flex flex-row items-center justify-center gap-6 sm:gap-10 my-2 relative z-10">
-                {/* Framed Deceased Portrait */}
-                <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl border-2 border-[#c8a96e] shadow-[0_0_25px_rgba(200,169,110,0.4)] overflow-hidden bg-black/60 shrink-0 group">
-                  <img 
-                    src={deceased.image} 
-                    alt={deceased.name} 
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    style={{ objectPosition: deceased.imagePosition || 'center top' }}
-                  />
-                </div>
+            <div className="flex flex-row items-center justify-center gap-6 sm:gap-10 my-2 relative z-10">
+              {/* Framed Deceased Portrait or Animated Yahrzeit Candle */}
+              <DeceasedPhotoFrame deceased={deceased} size="modal" lang={lang} />
 
-                {/* Memorial Candle Beside Photo ("לצד התמונה") */}
-                <div className="flex flex-col items-center justify-center shrink-0">
-                  <div className="relative w-14 h-20 flex flex-col items-center justify-end">
-                    {/* Flame */}
-                    <motion.div 
-                      className="absolute top-1 w-4 h-7 bg-amber-400 rounded-full blur-[0.5px] shadow-[0_0_12px_#f59e0b,0_0_22px_#f59e0b] origin-bottom"
-                      animate={{
-                        scaleY: [1, 1.15, 0.95, 1.1, 1],
-                        scaleX: [1, 0.9, 1.1, 0.95, 1],
-                        rotate: [0, -1.5, 1.5, -0.8, 0],
-                        x: [0, -0.3, 0.3, -0.3, 0]
-                      }}
-                      transition={{
-                        duration: 1.6,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    >
-                      <div className="absolute bottom-0.5 left-1 w-2 h-3.5 bg-yellow-100 rounded-full opacity-95"></div>
-                      <div className="absolute bottom-0 left-1.5 w-1 h-2 bg-blue-500 rounded-full opacity-60"></div>
-                    </motion.div>
-                    
-                    {/* Candle Body */}
-                    <div className="w-8 h-12 bg-gradient-to-t from-amber-700 via-amber-600 to-amber-500/80 rounded shadow-inner relative overflow-hidden border border-amber-500/20">
-                      <div className="absolute top-0 left-0.5 w-1.5 h-3 bg-amber-400/50 rounded-full"></div>
-                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0.5 h-1.5 bg-gray-900"></div>
-                    </div>
-                    
-                    {/* Pedestal */}
-                    <div className="w-14 h-1 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 rounded-full"></div>
-                  </div>
-                  <span className="text-[10px] sm:text-xs tracking-wider text-[#c8a96e]/90 font-serif uppercase mt-1.5 font-bold">
-                    {lang === 'he' ? '🔥 נר נשמה דולק' : lang === 'ru' ? '🔥 Свеча памяти горит' : '🔥 Memorial Candle Lit'}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center space-y-2 text-center select-none py-2 relative z-10">
-                <div className="relative w-16 h-24 flex flex-col items-center justify-end">
+              {/* Memorial Candle Beside Photo ("לצד התמונה") */}
+              <div className="flex flex-col items-center justify-center shrink-0">
+                <div className="relative w-14 h-20 flex flex-col items-center justify-end">
                   {/* Flame */}
                   <motion.div 
                     className="absolute top-1 w-4 h-7 bg-amber-400 rounded-full blur-[0.5px] shadow-[0_0_12px_#f59e0b,0_0_22px_#f59e0b] origin-bottom"
@@ -415,11 +371,11 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
                   {/* Pedestal */}
                   <div className="w-14 h-1 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 rounded-full"></div>
                 </div>
-                <span className="text-xs tracking-widest text-[#c8a96e]/70 font-serif uppercase">
-                  {lang === 'he' ? 'זכרון עולמים' : 'In Loving Memory'}
+                <span className="text-[10px] sm:text-xs tracking-wider text-[#c8a96e]/90 font-serif uppercase mt-1.5 font-bold">
+                  {lang === 'he' ? '🔥 נר נשמה דולק' : lang === 'ru' ? '🔥 Свеча памяти горит' : '🔥 Memorial Candle Lit'}
                 </span>
               </div>
-            )}
+            </div>
 
             {/* Title & Parentage below photo & candle */}
             <div className="text-center z-10 mt-3">
