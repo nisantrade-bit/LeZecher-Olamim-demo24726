@@ -23,8 +23,8 @@ import { getUpcomingYahrzeits, requestNotificationPermission, sendYahrzeitNotifi
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-import { supabase, isSupabaseConfigured, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById } from './utils/supabase';
-export { supabase, isSupabaseConfigured, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById };
+import { supabase, isSupabaseConfigured, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById, normalizeFetchedRecord } from './utils/supabase';
+export { supabase, isSupabaseConfigured, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById, normalizeFetchedRecord };
 
 const SEED_DATABASE: Deceased[] = [];
 
@@ -570,10 +570,14 @@ function MainAppContent() {
   const refreshFromSupabase = async () => {
     try {
       if (isSupabaseConfigured()) {
-        await cleanAndDeduplicateSupabase();
         const { data, error } = await safeSelect('deceased');
-        if (!error && Array.isArray(data)) {
-          const fetchedRecords = filterOutMockRecords(data as Deceased[]);
+        if (error) {
+          console.error('[Supabase Fetch Error]', error);
+          if (isMissingTableError(error)) {
+            setSupabaseTableMissing(true);
+          }
+        } else if (Array.isArray(data)) {
+          const fetchedRecords = filterOutMockRecords(data.map(normalizeFetchedRecord));
           const finalUpdated = deduplicateSingleList(fetchedRecords);
           setMasterList(finalUpdated);
           try {
@@ -581,16 +585,17 @@ function MainAppContent() {
           } catch (e) {
             console.error("Storage access error:", e);
           }
+          console.log(`[Supabase Fetch Success] Loaded ${finalUpdated.length} clean records.`);
         }
       }
     } catch (err) {
-      console.warn("Error refreshing from Supabase:", err);
+      console.error("Error refreshing from Supabase:", err);
     }
   };
 
-  // Save or update deceased record in Supabase & LocalStorage
+  // Save or update deceased record directly in Supabase & LocalStorage
   const handleSaveDeceased = async (deceasedInput: Deceased) => {
-    const deceased = enrichDeceasedTranslations(deceasedInput);
+    const deceased = sanitizeRecord(enrichDeceasedTranslations(deceasedInput));
     
     // Enforce duplicate match by Name + FatherName if existing ID not found
     const normName = (deceased.name || '').trim().toLowerCase();
@@ -604,26 +609,38 @@ function MainAppContent() {
       deceased.id = Number(existing.id);
     }
 
-    const updated = masterList.some(d => Number(d.id) === Number(deceased.id))
-      ? masterList.map(d => Number(d.id) === Number(deceased.id) ? deceased : d)
-      : [...masterList, deceased];
-
-    // Save directly to Supabase with error alert and instant re-fetch
-    try {
-      const { error } = await safeUpsert([deceased]);
-      if (error) {
-        if (isMissingTableError(error)) {
-          setSupabaseTableMissing(true);
-          alert(lang === 'he' ? "שגיאה ב-Supabase: הטבלה 'deceased' אינה קיימת בממסד הנתונים." : "Supabase Error: 'deceased' table missing.");
-        } else {
-          alert(lang === 'he' ? `שגיאת שמירה ב-Supabase: ${error.message || JSON.stringify(error)}` : `Supabase save error: ${error.message || JSON.stringify(error)}`);
+    // Save directly to Supabase with error alert
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await safeUpsert([deceased]);
+        if (error) {
+          console.error("[Supabase Save Error]", error);
+          if (isMissingTableError(error)) {
+            setSupabaseTableMissing(true);
+            alert(lang === 'he' ? "שגיאה ב-Supabase: הטבלה 'deceased' אינה קיימת בממסד הנתונים." : "Supabase Error: 'deceased' table missing.");
+          } else {
+            alert(lang === 'he' ? `שגיאת שמירה ב-Supabase: ${error.message || JSON.stringify(error)}` : `Supabase save error: ${error.message || JSON.stringify(error)}`);
+          }
+          return; // Stop if failed
         }
-      } else {
+        console.log(`[Supabase Save Success] Saved deceased record ID ${deceased.id}`);
         await cleanAndDeduplicateSupabase();
         await refreshFromSupabase();
+      } catch (e: any) {
+        console.error("[Supabase Save Exception]", e);
+        alert(`Supabase save error: ${e.message || String(e)}`);
+        return;
       }
-    } catch (e: any) {
-      alert(`Supabase save error: ${e.message || String(e)}`);
+    } else {
+      const updated = masterList.some(d => Number(d.id) === Number(deceased.id))
+        ? masterList.map(d => Number(d.id) === Number(deceased.id) ? deceased : d)
+        : [...masterList, deceased];
+      setMasterList(updated);
+      try {
+        localStorage.setItem('eternal_db', JSON.stringify(updated));
+      } catch (e) {
+        console.error("Storage access error:", e);
+      }
     }
 
     // Sync to backup server API
@@ -633,13 +650,13 @@ function MainAppContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(deceased)
-        });
+        }).catch(e => console.warn("Backup API save notice:", e));
       } catch (e) {
         console.warn("Failed to save record to server database:", e);
       }
     }
 
-    // Clear caches
+    // Clear translation caches
     try {
       ['he', 'en', 'ru'].forEach(l => {
         localStorage.removeItem(`eternal_db_translated_${l}`);
@@ -649,12 +666,6 @@ function MainAppContent() {
       console.error("Storage access error:", e);
     }
 
-    setMasterList(updated);
-    try {
-      localStorage.setItem('eternal_db', JSON.stringify(updated));
-    } catch (e) {
-      console.error("Storage access error:", e);
-    }
     setEditingDeceased(null);
     if (selectedDeceased && Number(selectedDeceased.id) === Number(deceased.id)) {
       setSelectedDeceased(deceased);
@@ -663,32 +674,42 @@ function MainAppContent() {
 
   // Delete a deceased record from Supabase & LocalStorage
   const handleDeleteDeceased = async (id: number) => {
-    const updated = masterList.filter(d => d.id !== id);
-
-    // Delete from Supabase
-    try {
-      const { error } = await safeDelete('id', id);
-      if (error && isMissingTableError(error)) {
-        setSupabaseTableMissing(true);
-        console.warn("Supabase notice: 'deceased' table missing. Removed from local database.");
-      } else if (error) {
-        console.warn("Supabase delete notice:", error.message || error);
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await safeDelete('id', id);
+        if (error) {
+          console.error("[Supabase Delete Error]", error);
+          if (isMissingTableError(error)) {
+            setSupabaseTableMissing(true);
+            alert(lang === 'he' ? "שגיאה ב-Supabase: הטבלה 'deceased' אינה קיימת בממסד הנתונים." : "Supabase Error: 'deceased' table missing.");
+          } else {
+            alert(lang === 'he' 
+              ? `שגיאה במחיקת הנפטר מ-Supabase: ${error.message || JSON.stringify(error)}` 
+              : `Supabase delete error: ${error.message || JSON.stringify(error)}`);
+          }
+          return; // Stop if delete failed
+        }
+        console.log(`[Supabase Delete Success] Deleted record ID ${id} from Supabase.`);
+      } catch (e: any) {
+        console.error("[Supabase Delete Exception]", e);
+        alert(lang === 'he' ? `שגיאת תקשורת במחיקת הנפטר מ-Supabase: ${e.message || String(e)}` : `Supabase delete error: ${e.message || String(e)}`);
+        return;
       }
-    } catch (e) {
-      console.warn("Supabase notice:", e);
     }
+
+    const updated = masterList.filter(d => Number(d.id) !== Number(id));
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
         await fetch(`/api/deceased/${id}`, {
           method: 'DELETE'
-        });
+        }).catch(e => console.warn("Backup API delete notice:", e));
       } catch (e) {
         console.warn("Failed to delete record from server database:", e);
       }
     }
 
-    // Clear caches
+    // Clear caches & update local state
     try {
       ['he', 'en', 'ru'].forEach(l => {
         localStorage.removeItem(`eternal_db_translated_${l}`);
@@ -704,43 +725,36 @@ function MainAppContent() {
     } catch (e) {
       console.error("Storage access error:", e);
     }
-    if (editingDeceased?.id === id) {
+    if (editingDeceased && Number(editingDeceased.id) === Number(id)) {
       setEditingDeceased(null);
+    }
+    if (selectedDeceased && Number(selectedDeceased.id) === Number(id)) {
+      setSelectedDeceased(null);
     }
   };
 
   // Bulk import deceased records with direct Supabase insert/upsert & error feedback
   const handleImportDeceased = async (newList: Deceased[]) => {
-    // 1. Match incoming items against existing masterList to preserve existing record IDs
     const currentDb = masterList || [];
 
     const supabaseRecords = newList.map((item, idx) => {
-      const normName = (item.name || '').trim().toLowerCase();
-      const normFather = (item.fatherName || '').trim().toLowerCase();
+      const enriched = sanitizeRecord(enrichDeceasedTranslations(item));
+      const normName = (enriched.name || '').trim().toLowerCase();
+      const normFather = (enriched.fatherName || '').trim().toLowerCase();
       const existingMatch = currentDb.find(d => 
         (d.name || '').trim().toLowerCase() === normName &&
         (d.fatherName || '').trim().toLowerCase() === normFather
       );
 
-      const finalId = existingMatch 
-        ? Number(existingMatch.id) 
-        : (Number(item.id) || (Date.now() + Math.floor(Math.random() * 100000) + idx));
+      if (existingMatch) {
+        enriched.id = Number(existingMatch.id);
+      } else if (!enriched.id) {
+        enriched.id = Date.now() + Math.floor(Math.random() * 100000) + idx;
+      }
 
-      return {
-        id: finalId,
-        name: item.name || 'לא צוין',
-        gender: item.gender || 'male',
-        fatherName: item.fatherName || '-',
-        motherName: item.motherName || '-',
-        passDate: item.passDate || item.hebrewDate || '-',
-        hebrewDate: item.hebrewDate || item.passDate || '-',
-        bio: item.bio || item.notes || '-',
-        imageUrl: item.imageUrl || item.image || item.photoUrl || item.photo || '-',
-        candlesCount: typeof item.candlesCount === 'number' ? item.candlesCount : Number(item.candlesCount || 0)
-      };
+      return enriched;
     });
 
-    // 2. Direct Supabase Upsert / Insert with detailed error reporting
     if (isSupabaseConfigured()) {
       try {
         let { data, error } = await supabase.from('deceased').upsert(supabaseRecords, { onConflict: 'id' });
@@ -764,27 +778,25 @@ function MainAppContent() {
             const errorMsg = error.message || error.details || error.hint || JSON.stringify(error);
             alert(lang === 'he' 
               ? `שגיאת הזנה ב-Supabase: ${errorMsg}` 
-              : lang === 'ru'
-              ? `Ошибка записи в Supabase: ${errorMsg}`
               : `Supabase import error: ${errorMsg}`);
           }
-        } else {
-          console.log("[Supabase Import Success] Inserted/upserted records successfully:", data);
-          await cleanAndDeduplicateSupabase();
-          await refreshFromSupabase();
+          return; // Stop if failed
         }
+
+        console.log("[Supabase Import Success] Inserted/upserted records successfully:", data);
+        await cleanAndDeduplicateSupabase();
+        await refreshFromSupabase();
+        return;
       } catch (e: any) {
         console.error("[Supabase Import Exception]", e);
         const errMsg = e?.message || String(e);
         alert(lang === 'he' ? `שגיאת תקשורת עם Supabase: ${errMsg}` : `Supabase connection error: ${errMsg}`);
+        return;
       }
-    } else {
-      console.warn("Supabase credentials not configured in environment.");
     }
 
-    // 3. Sync to local state & Express backend for offline/dual resilience
-    const enrichedList = newList.map(item => enrichDeceasedTranslations(item));
-    const merged = smartMergeDeceasedLists(masterList, enrichedList);
+    // Sync to local state if Supabase is not configured
+    const merged = smartMergeDeceasedLists(masterList, supabaseRecords);
     const updated = deduplicateSingleList(merged);
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
@@ -792,8 +804,8 @@ function MainAppContent() {
         await fetch('/api/deceased/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(enrichedList)
-        });
+          body: JSON.stringify(supabaseRecords)
+        }).catch(e => console.warn("Failed backup import:", e));
       } catch (e) {
         console.warn("Failed to import records to server database:", e);
       }

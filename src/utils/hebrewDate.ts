@@ -144,6 +144,121 @@ export function gimatriya(num: number): string {
 }
 
 /**
+ * Parses Hebrew gimatriya text (or numeric digits) into a day number (1..30)
+ */
+export function parseGimatriya(text: string): number | null {
+  if (!text) return null;
+  const clean = text.replace(/['"״׳]/g, '').trim();
+  
+  // Try standard number first
+  const num = parseInt(clean, 10);
+  if (!isNaN(num) && num >= 1 && num <= 30) return num;
+
+  // Gimatriya lookup map
+  const specialMap: { [key: string]: number } = {
+    'טו': 15, 'טז': 16, 'יא': 11, 'יב': 12, 'יג': 13, 'יד': 14,
+    'יז': 17, 'יח': 18, 'יט': 19, 'כא': 21, 'כב': 22, 'כג': 23,
+    'כד': 24, 'כה': 25, 'כו': 26, 'כז': 27, 'כח': 28, 'כט': 29
+  };
+  if (specialMap[clean]) return specialMap[clean];
+
+  const charValues: { [ch: string]: number } = {
+    'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
+    'י': 10, 'כ': 20, 'ל': 30
+  };
+
+  let total = 0;
+  for (const ch of clean) {
+    if (charValues[ch]) {
+      total += charValues[ch];
+    }
+  }
+
+  if (total >= 1 && total <= 30) return total;
+  return null;
+}
+
+/**
+ * Standardizes passDate (Gregorian YYYY-MM-DD), hebrewDate (Hebrew Day + Month text),
+ * and parses day (1..30) and normalized Hebrew month for dynamic calendar positioning.
+ */
+export function parseAndNormalizeDateFields(input: {
+  day?: number | string;
+  month?: string;
+  hebrewDate?: string;
+  passDate?: string;
+}): {
+  day: number;
+  month: string;
+  hebrewDate: string;
+  passDate: string;
+} {
+  let day = input.day ? Number(input.day) : 0;
+  if (isNaN(day)) day = 0;
+  let month = input.month ? normalizeMonthName(input.month) : '';
+  let hebrewDateStr = input.hebrewDate ? String(input.hebrewDate).trim() : '';
+  let passDateStr = input.passDate ? String(input.passDate).trim() : '';
+
+  // 1. If passDate is a Gregorian YYYY-MM-DD or DD/MM/YYYY or DD.MM.YYYY
+  if (passDateStr && passDateStr !== '-') {
+    let gDate: Date | null = null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(passDateStr)) {
+      gDate = new Date(passDateStr);
+    } else if (/^\d{1,2}[\/\.]\d{1,2}[\/\.]\d{4}$/.test(passDateStr)) {
+      const parts = passDateStr.split(/[\/\.]/);
+      const d = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const y = parseInt(parts[2], 10);
+      gDate = new Date(y, m, d);
+    }
+
+    if (gDate && !isNaN(gDate.getTime())) {
+      const hb = getHebrewDate(gDate);
+      if (!day) day = hb.day;
+      if (!month) month = hb.normalizedMonth;
+      if (!hebrewDateStr || hebrewDateStr === '-') {
+        hebrewDateStr = `${gimatriya(hb.day)} ${hb.normalizedMonth}`;
+      }
+      // Standardize passDate to YYYY-MM-DD format
+      const yyyy = gDate.getFullYear();
+      const mm = String(gDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(gDate.getDate()).padStart(2, '0');
+      passDateStr = `${yyyy}-${mm}-${dd}`;
+    }
+  }
+
+  // 2. Parse day & month from hebrewDateStr if missing
+  if ((!day || !month) && (hebrewDateStr || passDateStr)) {
+    const rawStr = hebrewDateStr && hebrewDateStr !== '-' ? hebrewDateStr : passDateStr;
+    const parts = rawStr.split(/\s+/);
+    if (parts.length >= 2) {
+      const parsedDay = parseGimatriya(parts[0]);
+      const parsedMonth = normalizeMonthName(parts.slice(1).join(' '));
+      if (parsedDay) day = parsedDay;
+      if (parsedMonth) month = parsedMonth;
+    }
+  }
+
+  // Fallbacks if still incomplete
+  if (!day || day < 1 || day > 30) day = 1;
+  if (!month) month = 'תשרי';
+
+  if (!hebrewDateStr || hebrewDateStr === '-') {
+    hebrewDateStr = `${gimatriya(day)} ${month}`;
+  }
+  if (!passDateStr) {
+    passDateStr = '-';
+  }
+
+  return {
+    day,
+    month,
+    hebrewDate: hebrewDateStr,
+    passDate: passDateStr
+  };
+}
+
+/**
  * Localizes the Hebrew date representation
  */
 export function getLocalizedHebrewDate(date: Date, lang: 'he' | 'en' | 'ru'): string {
