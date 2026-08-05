@@ -82,7 +82,10 @@ export function mergeDeceasedRecords(existing: Deceased, incoming: Deceased): De
     motherName,
     contactPhone,
     notes,
-    image: existing.image || incoming.image,
+    image: existing.image || incoming.image || existing.imageUrl || incoming.imageUrl || existing.photoUrl || incoming.photoUrl || existing.photo || incoming.photo,
+    imageUrl: existing.imageUrl || incoming.imageUrl || existing.image || incoming.image || existing.photoUrl || incoming.photoUrl || existing.photo || incoming.photo,
+    photoUrl: existing.photoUrl || incoming.photoUrl || existing.image || incoming.image || existing.imageUrl || incoming.imageUrl || existing.photo || incoming.photo,
+    photo: existing.photo || incoming.photo || existing.image || incoming.image || existing.imageUrl || incoming.imageUrl || existing.photoUrl || incoming.photoUrl,
     ageAtDeath: existing.ageAtDeath || incoming.ageAtDeath,
     birthDate: existing.birthDate || incoming.birthDate,
 
