@@ -33,30 +33,104 @@ export async function uploadMemorialImage(file: File, deceasedId: number | strin
   if (!isSupabaseConfigured()) return null;
   try {
     const fileExt = file.name.split('.').pop() || 'jpg';
-    const fileName = `${deceasedId}_${Date.now()}.${fileExt}`;
-    const filePath = `deceased/${fileName}`;
+    const fileName = `deceased_${deceasedId}_${Date.now()}.${fileExt}`;
 
-    // Try 'photos' bucket first, fallback to 'memorial-images'
-    let bucketName = 'photos';
-    let { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, { upsert: true });
+    // Upload directly to 'memorial-images' bucket (with fallback to 'photos')
+    let bucketName = 'memorial-images';
+    let { data, error } = await supabase.storage.from(bucketName).upload(fileName, file, { upsert: true });
 
     if (error && (error.message?.includes('not found') || error.message?.includes('Bucket') || (error as any).statusCode === '404')) {
-      bucketName = 'memorial-images';
-      const res = await supabase.storage.from(bucketName).upload(filePath, file, { upsert: true });
+      bucketName = 'photos';
+      const res = await supabase.storage.from(bucketName).upload(fileName, file, { upsert: true });
       data = res.data;
       error = res.error;
     }
 
     if (!error && data) {
-      const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+      const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(fileName);
       if (publicUrlData?.publicUrl) {
-        return publicUrlData.publicUrl;
+        const publicUrl = publicUrlData.publicUrl;
+        // Update ONLY the imageUrl column for the specific deceased record in Supabase:
+        // supabase.from('deceased').update({ imageUrl: publicUrl }).eq('id', cardId)
+        if (deceasedId) {
+          const numId = Number(deceasedId);
+          if (!isNaN(numId) && numId > 0) {
+            const { error: updateErr } = await supabase.from('deceased').update({ imageUrl: publicUrl }).eq('id', numId);
+            if (updateErr) {
+              console.warn("[Supabase Record Image Update Warning]", updateErr);
+            } else {
+              console.log(`[Supabase Storage Success] Updated imageUrl specifically for deceased ID ${numId}`);
+            }
+          }
+        }
+        return publicUrl;
       }
+    } else if (error) {
+      console.warn("[Supabase Storage Upload Warning]", error);
     }
   } catch (err) {
-    console.warn("[Supabase Storage] Bucket upload notice:", err);
+    console.warn("[Supabase Storage Exception]", err);
   }
   return null;
+}
+
+/**
+ * Scans Supabase 'deceased' table for duplicate records by name/fatherName,
+ * permanently deletes duplicate rows from Supabase keeping 1 clean record per person,
+ * and returns the clean unique count.
+ */
+export async function cleanAndDeduplicateSupabase(): Promise<{ count: number; deleted: number }> {
+  if (!isSupabaseConfigured()) return { count: 0, deleted: 0 };
+  try {
+    const { data, error } = await supabase.from('deceased').select('*');
+    if (error || !Array.isArray(data) || data.length === 0) {
+      return { count: Array.isArray(data) ? data.length : 0, deleted: 0 };
+    }
+
+    const seenMap = new Map<string, any>();
+    const duplicateIdsToDelete: (number | string)[] = [];
+
+    for (const record of data) {
+      if (!record || !record.name) continue;
+      const normName = String(record.name).trim().toLowerCase().replace(/\s+/g, ' ');
+      const normFather = String(record.fatherName || record.father_name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const key = `${normName}_${normFather}`;
+
+      if (!seenMap.has(key)) {
+        seenMap.set(key, record);
+      } else {
+        const existing = seenMap.get(key);
+        const existingId = Number(existing.id);
+        const currentId = Number(record.id);
+
+        if (!isNaN(existingId) && !isNaN(currentId)) {
+          if (currentId < existingId) {
+            duplicateIdsToDelete.push(existing.id);
+            seenMap.set(key, record);
+          } else {
+            duplicateIdsToDelete.push(record.id);
+          }
+        } else {
+          duplicateIdsToDelete.push(record.id);
+        }
+      }
+    }
+
+    if (duplicateIdsToDelete.length > 0) {
+      console.log(`[Supabase Cleanup] Permanently deleting ${duplicateIdsToDelete.length} duplicate rows from Supabase:`, duplicateIdsToDelete);
+      const { error: delErr } = await supabase.from('deceased').delete().in('id', duplicateIdsToDelete);
+      if (delErr) {
+        console.warn("[Supabase Cleanup Error]", delErr);
+      } else {
+        console.log(`[Supabase Cleanup Complete] Cleaned duplicate records. Remaining unique rows: ${seenMap.size}`);
+      }
+    }
+
+    return { count: seenMap.size, deleted: duplicateIdsToDelete.length };
+  } catch (err) {
+    console.warn("[Supabase Cleanup Exception]", err);
+    return { count: 0, deleted: 0 };
+  }
 }
 
 /**

@@ -23,10 +23,10 @@ import { getUpcomingYahrzeits, requestNotificationPermission, sendYahrzeitNotifi
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-import { supabase, isSupabaseConfigured, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById } from './utils/supabase';
-export { supabase, isSupabaseConfigured, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById };
+import { supabase, isSupabaseConfigured, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById } from './utils/supabase';
+export { supabase, isSupabaseConfigured, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById };
 
-const SEED_DATABASE: Deceased[] = ((INITIAL_DATABASE || []) as unknown as Deceased[]).map(d => enrichDeceasedTranslations(d));
+const SEED_DATABASE: Deceased[] = [];
 
 const MOCK_IDS = new Set([1718882041001, 1718882041002, 1718882041003, 1718882041004, 1718882041005, 1718882041006]);
 const MOCK_NAMES = new Set(["אברהם אבינו", "שרה אמנו", "יוסף בן יעקב", "לאה אמנו", "אלעזר בן אהרן", "מרים הנביאה"]);
@@ -349,14 +349,18 @@ function MainAppContent() {
   useEffect(() => {
     const loadDatabase = async () => {
       try {
-        // 1. Read existing local storage records first
+        // 1. Run automatic database cleanup/deduplication on startup
+        if (isSupabaseConfigured()) {
+          await cleanAndDeduplicateSupabase();
+        }
+
         let localRecords: Deceased[] = [];
         try {
           const stored = localStorage.getItem('eternal_db');
           if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              localRecords = parsed;
+              localRecords = filterOutMockRecords(parsed);
             }
           }
         } catch (e) {
@@ -366,7 +370,7 @@ function MainAppContent() {
         // Standalone Offline mode check
         if ((window as any).__OFFLINE_DATABASE_DATA__) {
           const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
-          let merged = smartMergeDeceasedLists(SEED_DATABASE, localRecords);
+          let merged = smartMergeDeceasedLists([], localRecords);
           merged = smartMergeDeceasedLists(merged, Array.isArray(offlineData) ? offlineData : []);
           merged = mergeWithUrlPayload(merged);
           const finalData = filterOutMockRecords(deduplicateSingleList(merged));
@@ -379,23 +383,22 @@ function MainAppContent() {
 
         // 2. Fetch directly from Supabase 'deceased' table
         let supabaseRecords: Deceased[] = [];
-        try {
-          const { data, error } = await safeSelect('deceased');
-          if (error && isMissingTableError(error)) {
-            setSupabaseTableMissing(true);
-            console.warn("Supabase notice: 'public.deceased' table is not created yet in schema cache. Using local server & storage seamlessly.");
-          } else if (error) {
-            console.warn("Supabase select notice:", error.message || error);
-          } else if (Array.isArray(data) && data.length > 0) {
-            supabaseRecords = filterOutMockRecords(data as Deceased[]);
+        if (isSupabaseConfigured()) {
+          try {
+            const { data, error } = await safeSelect('deceased');
+            if (error && isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
+            } else if (!error && Array.isArray(data)) {
+              supabaseRecords = filterOutMockRecords(data as Deceased[]);
+            }
+          } catch (err) {
+            console.warn("Supabase select notice:", err);
           }
-        } catch (err) {
-          console.warn("Supabase notice:", err);
         }
 
         // 3. Fallback to Express server API if Supabase returned no data
         let serverRecords: Deceased[] = [];
-        if (supabaseRecords.length === 0) {
+        if (supabaseRecords.length === 0 && !isSupabaseConfigured()) {
           try {
             const response = await fetch('/api/deceased');
             if (response.ok) {
@@ -409,10 +412,12 @@ function MainAppContent() {
           }
         }
 
-        // 4. Smart-merge SEED_DATABASE + supabaseRecords + localRecords + serverRecords + urlDeceasedFromPayload
-        let combined = smartMergeDeceasedLists(SEED_DATABASE, supabaseRecords);
-        combined = smartMergeDeceasedLists(combined, localRecords);
-        combined = smartMergeDeceasedLists(combined, serverRecords);
+        // 4. Merge clean records (0 mock data)
+        let combined = smartMergeDeceasedLists([], supabaseRecords);
+        if (supabaseRecords.length === 0) {
+          combined = smartMergeDeceasedLists(combined, localRecords);
+          combined = smartMergeDeceasedLists(combined, serverRecords);
+        }
         combined = mergeWithUrlPayload(combined);
 
         const finalMaster = filterOutMockRecords(deduplicateSingleList(combined));
@@ -422,30 +427,9 @@ function MainAppContent() {
         } catch (e) {
           console.error("Storage access error:", e);
         }
-
-        // 5. Sync merged master list into Supabase so table is populated and up to date
-        if (finalMaster.length > 0) {
-          try {
-            const { error } = await safeUpsert(finalMaster);
-            if (error && isMissingTableError(error)) {
-              setSupabaseTableMissing(true);
-              console.warn("Supabase notice: 'public.deceased' table not yet created. Master list synced to local server database.");
-            } else if (error) {
-              console.warn("Supabase initial sync notice:", error.message || error);
-            }
-          } catch (e) {
-            console.warn("Supabase notice:", e);
-          }
-
-          fetch('/api/deceased/import', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(finalMaster)
-          }).catch(e => console.warn("Cloud database sync notice:", e));
-        }
       } catch (err) {
         console.warn("App runtime notice:", err);
-        setMasterList(filterOutMockRecords(SEED_DATABASE));
+        setMasterList([]);
       }
     };
 
@@ -585,20 +569,18 @@ function MainAppContent() {
   // Refresh master list directly from Supabase (select('*'))
   const refreshFromSupabase = async () => {
     try {
-      const { data, error } = await safeSelect('deceased');
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const fetchedRecords = filterOutMockRecords(data as Deceased[]);
-        if (fetchedRecords.length > 0) {
-          setMasterList(prev => {
-            const merged = smartMergeDeceasedLists(prev, fetchedRecords);
-            const finalUpdated = deduplicateSingleList(merged);
-            try {
-              localStorage.setItem('eternal_db', JSON.stringify(finalUpdated));
-            } catch (e) {
-              console.error("Storage access error:", e);
-            }
-            return finalUpdated;
-          });
+      if (isSupabaseConfigured()) {
+        await cleanAndDeduplicateSupabase();
+        const { data, error } = await safeSelect('deceased');
+        if (!error && Array.isArray(data)) {
+          const fetchedRecords = filterOutMockRecords(data as Deceased[]);
+          const finalUpdated = deduplicateSingleList(fetchedRecords);
+          setMasterList(finalUpdated);
+          try {
+            localStorage.setItem('eternal_db', JSON.stringify(finalUpdated));
+          } catch (e) {
+            console.error("Storage access error:", e);
+          }
         }
       }
     } catch (err) {
@@ -609,14 +591,22 @@ function MainAppContent() {
   // Save or update deceased record in Supabase & LocalStorage
   const handleSaveDeceased = async (deceasedInput: Deceased) => {
     const deceased = enrichDeceasedTranslations(deceasedInput);
-    let updated: Deceased[] = [];
-    const exists = masterList.some(d => d.id === deceased.id);
+    
+    // Enforce duplicate match by Name + FatherName if existing ID not found
+    const normName = (deceased.name || '').trim().toLowerCase();
+    const normFather = (deceased.fatherName || '').trim().toLowerCase();
+    const existing = masterList.find(d => 
+      Number(d.id) === Number(deceased.id) ||
+      ((d.name || '').trim().toLowerCase() === normName && (d.fatherName || '').trim().toLowerCase() === normFather)
+    );
 
-    if (exists) {
-      updated = masterList.map(d => d.id === deceased.id ? deceased : d);
-    } else {
-      updated = [...masterList, deceased];
+    if (existing) {
+      deceased.id = Number(existing.id);
     }
+
+    const updated = masterList.some(d => Number(d.id) === Number(deceased.id))
+      ? masterList.map(d => Number(d.id) === Number(deceased.id) ? deceased : d)
+      : [...masterList, deceased];
 
     // Save directly to Supabase with error alert and instant re-fetch
     try {
@@ -629,6 +619,7 @@ function MainAppContent() {
           alert(lang === 'he' ? `שגיאת שמירה ב-Supabase: ${error.message || JSON.stringify(error)}` : `Supabase save error: ${error.message || JSON.stringify(error)}`);
         }
       } else {
+        await cleanAndDeduplicateSupabase();
         await refreshFromSupabase();
       }
     } catch (e: any) {
@@ -720,19 +711,34 @@ function MainAppContent() {
 
   // Bulk import deceased records with direct Supabase insert/upsert & error feedback
   const handleImportDeceased = async (newList: Deceased[]) => {
-    // 1. Prepare exact Supabase records using English schema columns and proper number conversions
-    const supabaseRecords = newList.map(item => ({
-      id: Number(item.id) || (Date.now() + Math.floor(Math.random() * 100000)),
-      name: item.name || 'לא צוין',
-      gender: item.gender || 'male',
-      fatherName: item.fatherName || '-',
-      motherName: item.motherName || '-',
-      passDate: item.passDate || item.hebrewDate || '-',
-      hebrewDate: item.hebrewDate || item.passDate || '-',
-      bio: item.bio || item.notes || '-',
-      imageUrl: item.imageUrl || item.image || item.photoUrl || item.photo || '-',
-      candlesCount: typeof item.candlesCount === 'number' ? item.candlesCount : Number(item.candlesCount || 0)
-    }));
+    // 1. Match incoming items against existing masterList to preserve existing record IDs
+    const currentDb = masterList || [];
+
+    const supabaseRecords = newList.map((item, idx) => {
+      const normName = (item.name || '').trim().toLowerCase();
+      const normFather = (item.fatherName || '').trim().toLowerCase();
+      const existingMatch = currentDb.find(d => 
+        (d.name || '').trim().toLowerCase() === normName &&
+        (d.fatherName || '').trim().toLowerCase() === normFather
+      );
+
+      const finalId = existingMatch 
+        ? Number(existingMatch.id) 
+        : (Number(item.id) || (Date.now() + Math.floor(Math.random() * 100000) + idx));
+
+      return {
+        id: finalId,
+        name: item.name || 'לא צוין',
+        gender: item.gender || 'male',
+        fatherName: item.fatherName || '-',
+        motherName: item.motherName || '-',
+        passDate: item.passDate || item.hebrewDate || '-',
+        hebrewDate: item.hebrewDate || item.passDate || '-',
+        bio: item.bio || item.notes || '-',
+        imageUrl: item.imageUrl || item.image || item.photoUrl || item.photo || '-',
+        candlesCount: typeof item.candlesCount === 'number' ? item.candlesCount : Number(item.candlesCount || 0)
+      };
+    });
 
     // 2. Direct Supabase Upsert / Insert with detailed error reporting
     if (isSupabaseConfigured()) {
@@ -764,6 +770,7 @@ function MainAppContent() {
           }
         } else {
           console.log("[Supabase Import Success] Inserted/upserted records successfully:", data);
+          await cleanAndDeduplicateSupabase();
           await refreshFromSupabase();
         }
       } catch (e: any) {
@@ -809,17 +816,32 @@ function MainAppContent() {
     }
   };
 
-  // Clean and deduplicate current database
+  // Clean and deduplicate current database in Supabase and local storage
   const handleCleanDuplicates = async () => {
-    const cleaned = deduplicateSingleList(masterList);
-    setMasterList(cleaned);
     try {
-      localStorage.setItem('eternal_db', JSON.stringify(cleaned));
-      localStorage.removeItem('eternal_db_translated_he');
-      localStorage.removeItem('eternal_db_translated_en');
-      localStorage.removeItem('eternal_db_translated_ru');
+      if (isSupabaseConfigured()) {
+        const { count, deleted } = await cleanAndDeduplicateSupabase();
+        await refreshFromSupabase();
+        alert(lang === 'he'
+          ? `בוצע ניקוי כפילויות בהצלחה! הוסרו ${deleted} רשומות כפולות. במאגר נותרו ${count} רשומות ייחודיות.`
+          : `Duplicates cleaned! Removed ${deleted} duplicates. ${count} unique records remaining.`);
+      } else {
+        const cleaned = deduplicateSingleList(masterList);
+        setMasterList(cleaned);
+        try {
+          localStorage.setItem('eternal_db', JSON.stringify(cleaned));
+          localStorage.removeItem('eternal_db_translated_he');
+          localStorage.removeItem('eternal_db_translated_en');
+          localStorage.removeItem('eternal_db_translated_ru');
+        } catch (e) {
+          console.error("Storage access error:", e);
+        }
+        alert(lang === 'he'
+          ? `בוצע ניקוי כפילויות בהצלחה! במאגר נותרו ${cleaned.length} רשומות ייחודיות.`
+          : `Duplicates cleaned! ${cleaned.length} unique records remaining.`);
+      }
     } catch (e) {
-      console.error("Storage access error:", e);
+      console.error("Deduplication error:", e);
     }
   };
 
