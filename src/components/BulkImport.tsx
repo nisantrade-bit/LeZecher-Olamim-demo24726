@@ -531,14 +531,74 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     }
   };
 
-  // Generate downloadable sample CSV template matching exact Supabase schema (English headers)
-  const getTemplateDownloadUrl = () => {
-    const csvContent = "id,name,gender,fatherName,motherName,passDate,hebrewDate,bio,imageUrl,candlesCount\n" +
-      "1,Moshe Cohen,male,Avraham,Sarah,15 Tishrei 5784,15 Tishrei,Beloved grandfather,https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400,0\n" +
-      "2,Rachel Levi,female,Yitzhak,Rivka,10 Nisan 5780,10 Nisan,Beloved mother,https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400,0\n" +
-      "3,David Gold,male,Yaakov,Leah,5 Kislev 5775,5 Kislev,Passed away in New York,,0";
-    const encodedUri = encodeURIComponent(csvContent);
-    return `data:text/csv;charset=utf-8,${encodedUri}`;
+  // Download sample CSV template matching exact Supabase schema (English headers)
+  const handleDownloadCsvSample = () => {
+    const headers = ['id', 'name', 'gender', 'fatherName', 'motherName', 'passDate', 'hebrewDate', 'bio', 'imageUrl', 'candlesCount'];
+    
+    let sampleRows: string[][] = [];
+    if (lang === 'he') {
+      sampleRows = [
+        ['1', 'משה כהן', 'male', 'אברהם', 'שרה', '15 תשרי 5784', '15 תשרי', 'סבא יקר ואהוב', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
+        ['2', 'רחל לוי', 'female', 'יצחק', 'רבקה', '10 ניסן 5780', '10 ניסן', 'אמא מסורה ואהובה', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+      ];
+    } else if (lang === 'ru') {
+      sampleRows = [
+        ['1', 'Моше Коэн', 'male', 'Авраам', 'Сарра', '15 Тишрей 5784', '15 Тишрей', 'Дорогой и любимый дедушка', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
+        ['2', 'Рахель Леви', 'female', 'Ицхак', 'Ривка', '10 Нисан 5780', '10 Нисан', 'Преданная и любимая мама', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+      ];
+    } else {
+      sampleRows = [
+        ['1', 'Moshe Cohen', 'male', 'Avraham', 'Sarah', '15 Tishrei 5784', '15 Tishrei', 'Beloved grandfather', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
+        ['2', 'Rachel Levi', 'female', 'Yitzhak', 'Rivka', '10 Nisan 5780', '10 Nisan', 'Devoted and beloved mother', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+      ];
+    }
+
+    const escapeCell = (str: string) => `"${str.replace(/"/g, '""')}"`;
+    const csvLines = [
+      headers.map(escapeCell).join(','),
+      ...sampleRows.map(row => row.map(escapeCell).join(','))
+    ];
+
+    const fullCsv = '\uFEFF' + csvLines.join('\r\n');
+    const blob = new Blob([fullCsv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `eternal_memorial_sample_template_${lang}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      if (document.body.contains(link)) document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 1000);
+  };
+
+  // Download sample Excel template matching exact Supabase schema (English headers)
+  const handleDownloadExcelSample = () => {
+    const headers = ['id', 'name', 'gender', 'fatherName', 'motherName', 'passDate', 'hebrewDate', 'bio', 'imageUrl', 'candlesCount'];
+    
+    let sampleRows: string[][] = [];
+    if (lang === 'he') {
+      sampleRows = [
+        ['1', 'משה כהן', 'male', 'אברהם', 'שרה', '15 תשרי 5784', '15 תשרי', 'סבא יקר ואהוב', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
+        ['2', 'רחל לוי', 'female', 'יצחק', 'רבקה', '10 ניסן 5780', '10 ניסן', 'אמא מסורה ואהובה', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+      ];
+    } else if (lang === 'ru') {
+      sampleRows = [
+        ['1', 'Моше Коэн', 'male', 'Авраам', 'Сарра', '15 Тишрей 5784', '15 Тишрей', 'Дорогой и любимый дедушка', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
+        ['2', 'Рахель Леви', 'female', 'Ицхак', 'Ривка', '10 Нисан 5780', '10 Нисан', 'Преданная и любимая мама', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+      ];
+    } else {
+      sampleRows = [
+        ['1', 'Moshe Cohen', 'male', 'Avraham', 'Sarah', '15 Tishrei 5784', '15 Tishrei', 'Beloved grandfather', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
+        ['2', 'Rachel Levi', 'female', 'Yitzhak', 'Rivka', '10 Nisan 5780', '10 Nisan', 'Devoted and beloved mother', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+      ];
+    }
+
+    const workbook = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
+    XLSX.utils.book_append_sheet(workbook, ws, 'Sample Template');
+    XLSX.writeFile(workbook, `eternal_memorial_sample_template_${lang}.xlsx`);
   };
 
   return (
@@ -636,20 +696,31 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       <div className="space-y-6">
         {/* CSV/Excel File Upload Option */}
         <div className="font-sans">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
             <label className="text-xs uppercase tracking-wider text-[#c8a96e] font-semibold">
-              {lang === 'he' ? 'אפשרות 1: העלאת קובץ Excel / CSV (מומלץ ביותר)' : 'Option 1: Upload Excel / CSV File (Recommended)'}
+              {lang === 'he' ? 'אפשרות 1: העלאת קובץ Excel / CSV (מומלץ ביותר)' : lang === 'ru' ? 'Вариант 1: Загрузить файл Excel / CSV (Рекомендуется)' : 'Option 1: Upload Excel / CSV File (Recommended)'}
             </label>
-            {/* Download Sample Template Link */}
-            <a
-              href={getTemplateDownloadUrl()}
-              download="eternal_memorial_template.csv"
-              className="text-xs text-gray-400 hover:text-[#c8a96e] flex items-center gap-1 bg-black/40 px-2.5 py-1 rounded border border-gray-700 hover:border-[#c8a96e]/50 transition-all"
-              title={lang === 'he' ? 'הורדת קובץ CSV לדוגמה עם סדר העמודות הנכון' : 'Download sample CSV template'}
-            >
-              <Download className="w-3.5 h-3.5 text-[#c8a96e]" />
-              <span>{t.downloadTemplate}</span>
-            </a>
+            {/* Download Sample Template Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadExcelSample}
+                className="text-xs text-emerald-300 hover:text-emerald-100 flex items-center gap-1 bg-emerald-950/50 hover:bg-emerald-900/70 px-2.5 py-1 rounded border border-emerald-700/60 hover:border-emerald-500 transition-all cursor-pointer"
+                title={lang === 'he' ? 'הורדת קובץ Excel לדוגמה' : lang === 'ru' ? 'Скачать образец Excel' : 'Download sample Excel template'}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{lang === 'he' ? 'הורד דוגמה (Excel)' : lang === 'ru' ? 'Скачать образец (Excel)' : 'Download Sample (Excel)'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadCsvSample}
+                className="text-xs text-sky-300 hover:text-sky-100 flex items-center gap-1 bg-sky-950/50 hover:bg-sky-900/70 px-2.5 py-1 rounded border border-sky-700/60 hover:border-sky-500 transition-all cursor-pointer"
+                title={lang === 'he' ? 'הורדת קובץ CSV לדוגמה' : lang === 'ru' ? 'Скачать образец CSV' : 'Download sample CSV template'}
+              >
+                <Download className="w-3.5 h-3.5 text-sky-400" />
+                <span>{lang === 'he' ? 'הורד דוגמה (CSV)' : lang === 'ru' ? 'Скачать образец (CSV)' : 'Download Sample (CSV)'}</span>
+              </button>
+            </div>
           </div>
 
           <div
@@ -669,7 +740,11 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
               {lang === 'he' ? 'גרור ושחרר קובץ Excel או CSV כאן או לחץ לבחירת קובץ' : 'Drag & drop Excel or CSV file here or click to browse'}
             </p>
             <span className="text-[10px] text-gray-500 max-w-sm leading-tight">
-              {lang === 'he' ? 'תומך בקבצי .xlsx, .xls ו-.csv עם סדר עמודות: שם, מין, שם אב, שם אם, יום, חודש, טלפון, הערות' : 'Supports .xlsx, .xls, and .csv formats in correct column order'}
+              {lang === 'he' 
+                ? 'תומך בקבצי .xlsx, .xls ו-.csv (עמודות: id, name, gender, fatherName, motherName, passDate, hebrewDate, bio, imageUrl, candlesCount)' 
+                : lang === 'ru'
+                ? 'Поддерживает файлы .xlsx, .xls и .csv (колонки: id, name, gender, fatherName, motherName, passDate, hebrewDate, bio, imageUrl, candlesCount)'
+                : 'Supports .xlsx, .xls, and .csv formats (columns: id, name, gender, fatherName, motherName, passDate, hebrewDate, bio, imageUrl, candlesCount)'}
             </span>
             <input
               type="file"
