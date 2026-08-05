@@ -582,6 +582,30 @@ function MainAppContent() {
     }
   }, [displayedList, selectedDeceased]);
 
+  // Refresh master list directly from Supabase (select('*'))
+  const refreshFromSupabase = async () => {
+    try {
+      const { data, error } = await safeSelect('deceased');
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const fetchedRecords = filterOutMockRecords(data as Deceased[]);
+        if (fetchedRecords.length > 0) {
+          setMasterList(prev => {
+            const merged = smartMergeDeceasedLists(prev, fetchedRecords);
+            const finalUpdated = deduplicateSingleList(merged);
+            try {
+              localStorage.setItem('eternal_db', JSON.stringify(finalUpdated));
+            } catch (e) {
+              console.error("Storage access error:", e);
+            }
+            return finalUpdated;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Error refreshing from Supabase:", err);
+    }
+  };
+
   // Save or update deceased record in Supabase & LocalStorage
   const handleSaveDeceased = async (deceasedInput: Deceased) => {
     const deceased = enrichDeceasedTranslations(deceasedInput);
@@ -594,17 +618,21 @@ function MainAppContent() {
       updated = [...masterList, deceased];
     }
 
-    // Save directly to Supabase
+    // Save directly to Supabase with error alert and instant re-fetch
     try {
       const { error } = await safeUpsert([deceased]);
-      if (error && isMissingTableError(error)) {
-        setSupabaseTableMissing(true);
-        console.warn("Supabase notice: 'deceased' table missing. Record saved to local database.");
-      } else if (error) {
-        console.warn("Supabase save notice:", error.message || error);
+      if (error) {
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          alert(lang === 'he' ? "שגיאה ב-Supabase: הטבלה 'deceased' אינה קיימת בממסד הנתונים." : "Supabase Error: 'deceased' table missing.");
+        } else {
+          alert(lang === 'he' ? `שגיאת שמירה ב-Supabase: ${error.message || JSON.stringify(error)}` : `Supabase save error: ${error.message || JSON.stringify(error)}`);
+        }
+      } else {
+        await refreshFromSupabase();
       }
-    } catch (e) {
-      console.warn("Supabase notice:", e);
+    } catch (e: any) {
+      alert(`Supabase save error: ${e.message || String(e)}`);
     }
 
     // Sync to backup server API
@@ -696,17 +724,21 @@ function MainAppContent() {
     const merged = smartMergeDeceasedLists(masterList, enrichedList);
     const updated = deduplicateSingleList(merged);
 
-    // Bulk upsert to Supabase
+    // Bulk upsert to Supabase with error alert and instant re-fetch
     try {
       const { error } = await safeUpsert(enrichedList);
-      if (error && isMissingTableError(error)) {
-        setSupabaseTableMissing(true);
-        console.warn("Supabase notice: 'deceased' table missing. Imported to local database.");
-      } else if (error) {
-        console.warn("Supabase bulk import notice:", error.message || error);
+      if (error) {
+        if (isMissingTableError(error)) {
+          setSupabaseTableMissing(true);
+          alert(lang === 'he' ? "שגיאה ב-Supabase: הטבלה 'deceased' אינה קיימת בממסד הנתונים." : "Supabase Error: 'deceased' table missing.");
+        } else {
+          alert(lang === 'he' ? `שגיאת ייבוא ב-Supabase: ${error.message || JSON.stringify(error)}` : `Supabase import error: ${error.message || JSON.stringify(error)}`);
+        }
+      } else {
+        await refreshFromSupabase();
       }
-    } catch (e) {
-      console.warn("Supabase notice:", e);
+    } catch (e: any) {
+      alert(`Supabase import error: ${e.message || String(e)}`);
     }
 
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {

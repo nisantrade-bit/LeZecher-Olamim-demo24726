@@ -223,7 +223,42 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
     }
   }
 
+  // 4. Ensure mapped columns for Supabase schema compatibility (hebrewDate, passDate, bio, imageUrl)
+  if (!copy.hebrewDate && copy.day && copy.month) {
+    copy.hebrewDate = `${copy.day} ${copy.month}`;
+  }
+  if (!copy.passDate && (copy.hebrewDate || copy.birthDate)) {
+    copy.passDate = copy.hebrewDate || copy.birthDate;
+  }
+  if (!copy.bio && copy.notes) {
+    copy.bio = copy.notes;
+  }
+  if (!copy.imageUrl && copy.image) {
+    copy.imageUrl = copy.image;
+  }
+
   return copy as T;
+}
+
+/**
+  Normalizes records fetched from Supabase so imageUrl and all aliases are always available.
+ */
+export function normalizeFetchedRecord(item: any): any {
+  if (!item || typeof item !== 'object') return item;
+  const img = item.imageUrl || item.image || item.photoUrl || item.photo || item.image_url || item.photo_url;
+  if (img && typeof img === 'string') {
+    const trimmed = img.trim();
+    if (trimmed !== '' && trimmed !== '-' && trimmed !== 'null' && trimmed !== 'undefined') {
+      item.imageUrl = trimmed;
+      item.image = trimmed;
+      item.photoUrl = trimmed;
+      item.photo = trimmed;
+    }
+  }
+  if (!item.notes && item.bio) {
+    item.notes = item.bio;
+  }
+  return item;
 }
 
 // Export alias sanitizeRecord for project consistency
@@ -300,7 +335,8 @@ export async function safeSelect(
   try {
     const { data, error } = await supabase.from(tableName).select(columns);
     if (error) logSupabaseError('safeSelect', error);
-    return { data: data || [], error };
+    const normalized = (data || []).map(normalizeFetchedRecord);
+    return { data: normalized, error };
   } catch (err) {
     logSupabaseException('safeSelect', err);
     return { data: [], error: err };
