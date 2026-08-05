@@ -64,10 +64,14 @@ export function isSameDeceasedRecord(a: Deceased, b: Deceased): boolean {
  * Merges two records of the same person, preserving the best available information
  */
 export function mergeDeceasedRecords(existing: Deceased, incoming: Deceased): Deceased {
-  // Choose the longer/more complete story notes
+  // Choose the longer/more complete story notes and bio
+  const bio = (incoming.bio && incoming.bio.length > (existing.bio || '').length)
+    ? incoming.bio
+    : (existing.bio || incoming.notes || existing.notes);
+  
   const notes = (incoming.notes && incoming.notes.length > (existing.notes || '').length)
     ? incoming.notes
-    : existing.notes;
+    : (existing.notes || bio);
 
   // Choose contact phone if missing
   const contactPhone = existing.contactPhone || incoming.contactPhone;
@@ -76,16 +80,29 @@ export function mergeDeceasedRecords(existing: Deceased, incoming: Deceased): De
   const fatherName = existing.fatherName || incoming.fatherName;
   const motherName = existing.motherName || incoming.motherName;
 
+  // Choose dates if missing
+  const hebrewDate = existing.hebrewDate || incoming.hebrewDate;
+  const passDate = existing.passDate || incoming.passDate;
+
+  // Image URL mapping across aliases
+  const img = existing.imageUrl || incoming.imageUrl || existing.image || incoming.image || existing.photoUrl || incoming.photoUrl || existing.photo || incoming.photo;
+
+  const candlesCount = (existing.candlesCount !== undefined ? existing.candlesCount : 0) + (incoming.candlesCount !== undefined ? incoming.candlesCount : 0);
+
   return {
     ...existing,
     fatherName,
     motherName,
     contactPhone,
+    hebrewDate,
+    passDate,
+    bio,
     notes,
-    image: existing.image || incoming.image || existing.imageUrl || incoming.imageUrl || existing.photoUrl || incoming.photoUrl || existing.photo || incoming.photo,
-    imageUrl: existing.imageUrl || incoming.imageUrl || existing.image || incoming.image || existing.photoUrl || incoming.photoUrl || existing.photo || incoming.photo,
-    photoUrl: existing.photoUrl || incoming.photoUrl || existing.image || incoming.image || existing.imageUrl || incoming.imageUrl || existing.photo || incoming.photo,
-    photo: existing.photo || incoming.photo || existing.image || incoming.image || existing.imageUrl || incoming.imageUrl || existing.photoUrl || incoming.photoUrl,
+    image: img,
+    imageUrl: img,
+    photoUrl: img,
+    photo: img,
+    candlesCount,
     ageAtDeath: existing.ageAtDeath || incoming.ageAtDeath,
     birthDate: existing.birthDate || incoming.birthDate,
 

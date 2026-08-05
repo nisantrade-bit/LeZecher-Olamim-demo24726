@@ -55,7 +55,7 @@ function triggerCsvDownload(csvContentWithoutBom: string, filename: string) {
 }
 
 /**
- * Exports a single language CSV file
+ * Exports a single language CSV file with strict Supabase schema English headers
  */
 export function exportSingleLanguageCsv(deceasedList: Deceased[], lang: Language, filename?: string) {
   if (!deceasedList || deceasedList.length === 0) return;
@@ -63,155 +63,68 @@ export function exportSingleLanguageCsv(deceasedList: Deceased[], lang: Language
   // Ensure list is cleanly translated into target language
   const translatedList = translateDeceasedListClientSide(deceasedList, lang);
 
-  const headers = lang === 'he' ? [
-    'שם מלא (name)',
-    'מין (gender)',
-    'שם האב (fatherName)',
-    'שם האם (motherName)',
-    'תאריך עברי (hebrewDate)',
-    'תאריך פטירה (passDate)',
-    'קורות חיים והערות (bio)',
-    'קישור לתמונה (imageUrl)'
-  ] : lang === 'ru' ? [
-    'Полное имя (name)',
-    'Пол (gender)',
-    'Имя отца (fatherName)',
-    'Имя матери (motherName)',
-    'Еврейская дата (hebrewDate)',
-    'Дата кончины (passDate)',
-    'Биография (bio)',
-    'Ссылка на фото (imageUrl)'
-  ] : [
+  // Headers MUST remain strictly in English matching Supabase column names
+  const headers = [
+    'id',
     'name',
     'gender',
     'fatherName',
     'motherName',
-    'hebrewDate',
     'passDate',
+    'hebrewDate',
     'bio',
-    'imageUrl'
+    'imageUrl',
+    'candlesCount'
   ];
 
   const rows: string[] = [];
   rows.push(headers.map(h => escapeCsvCell(h)).join(','));
 
   translatedList.forEach(item => {
-    const hebDate = item.hebrewDate || `${item.day} ${item.month}`;
+    const hebDate = item.hebrewDate || (item.day && item.month ? `${item.day} ${item.month}` : '');
     const pDate = item.passDate || hebDate;
     const bioText = item.bio || item.notes || '';
     const imgUrl = item.imageUrl || item.image || item.photoUrl || item.photo || '';
+    const candles = item.candlesCount !== undefined ? item.candlesCount : 0;
 
     const row = [
-      escapeCsvCell(item.name),
-      escapeCsvCell(item.gender),
+      escapeCsvCell(item.id || ''),
+      escapeCsvCell(item.name || ''),
+      escapeCsvCell(item.gender || 'male'),
       escapeCsvCell(item.fatherName || ''),
       escapeCsvCell(item.motherName || ''),
-      escapeCsvCell(hebDate),
       escapeCsvCell(pDate),
+      escapeCsvCell(hebDate),
       escapeCsvCell(bioText),
-      escapeCsvCell(imgUrl)
+      escapeCsvCell(imgUrl),
+      escapeCsvCell(candles)
     ];
     rows.push(row.join(','));
   });
 
   const defaultFileName = filename || (
     lang === 'he' 
-      ? `רשימת_נפטרים_עברית.csv` 
+      ? `eternal_memorial_database_he.csv` 
       : lang === 'ru' 
-      ? `список_усопших_русский.csv` 
-      : `memorial_list_english.csv`
+      ? `eternal_memorial_database_ru.csv` 
+      : `eternal_memorial_database_en.csv`
   );
 
   triggerCsvDownload(rows.join('\r\n'), defaultFileName);
 }
 
 /**
- * Downloads the deceased list as CSV files for all 3 languages (Hebrew, English, Russian).
+ * Downloads the deceased list as CSV file for the selected language
  */
-export function downloadDeceasedCsv(deceasedList: Deceased[], _activeLang?: Language) {
+export function downloadDeceasedCsv(deceasedList: Deceased[], activeLang: Language = 'he') {
   if (!deceasedList || deceasedList.length === 0) return;
-
-  // 1. Export Hebrew CSV
-  exportSingleLanguageCsv(deceasedList, 'he', 'רשימת_נפטרים_עברית.csv');
-
-  // 2. Export English CSV after short delay to prevent browser popup throttling
-  setTimeout(() => {
-    exportSingleLanguageCsv(deceasedList, 'en', 'memorial_list_english.csv');
-  }, 250);
-
-  // 3. Export Russian CSV
-  setTimeout(() => {
-    exportSingleLanguageCsv(deceasedList, 'ru', 'список_усопших_русский.csv');
-  }, 500);
+  exportSingleLanguageCsv(deceasedList, activeLang);
 }
 
 /**
- * Exports a single combined 3-language CSV file containing Hebrew, English, and Russian side-by-side
+ * Legacy alias for single-language export matching active interface language
  */
-export function exportCombined3LanguageCsv(deceasedList: Deceased[]) {
-  if (!deceasedList || deceasedList.length === 0) return;
-
-  const listHe = translateDeceasedListClientSide(deceasedList, 'he');
-  const listEn = translateDeceasedListClientSide(deceasedList, 'en');
-  const listRu = translateDeceasedListClientSide(deceasedList, 'ru');
-
-  const headers = [
-    'שם מלא (עברית)',
-    'Full Name (English)',
-    'Полное имя (Русский)',
-    'מין (male/female)',
-    'שם האב (עברית)',
-    'Father Name (English)',
-    'Имя отца (Русский)',
-    'שם האם (עברית)',
-    'Mother Name (English)',
-    'Имя матери (Русский)',
-    'יום עברי (1-30)',
-    'חודש עברי (עברית)',
-    'Hebrew Month (English)',
-    'Еврейский месяц (Русский)',
-    'טלפון קשר',
-    'הערות (עברית)',
-    'Notes (English)',
-    'Примечания (Русский)',
-    'קישור לתמונה (imageUrl)'
-  ];
-
-  const rows: string[] = [];
-  rows.push(headers.map(h => escapeCsvCell(h)).join(','));
-
-  deceasedList.forEach((_, idx) => {
-    const itemHe = listHe[idx];
-    const itemEn = listEn[idx];
-    const itemRu = listRu[idx];
-    if (!itemHe || !itemEn || !itemRu) return;
-
-    const imgUrl = itemHe.imageUrl || itemHe.image || itemHe.photoUrl || itemHe.photo || '';
-
-    const row = [
-      escapeCsvCell(itemHe.name),
-      escapeCsvCell(itemEn.name),
-      escapeCsvCell(itemRu.name),
-      escapeCsvCell(itemHe.gender),
-      escapeCsvCell(itemHe.fatherName || ''),
-      escapeCsvCell(itemEn.fatherName || ''),
-      escapeCsvCell(itemRu.fatherName || ''),
-      escapeCsvCell(itemHe.motherName || ''),
-      escapeCsvCell(itemEn.motherName || ''),
-      escapeCsvCell(itemRu.motherName || ''),
-      escapeCsvCell(itemHe.day),
-      escapeCsvCell(itemHe.month),
-      escapeCsvCell(itemEn.month),
-      escapeCsvCell(itemRu.month),
-      escapeCsvCell(itemHe.contactPhone || ''),
-      escapeCsvCell(itemHe.notes || itemHe.bio || ''),
-      escapeCsvCell(itemEn.notes || itemEn.bio || ''),
-      escapeCsvCell(itemRu.notes || itemRu.bio || ''),
-      escapeCsvCell(imgUrl)
-    ];
-    rows.push(row.join(','));
-  });
-
-  triggerCsvDownload(rows.join('\r\n'), 'eternal_memorial_database_3languages.csv');
+export function exportCombined3LanguageCsv(deceasedList: Deceased[], lang: Language = 'he') {
+  exportSingleLanguageCsv(deceasedList, lang);
 }
 

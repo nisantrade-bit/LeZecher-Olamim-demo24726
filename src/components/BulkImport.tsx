@@ -9,7 +9,7 @@ import { translations, sanitizeParentName } from '../utils/translations';
 import { normalizeMonthName } from '../utils/hebrewDate';
 import { Download, Upload, Clipboard, CheckCircle, AlertTriangle, FileSpreadsheet, Sparkles, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { downloadDeceasedCsv, exportCombined3LanguageCsv } from '../utils/csvExport';
+import { downloadDeceasedCsv, exportCombined3LanguageCsv, exportSingleLanguageCsv } from '../utils/csvExport';
 import { translateDeceasedListClientSide, translateDeceasedListClientSize } from '../utils/transliteration';
 
 interface BulkImportProps {
@@ -476,7 +476,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     }
   };
 
-  // Excel exporting function (Multi-sheet with Hebrew, English, Russian)
+  // Excel exporting function (Single language data content with strict Supabase English headers)
   const handleExportExcel = () => {
     if (!deceasedList || deceasedList.length === 0) {
       setFeedback({ 
@@ -489,62 +489,36 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     try {
       const workbook = XLSX.utils.book_new();
 
-      // 1. Hebrew Sheet
-      const listHe = translateDeceasedListClientSide(deceasedList, 'he');
-      const headersHe = ['שם מלא (name)', 'מין (gender)', 'שם האב (fatherName)', 'שם האם (motherName)', 'תאריך עברי (hebrewDate)', 'תאריך פטירה (passDate)', 'קורות חיים והערות (bio)', 'קישור לתמונה (imageUrl)'];
-      const rowsHe = listHe.map(item => [
+      // Headers strictly in English matching Supabase schema
+      const headers = ['id', 'name', 'gender', 'fatherName', 'motherName', 'passDate', 'hebrewDate', 'bio', 'imageUrl', 'candlesCount'];
+      
+      const translatedList = translateDeceasedListClientSide(deceasedList, lang);
+      const rows = translatedList.map(item => [
+        item.id || '',
         item.name || '',
         item.gender || 'male',
         item.fatherName || '',
         item.motherName || '',
-        item.hebrewDate || `${item.day || 1} ${item.month || 'תשרי'}`,
-        item.passDate || item.hebrewDate || `${item.day || 1} ${item.month || 'תשרי'}`,
+        item.passDate || item.hebrewDate || (item.day && item.month ? `${item.day} ${item.month}` : ''),
+        item.hebrewDate || (item.day && item.month ? `${item.day} ${item.month}` : ''),
         item.bio || item.notes || '',
-        item.imageUrl || item.image || item.photoUrl || item.photo || ''
+        item.imageUrl || item.image || item.photoUrl || item.photo || '',
+        item.candlesCount !== undefined ? item.candlesCount : 0
       ]);
-      const wsHe = XLSX.utils.aoa_to_sheet([headersHe, ...rowsHe]);
-      XLSX.utils.book_append_sheet(workbook, wsHe, 'Hebrew עברית');
 
-      // 2. English Sheet
-      const listEn = translateDeceasedListClientSide(deceasedList, 'en');
-      const headersEn = ['name', 'gender', 'fatherName', 'motherName', 'hebrewDate', 'passDate', 'bio', 'imageUrl'];
-      const rowsEn = listEn.map(item => [
-        item.name || '',
-        item.gender || 'male',
-        item.fatherName || '',
-        item.motherName || '',
-        item.hebrewDate || `${item.day || 1} ${item.month || 'Tishrei'}`,
-        item.passDate || item.hebrewDate || `${item.day || 1} ${item.month || 'Tishrei'}`,
-        item.bio || item.notes || '',
-        item.imageUrl || item.image || item.photoUrl || item.photo || ''
-      ]);
-      const wsEn = XLSX.utils.aoa_to_sheet([headersEn, ...rowsEn]);
-      XLSX.utils.book_append_sheet(workbook, wsEn, 'English');
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      XLSX.utils.book_append_sheet(workbook, ws, 'Deceased Database');
 
-      // 3. Russian Sheet
-      const listRu = translateDeceasedListClientSide(deceasedList, 'ru');
-      const headersRu = ['Полное имя (name)', 'Пол (gender)', 'Имя отца (fatherName)', 'Имя матери (motherName)', 'Еврейская дата (hebrewDate)', 'Дата кончины (passDate)', 'Биография (bio)', 'Ссылка на фото (imageUrl)'];
-      const rowsRu = listRu.map(item => [
-        item.name || '',
-        item.gender || 'male',
-        item.fatherName || '',
-        item.motherName || '',
-        item.hebrewDate || `${item.day || 1} ${item.month || 'Тишрей'}`,
-        item.passDate || item.hebrewDate || `${item.day || 1} ${item.month || 'Тишрей'}`,
-        item.bio || item.notes || '',
-        item.imageUrl || item.image || item.photoUrl || item.photo || ''
-      ]);
-      const wsRu = XLSX.utils.aoa_to_sheet([headersRu, ...rowsRu]);
-      XLSX.utils.book_append_sheet(workbook, wsRu, 'Russian Русский');
-
-      const fileName = `eternal_memorial_database_3languages.xlsx`;
+      const fileName = `eternal_memorial_database_${lang}.xlsx`;
       XLSX.writeFile(workbook, fileName);
 
       setFeedback({
         type: 'success',
         message: lang === 'he' 
-          ? `קובץ Excel רב-לשוני (עברית, אנגלית, רוסית - 3 לשוניות) הורד בהצלחה (${deceasedList.length} רשומות)!`
-          : `Multi-language Excel database (3 tabs: Hebrew, English, Russian) downloaded successfully (${deceasedList.length} records)!`
+          ? `קובץ Excel הורד בהצלחה (${deceasedList.length} רשומות)!`
+          : lang === 'ru'
+          ? `Файл Excel успешно скачан (${deceasedList.length} записей)!`
+          : `Excel database file downloaded successfully (${deceasedList.length} records)!`
       });
     } catch (err: any) {
       console.error("Excel export error:", err);
@@ -557,12 +531,12 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     }
   };
 
-  // Generate downloadable sample CSV template matching exact Supabase schema
+  // Generate downloadable sample CSV template matching exact Supabase schema (English headers)
   const getTemplateDownloadUrl = () => {
-    const csvContent = "name,gender,fatherName,motherName,hebrewDate,passDate,bio,imageUrl\n" +
-      "Moshe Cohen,male,Avraham,Sarah,15 Tishrei,15 Tishrei 5784,Beloved grandfather,https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400\n" +
-      "Rachel Levi,female,Yitzhak,Rivka,10 Nisan,10 Nisan 5780,Beloved mother,https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400\n" +
-      "David Gold,male,Yaakov,Leah,5 Kislev,5 Kislev 5775,Passed away in New York,";
+    const csvContent = "id,name,gender,fatherName,motherName,passDate,hebrewDate,bio,imageUrl,candlesCount\n" +
+      "1,Moshe Cohen,male,Avraham,Sarah,15 Tishrei 5784,15 Tishrei,Beloved grandfather,https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400,0\n" +
+      "2,Rachel Levi,female,Yitzhak,Rivka,10 Nisan 5780,10 Nisan,Beloved mother,https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400,0\n" +
+      "3,David Gold,male,Yaakov,Leah,5 Kislev 5775,5 Kislev,Passed away in New York,,0";
     const encodedUri = encodeURIComponent(csvContent);
     return `data:text/csv;charset=utf-8,${encodedUri}`;
   };
@@ -593,13 +567,13 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
               type="button"
               onClick={handleExportExcel}
               className="text-xs font-semibold text-emerald-300 hover:text-emerald-100 flex items-center gap-2 bg-emerald-950/60 hover:bg-emerald-900/80 px-3.5 py-2 rounded-lg border border-emerald-500/50 hover:border-emerald-400 transition-all font-sans cursor-pointer shadow-md"
-              title={lang === 'he' ? 'הורדת מאגר הנפטרים בקובץ Excel עם 3 בלשוניות (עברית, אנגלית, רוסית)' : 'Download memorial database as Excel (.xlsx) with 3 language tabs'}
+              title={lang === 'he' ? 'הורדה ב-Excel' : lang === 'ru' ? 'Скачать Excel' : 'Download Excel'}
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <span>{lang === 'he' ? 'הורדה ב-Excel (ב-3 שפות)' : lang === 'ru' ? 'Скачать Excel (3 языка)' : 'Download Excel (3 Languages)'}</span>
+              <span>{lang === 'he' ? 'הורדה ב-Excel' : lang === 'ru' ? 'Скачать Excel' : 'Download Excel'}</span>
             </button>
 
-            {/* Combined CSV Export Button */}
+            {/* CSV Export Button */}
             <button
               type="button"
               onClick={() => {
@@ -610,19 +584,21 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
                   });
                   return;
                 }
-                exportCombined3LanguageCsv(deceasedList);
+                exportSingleLanguageCsv(deceasedList, lang);
                 setFeedback({
                   type: 'success',
                   message: lang === 'he' 
-                    ? `קובץ CSV מאוחד ב-3 שפות (עמודות מקבילות לעברית, אנגלית ורוסית) הורד בהצלחה (${deceasedList.length} רשומות)!`
-                    : `Combined 3-language CSV file downloaded successfully (${deceasedList.length} records)!`
+                    ? `קובץ CSV הורד בהצלחה (${deceasedList.length} רשומות)!`
+                    : lang === 'ru'
+                    ? `Файл CSV успешно скачан (${deceasedList.length} записей)!`
+                    : `CSV file downloaded successfully (${deceasedList.length} records)!`
                 });
               }}
               className="text-xs font-semibold text-sky-300 hover:text-sky-100 flex items-center gap-2 bg-sky-950/60 hover:bg-sky-900/80 px-3.5 py-2 rounded-lg border border-sky-500/50 hover:border-sky-400 transition-all font-sans cursor-pointer shadow-md"
-              title={lang === 'he' ? 'הורדת מאגר הנפטרים בקובץ CSV אחד המכיל עמודות בעברית, אנגלית ורוסית' : 'Download single CSV (.csv) containing all 3 languages side-by-side'}
+              title={lang === 'he' ? 'הורדה ב-CSV' : lang === 'ru' ? 'Скачать CSV' : 'Download CSV'}
             >
               <FileText className="w-4 h-4 text-sky-400" />
-              <span>{lang === 'he' ? 'הורדה ב-CSV (ב-3 שפות)' : lang === 'ru' ? 'Скачать CSV (3 языка)' : 'Download CSV (3 Languages)'}</span>
+              <span>{lang === 'he' ? 'הורדה ב-CSV' : lang === 'ru' ? 'Скачать CSV' : 'Download CSV'}</span>
             </button>
 
             {/* Smart Clean Duplicates Button */}
