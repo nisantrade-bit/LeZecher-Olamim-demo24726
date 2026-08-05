@@ -78,14 +78,17 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
   const processLines = (rows: string[][]): Deceased[] => {
     if (!rows || rows.length === 0) return [];
 
-    let nameIdx = 0;
-    let genderIdx = 1;
-    let fatherIdx = 2;
-    let motherIdx = 3;
-    let dayIdx = 4;
-    let monthIdx = 5;
-    let phoneIdx = 6;
-    let notesIdx = 7;
+    let nameIdx = -1;
+    let genderIdx = -1;
+    let fatherIdx = -1;
+    let motherIdx = -1;
+    let hebrewDateIdx = -1;
+    let passDateIdx = -1;
+    let dayIdx = -1;
+    let monthIdx = -1;
+    let phoneIdx = -1;
+    let notesIdx = -1;
+    let imageIdx = -1;
 
     let startRow = 0;
 
@@ -103,32 +106,50 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
                         firstRowStr.includes('מין') ||
                         firstRowStr.includes('יום') ||
                         firstRowStr.includes('day') ||
-                        firstRowStr.includes('день');
+                        firstRowStr.includes('photo') ||
+                        firstRowStr.includes('image') ||
+                        firstRowStr.includes('תמונה') ||
+                        firstRowStr.includes('bio') ||
+                        firstRowStr.includes('date');
 
     if (isHeaderRow) {
       startRow = 1; // skip header row
-      // Try to dynamically match columns if header names exist
+      // Dynamically match columns if header names exist
       firstRow.forEach((cell, idx) => {
         const c = (cell || '').toLowerCase().trim();
-        if ((c.includes('full name') || c.includes('שם מלא') || c.includes('полное имя') || c.includes('фио') || c === 'name' || c === 'שם' || c === 'имя') && !c.includes('father') && !c.includes('mother') && !c.includes('אב') && !c.includes('אם') && !c.includes('отца') && !c.includes('матери')) {
+        if ((c === 'name' || c.includes('full name') || c.includes('שם מלא') || c.includes('полное имя') || c.includes('фио') || c === 'שם' || c === 'имя') && !c.includes('father') && !c.includes('mother') && !c.includes('אב') && !c.includes('אם') && !c.includes('отца') && !c.includes('матери')) {
           nameIdx = idx;
-        } else if (c.includes('gender') || c.includes('sex') || c.includes('מין') || c.includes('пол')) {
+        } else if (c === 'gender' || c.includes('sex') || c.includes('מין') || c.includes('пол')) {
           genderIdx = idx;
-        } else if (c.includes('father') || c.includes('אב') || c.includes('отца') || c.includes('отец') || c.includes('родитель')) {
+        } else if (c === 'fathername' || c.includes('father') || c.includes('שם אב') || c.includes('שם האב') || c.includes('שם אבא') || c.includes('אב') || c.includes('אבא') || c.includes('отца') || c.includes('отец')) {
           fatherIdx = idx;
-        } else if (c.includes('mother') || c.includes('אם') || c.includes('מאת') || c.includes('матери') || c.includes('мать')) {
+        } else if (c === 'mothername' || c.includes('mother') || c.includes('שם אם') || c.includes('שם האם') || c.includes('שם אמא') || c.includes('אם') || c.includes('אמא') || c.includes('матери') || c.includes('мать')) {
           motherIdx = idx;
-        } else if (c.includes('day') || c.includes('יום') || c.includes('день')) {
+        } else if (c === 'hebrewdate' || c.includes('hebrew_date') || c.includes('hebrew date') || c.includes('תאריך עברי')) {
+          hebrewDateIdx = idx;
+        } else if (c === 'passdate' || c.includes('pass_date') || c.includes('pass date') || c.includes('תאריך פטירה')) {
+          passDateIdx = idx;
+        } else if (c === 'day' || c.includes('hebrewday') || c.includes('יום') || c.includes('день')) {
           dayIdx = idx;
-        } else if (c.includes('month') || c.includes('חודש') || c.includes('месяц')) {
+        } else if (c === 'month' || c.includes('hebrewmonth') || c.includes('חודש') || c.includes('месяц')) {
           monthIdx = idx;
-        } else if (c.includes('phone') || c.includes('contact') || c.includes('טלפון') || c.includes('телефон') || c.includes('контакт')) {
+        } else if (c.includes('phone') || c.includes('contact') || c.includes('טלפון') || c.includes('телефон')) {
           phoneIdx = idx;
-        } else if (c.includes('notes') || c.includes('story') || c.includes('הערות') || c.includes('סיפור') || c.includes('история') || c.includes('примечания') || c.includes('описание')) {
+        } else if (c === 'bio' || c === 'notes' || c.includes('story') || c.includes('הערות') || c.includes('סיפור') || c.includes('קורות חיים') || c.includes('история') || c.includes('примечания')) {
           notesIdx = idx;
+        } else if (c === 'imageurl' || c === 'image' || c === 'photourl' || c === 'photo' || c.includes('image_url') || c.includes('photo_url') || c.includes('תמונה') || c.includes('фото')) {
+          imageIdx = idx;
         }
       });
     }
+
+    // Fallbacks if header positions weren't detected
+    if (nameIdx === -1) nameIdx = 0;
+    if (genderIdx === -1) genderIdx = 1;
+    if (fatherIdx === -1) fatherIdx = 2;
+    if (motherIdx === -1) motherIdx = 3;
+    if (dayIdx === -1 && hebrewDateIdx === -1) dayIdx = 4;
+    if (monthIdx === -1 && hebrewDateIdx === -1) monthIdx = 5;
 
     const result: Deceased[] = [];
 
@@ -136,16 +157,19 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       const row = rows[index];
       if (!row || row.length === 0) continue;
 
-      const rawName = row[nameIdx] || '';
-      const rawGender = (row[genderIdx] || '').toLowerCase().trim();
-      const rawFather = row[fatherIdx] || '';
-      const rawMother = row[motherIdx] || '';
-      const rawDay = row[dayIdx] || '';
-      const rawMonth = row[monthIdx] || '';
-      const rawPhone = row[phoneIdx] || '';
-      const rawNotes = row[notesIdx] || '';
+      const rawName = (row[nameIdx] || '').trim();
+      const rawGender = (genderIdx !== -1 ? row[genderIdx] || '' : '').toLowerCase().trim();
+      const rawFather = fatherIdx !== -1 ? row[fatherIdx] || '' : '';
+      const rawMother = motherIdx !== -1 ? row[motherIdx] || '' : '';
+      const rawHebrewDate = hebrewDateIdx !== -1 ? (row[hebrewDateIdx] || '').trim() : '';
+      const rawPassDate = passDateIdx !== -1 ? (row[passDateIdx] || '').trim() : '';
+      const rawDay = dayIdx !== -1 ? (row[dayIdx] || '').trim() : '';
+      const rawMonth = monthIdx !== -1 ? (row[monthIdx] || '').trim() : '';
+      const rawPhone = phoneIdx !== -1 ? (row[phoneIdx] || '').trim() : '';
+      const rawNotes = notesIdx !== -1 ? (row[notesIdx] || '').trim() : '';
+      const rawImage = imageIdx !== -1 ? (row[imageIdx] || '').trim() : '';
 
-      if (!rawName.trim()) continue; // skip rows with empty name
+      if (!rawName) continue; // skip empty names
 
       // Normalize gender
       let gender: Gender = 'male';
@@ -156,32 +180,52 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         rawGender.includes('f') || 
         rawGender.includes('בת') || 
         rawGender.includes('жен') ||
-        rawGender.includes('женщина') ||
         rawGender.includes('ж') ||
         rawGender.includes('woman')
       ) {
         gender = 'female';
       }
 
-      // Parse and validate day
+      // Day & Month resolution
+      let dayNum = 1;
       const dayDigits = rawDay.replace(/\D/g, '');
-      const dayNum = parseInt(dayDigits, 10);
-      if (isNaN(dayNum) || dayNum < 1 || dayNum > 30) continue; // skip invalid days
+      if (dayDigits) {
+        const parsed = parseInt(dayDigits, 10);
+        if (!isNaN(parsed) && parsed >= 1 && parsed <= 30) dayNum = parsed;
+      } else if (rawHebrewDate || rawPassDate) {
+        const match = (rawHebrewDate || rawPassDate).match(/\b([1-9]|[12][0-9]|30)\b/);
+        if (match) dayNum = parseInt(match[1], 10);
+      }
 
-      // Normalize month name
-      if (!rawMonth.trim()) continue; // skip rows without month
-      const normalizedMonth = normalizeMonthName(rawMonth);
+      let normalizedMonth = 'תשרי';
+      if (rawMonth) {
+        normalizedMonth = normalizeMonthName(rawMonth);
+      } else if (rawHebrewDate || rawPassDate) {
+        normalizedMonth = normalizeMonthName(rawHebrewDate || rawPassDate);
+      }
+
+      const hebrewDateVal = rawHebrewDate || `${dayNum} ${normalizedMonth}`;
+      const passDateVal = rawPassDate || hebrewDateVal;
+      const bioVal = rawNotes || undefined;
+      const imgVal = rawImage || undefined;
 
       const newItem: Deceased = {
         id: Date.now() + Math.floor(Math.random() * 1000000) + index,
-        name: rawName.trim(),
+        name: rawName,
         gender,
         fatherName: sanitizeParentName(rawFather),
         motherName: sanitizeParentName(rawMother),
         day: dayNum,
         month: normalizedMonth,
-        contactPhone: rawPhone.trim() || undefined,
-        notes: rawNotes.trim() || undefined
+        hebrewDate: hebrewDateVal,
+        passDate: passDateVal,
+        contactPhone: rawPhone || undefined,
+        notes: bioVal,
+        bio: bioVal,
+        image: imgVal,
+        imageUrl: imgVal,
+        photoUrl: imgVal,
+        photo: imgVal,
       };
 
       result.push(newItem);
@@ -201,35 +245,46 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       try {
         const parsed = JSON.parse(trimmed);
         const arrayToProcess = Array.isArray(parsed) ? parsed : [parsed];
-        const importedList: Deceased[] = arrayToProcess.map((item, idx) => ({
-          id: Number(item.id || Date.now() + idx),
-          name: String(item.name || item.nameHe || item.nameEn || item.nameRu || ''),
-          gender: (item.gender === 'female' ? 'female' : 'male') as Gender,
-          fatherName: sanitizeParentName(item.fatherName || ''),
-          motherName: sanitizeParentName(item.motherName || ''),
-          day: Number(item.day || 1),
-          month: normalizeMonthName(item.month || 'תשרי'),
-          contactPhone: item.contactPhone || undefined,
-          notes: item.notes || undefined,
-          image: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
-          imageUrl: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
-          photoUrl: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
-          photo: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
-          ageAtDeath: item.ageAtDeath ? Number(item.ageAtDeath) : undefined,
-          birthDate: item.birthDate || undefined,
-          nameHe: item.nameHe,
-          nameEn: item.nameEn,
-          nameRu: item.nameRu,
-          fatherNameHe: item.fatherNameHe,
-          fatherNameEn: item.fatherNameEn,
-          fatherNameRu: item.fatherNameRu,
-          motherNameHe: item.motherNameHe,
-          motherNameEn: item.motherNameEn,
-          motherNameRu: item.motherNameRu,
-          notesHe: item.notesHe,
-          notesEn: item.notesEn,
-          notesRu: item.notesRu
-        })).filter(item => Boolean(item.name));
+        const importedList: Deceased[] = arrayToProcess.map((item, idx) => {
+          const img = item.imageUrl || item.image || item.photoUrl || item.photo || item.image_url || item.photo_url || undefined;
+          const bioVal = item.bio || item.notes || item.story || undefined;
+          const hebDate = item.hebrewDate || item.hebrew_date || (item.day && item.month ? `${item.day} ${item.month}` : undefined);
+          const passDateVal = item.passDate || item.pass_date || hebDate;
+
+          return {
+            id: Number(item.id || Date.now() + idx),
+            name: String(item.name || item.nameHe || item.nameEn || item.nameRu || '').trim(),
+            gender: (String(item.gender || '').toLowerCase().includes('f') || String(item.gender || '').includes('נקבה') ? 'female' : 'male') as Gender,
+            fatherName: sanitizeParentName(item.fatherName || item.father_name || item.fatherNameHe || ''),
+            motherName: sanitizeParentName(item.motherName || item.mother_name || item.motherNameHe || ''),
+            day: Number(item.day || 1),
+            month: normalizeMonthName(item.month || 'תשרי'),
+            hebrewDate: hebDate,
+            passDate: passDateVal,
+            contactPhone: item.contactPhone || item.phone || undefined,
+            notes: bioVal,
+            bio: bioVal,
+            image: img,
+            imageUrl: img,
+            photoUrl: img,
+            photo: img,
+            candlesCount: item.candlesCount ? Number(item.candlesCount) : 0,
+            ageAtDeath: item.ageAtDeath ? Number(item.ageAtDeath) : undefined,
+            birthDate: item.birthDate || undefined,
+            nameHe: item.nameHe,
+            nameEn: item.nameEn,
+            nameRu: item.nameRu,
+            fatherNameHe: item.fatherNameHe,
+            fatherNameEn: item.fatherNameEn,
+            fatherNameRu: item.fatherNameRu,
+            motherNameHe: item.motherNameHe,
+            motherNameEn: item.motherNameEn,
+            motherNameRu: item.motherNameRu,
+            notesHe: item.notesHe,
+            notesEn: item.notesEn,
+            notesRu: item.notesRu
+          };
+        }).filter(item => Boolean(item.name));
 
         if (importedList.length > 0) {
           onImport(importedList);
@@ -436,22 +491,49 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
 
       // 1. Hebrew Sheet
       const listHe = translateDeceasedListClientSide(deceasedList, 'he');
-      const headersHe = ['שם מלא', 'מין (male/female)', 'שם האב/הורה', 'שם האם', 'יום עברי (1-30)', 'חודש עברי', 'טלפון קשר', 'סיפור חיים והערות'];
-      const rowsHe = listHe.map(item => [item.name || '', item.gender || 'male', item.fatherName || '', item.motherName || '', item.day || 1, item.month || 'תשרי', item.contactPhone || '', item.notes || '']);
+      const headersHe = ['שם מלא (name)', 'מין (gender)', 'שם האב (fatherName)', 'שם האם (motherName)', 'תאריך עברי (hebrewDate)', 'תאריך פטירה (passDate)', 'קורות חיים והערות (bio)', 'קישור לתמונה (imageUrl)'];
+      const rowsHe = listHe.map(item => [
+        item.name || '',
+        item.gender || 'male',
+        item.fatherName || '',
+        item.motherName || '',
+        item.hebrewDate || `${item.day || 1} ${item.month || 'תשרי'}`,
+        item.passDate || item.hebrewDate || `${item.day || 1} ${item.month || 'תשרי'}`,
+        item.bio || item.notes || '',
+        item.imageUrl || item.image || item.photoUrl || item.photo || ''
+      ]);
       const wsHe = XLSX.utils.aoa_to_sheet([headersHe, ...rowsHe]);
       XLSX.utils.book_append_sheet(workbook, wsHe, 'Hebrew עברית');
 
       // 2. English Sheet
       const listEn = translateDeceasedListClientSide(deceasedList, 'en');
-      const headersEn = ['Full Name', 'Gender (male/female)', 'Father/Parent Name', 'Mother Name', 'Hebrew Day (1-30)', 'Hebrew Month', 'Contact Phone', 'Life Story & Notes'];
-      const rowsEn = listEn.map(item => [item.name || '', item.gender || 'male', item.fatherName || '', item.motherName || '', item.day || 1, item.month || 'Tishrei', item.contactPhone || '', item.notes || '']);
+      const headersEn = ['name', 'gender', 'fatherName', 'motherName', 'hebrewDate', 'passDate', 'bio', 'imageUrl'];
+      const rowsEn = listEn.map(item => [
+        item.name || '',
+        item.gender || 'male',
+        item.fatherName || '',
+        item.motherName || '',
+        item.hebrewDate || `${item.day || 1} ${item.month || 'Tishrei'}`,
+        item.passDate || item.hebrewDate || `${item.day || 1} ${item.month || 'Tishrei'}`,
+        item.bio || item.notes || '',
+        item.imageUrl || item.image || item.photoUrl || item.photo || ''
+      ]);
       const wsEn = XLSX.utils.aoa_to_sheet([headersEn, ...rowsEn]);
       XLSX.utils.book_append_sheet(workbook, wsEn, 'English');
 
       // 3. Russian Sheet
       const listRu = translateDeceasedListClientSide(deceasedList, 'ru');
-      const headersRu = ['Полное имя', 'Пол (male/female)', 'Имя отца/родителя', 'Имя матери', 'Еврейский день (1-30)', 'Еврейский месяц', 'Телефон', 'Примечания'];
-      const rowsRu = listRu.map(item => [item.name || '', item.gender || 'male', item.fatherName || '', item.motherName || '', item.day || 1, item.month || 'Тишрей', item.contactPhone || '', item.notes || '']);
+      const headersRu = ['Полное имя (name)', 'Пол (gender)', 'Имя отца (fatherName)', 'Имя матери (motherName)', 'Еврейская дата (hebrewDate)', 'Дата кончины (passDate)', 'Биография (bio)', 'Ссылка на фото (imageUrl)'];
+      const rowsRu = listRu.map(item => [
+        item.name || '',
+        item.gender || 'male',
+        item.fatherName || '',
+        item.motherName || '',
+        item.hebrewDate || `${item.day || 1} ${item.month || 'Тишрей'}`,
+        item.passDate || item.hebrewDate || `${item.day || 1} ${item.month || 'Тишрей'}`,
+        item.bio || item.notes || '',
+        item.imageUrl || item.image || item.photoUrl || item.photo || ''
+      ]);
       const wsRu = XLSX.utils.aoa_to_sheet([headersRu, ...rowsRu]);
       XLSX.utils.book_append_sheet(workbook, wsRu, 'Russian Русский');
 
@@ -475,12 +557,12 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     }
   };
 
-  // Generate downloadable sample CSV template
+  // Generate downloadable sample CSV template matching exact Supabase schema
   const getTemplateDownloadUrl = () => {
-    const csvContent = "Full Name,Gender (male/female),Father Name,Mother Name,Hebrew Day (1-30),Hebrew Month,Contact Phone,Life Story\n" +
-      "Moshe Cohen,male,Avraham,Sarah,15,Tishrei,050-1234567,Beloved grandfather\n" +
-      "Rachel Levi,female,Yitzhak,Rivka,10,Nisan,054-9876543,Beloved mother\n" +
-      "David Gold,male,Yaakov,Leah,5,Kislev,,Passed away in New York";
+    const csvContent = "name,gender,fatherName,motherName,hebrewDate,passDate,bio,imageUrl\n" +
+      "Moshe Cohen,male,Avraham,Sarah,15 Tishrei,15 Tishrei 5784,Beloved grandfather,https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400\n" +
+      "Rachel Levi,female,Yitzhak,Rivka,10 Nisan,10 Nisan 5780,Beloved mother,https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400\n" +
+      "David Gold,male,Yaakov,Leah,5 Kislev,5 Kislev 5775,Passed away in New York,";
     const encodedUri = encodeURIComponent(csvContent);
     return `data:text/csv;charset=utf-8,${encodedUri}`;
   };

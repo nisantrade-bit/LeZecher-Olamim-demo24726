@@ -64,47 +64,52 @@ export function exportSingleLanguageCsv(deceasedList: Deceased[], lang: Language
   const translatedList = translateDeceasedListClientSide(deceasedList, lang);
 
   const headers = lang === 'he' ? [
-    'שם מלא',
-    'מין (male/female)',
-    'שם האב/הורה',
-    'שם האם',
-    'יום עברי (1-30)',
-    'חודש עברי',
-    'טלפון קשר',
-    'סיפור חיים והערות'
+    'שם מלא (name)',
+    'מין (gender)',
+    'שם האב (fatherName)',
+    'שם האם (motherName)',
+    'תאריך עברי (hebrewDate)',
+    'תאריך פטירה (passDate)',
+    'קורות חיים והערות (bio)',
+    'קישור לתמונה (imageUrl)'
   ] : lang === 'ru' ? [
-    'Полное имя',
-    'Пол (male/female)',
-    'Имя отца/родителя',
-    'Имя матери',
-    'Еврейский день (1-30)',
-    'Еврейский месяц',
-    'Телефон',
-    'Примечания'
+    'Полное имя (name)',
+    'Пол (gender)',
+    'Имя отца (fatherName)',
+    'Имя матери (motherName)',
+    'Еврейская дата (hebrewDate)',
+    'Дата кончины (passDate)',
+    'Биография (bio)',
+    'Ссылка на фото (imageUrl)'
   ] : [
-    'Full Name',
-    'Gender (male/female)',
-    'Father Name',
-    'Mother Name',
-    'Hebrew Day (1-30)',
-    'Hebrew Month',
-    'Contact Phone',
-    'Life Story'
+    'name',
+    'gender',
+    'fatherName',
+    'motherName',
+    'hebrewDate',
+    'passDate',
+    'bio',
+    'imageUrl'
   ];
 
   const rows: string[] = [];
   rows.push(headers.map(h => escapeCsvCell(h)).join(','));
 
   translatedList.forEach(item => {
+    const hebDate = item.hebrewDate || `${item.day} ${item.month}`;
+    const pDate = item.passDate || hebDate;
+    const bioText = item.bio || item.notes || '';
+    const imgUrl = item.imageUrl || item.image || item.photoUrl || item.photo || '';
+
     const row = [
       escapeCsvCell(item.name),
       escapeCsvCell(item.gender),
       escapeCsvCell(item.fatherName || ''),
       escapeCsvCell(item.motherName || ''),
-      escapeCsvCell(item.day),
-      escapeCsvCell(item.month),
-      escapeCsvCell(item.contactPhone || ''),
-      escapeCsvCell(item.notes || '')
+      escapeCsvCell(hebDate),
+      escapeCsvCell(pDate),
+      escapeCsvCell(bioText),
+      escapeCsvCell(imgUrl)
     ];
     rows.push(row.join(','));
   });
@@ -168,7 +173,8 @@ export function exportCombined3LanguageCsv(deceasedList: Deceased[]) {
     'טלפון קשר',
     'הערות (עברית)',
     'Notes (English)',
-    'Примечания (Русский)'
+    'Примечания (Русский)',
+    'קישור לתמונה (imageUrl)'
   ];
 
   const rows: string[] = [];
@@ -179,6 +185,8 @@ export function exportCombined3LanguageCsv(deceasedList: Deceased[]) {
     const itemEn = listEn[idx];
     const itemRu = listRu[idx];
     if (!itemHe || !itemEn || !itemRu) return;
+
+    const imgUrl = itemHe.imageUrl || itemHe.image || itemHe.photoUrl || itemHe.photo || '';
 
     const row = [
       escapeCsvCell(itemHe.name),
@@ -196,9 +204,10 @@ export function exportCombined3LanguageCsv(deceasedList: Deceased[]) {
       escapeCsvCell(itemEn.month),
       escapeCsvCell(itemRu.month),
       escapeCsvCell(itemHe.contactPhone || ''),
-      escapeCsvCell(itemHe.notes || ''),
-      escapeCsvCell(itemEn.notes || ''),
-      escapeCsvCell(itemRu.notes || '')
+      escapeCsvCell(itemHe.notes || itemHe.bio || ''),
+      escapeCsvCell(itemEn.notes || itemEn.bio || ''),
+      escapeCsvCell(itemRu.notes || itemRu.bio || ''),
+      escapeCsvCell(imgUrl)
     ];
     rows.push(row.join(','));
   });

@@ -15,6 +15,10 @@ export interface Deceased {
   month: string; // Normalized Hebrew Month (Hebrew key name)
   contactPhone?: string; // Optional relative phone
   notes?: string; // Optional story / cemetery location
+  bio?: string; // Optional bio (Supabase schema)
+  hebrewDate?: string; // Optional Hebrew date string (Supabase schema)
+  passDate?: string; // Optional date of passing (Supabase schema)
+  candlesCount?: number; // Optional candles lit count (Supabase schema)
   image?: string; // Optional Base64 image
   imageUrl?: string; // Optional image URL
   photoUrl?: string; // Optional photo URL

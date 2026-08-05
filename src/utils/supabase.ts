@@ -223,12 +223,12 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
     }
   }
 
-  // 4. Ensure mapped columns for Supabase schema compatibility (hebrewDate, passDate, bio, imageUrl)
+  // 4. Ensure mapped columns for Supabase schema compatibility (hebrewDate, passDate, bio, imageUrl, candlesCount)
   if (!copy.hebrewDate && copy.day && copy.month) {
     copy.hebrewDate = `${copy.day} ${copy.month}`;
   }
   if (!copy.passDate && (copy.hebrewDate || copy.birthDate)) {
-    copy.passDate = copy.hebrewDate || copy.birthDate;
+    copy.passDate = copy.hebrewDate || copy.birthDate || copy.day ? `${copy.day} ${copy.month}` : '-';
   }
   if (!copy.bio && copy.notes) {
     copy.bio = copy.notes;
@@ -236,15 +236,20 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
   if (!copy.imageUrl && copy.image) {
     copy.imageUrl = copy.image;
   }
+  if (copy.candlesCount === undefined && copy.candles_count !== undefined) {
+    copy.candlesCount = Number(copy.candles_count);
+  }
 
   return copy as T;
 }
 
 /**
-  Normalizes records fetched from Supabase so imageUrl and all aliases are always available.
+  Normalizes records fetched from Supabase so imageUrl, bio, hebrewDate, passDate, candlesCount and all aliases are always available.
  */
 export function normalizeFetchedRecord(item: any): any {
   if (!item || typeof item !== 'object') return item;
+  
+  // Image URL mapping across aliases
   const img = item.imageUrl || item.image || item.photoUrl || item.photo || item.image_url || item.photo_url;
   if (img && typeof img === 'string') {
     const trimmed = img.trim();
@@ -253,11 +258,52 @@ export function normalizeFetchedRecord(item: any): any {
       item.image = trimmed;
       item.photoUrl = trimmed;
       item.photo = trimmed;
+      item.image_url = trimmed;
+      item.photo_url = trimmed;
     }
   }
-  if (!item.notes && item.bio) {
-    item.notes = item.bio;
+
+  // Bio & Notes mapping
+  const bioVal = item.bio || item.notes;
+  if (bioVal && typeof bioVal === 'string' && bioVal !== '-') {
+    item.bio = bioVal;
+    if (!item.notes || item.notes === '-') {
+      item.notes = bioVal;
+    }
   }
+
+  // Hebrew Date & Pass Date mapping
+  const hebDateVal = item.hebrewDate || item.hebrew_date || item.passDate || item.pass_date;
+  if (hebDateVal && typeof hebDateVal === 'string' && hebDateVal !== '-') {
+    item.hebrewDate = hebDateVal;
+    if (!item.passDate || item.passDate === '-') {
+      item.passDate = hebDateVal;
+    }
+    // Attempt parsing day and month if day or month is missing
+    if ((!item.day || !item.month) && hebDateVal) {
+      const parts = hebDateVal.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        const parsedDay = parseInt(parts[0], 10);
+        if (!isNaN(parsedDay) && parsedDay >= 1 && parsedDay <= 30) {
+          if (!item.day) item.day = parsedDay;
+          if (!item.month) item.month = parts.slice(1).join(' ');
+        }
+      }
+    }
+  }
+
+  // Father & Mother names
+  if (!item.fatherName && item.father_name) item.fatherName = item.father_name;
+  if (!item.motherName && item.mother_name) item.motherName = item.mother_name;
+
+  // Candles Count
+  if (item.candlesCount !== undefined) {
+    item.candlesCount = Number(item.candlesCount);
+  } else if (item.candles_count !== undefined) {
+    item.candlesCount = Number(item.candles_count);
+    item.candlesCount = item.candlesCount;
+  }
+
   return item;
 }
 
