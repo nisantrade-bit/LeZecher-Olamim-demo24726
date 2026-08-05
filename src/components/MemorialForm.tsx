@@ -9,6 +9,7 @@ import { translations, sanitizeParentName } from '../utils/translations';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, normalizeMonthName } from '../utils/hebrewDate';
 import { translateDeceasedListClientSize } from '../utils/transliteration';
 import { PlusCircle, Upload, X, Save, User, Sparkles, Loader2 } from 'lucide-react';
+import { uploadMemorialImage, isSupabaseConfigured } from '../utils/supabase';
 
 interface MemorialFormProps {
   lang: Language;
@@ -118,9 +119,18 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
     setBirthDate('');
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (isSupabaseConfigured()) {
+        const tempId = editingDeceased ? editingDeceased.id : Date.now();
+        const uploadedUrl = await uploadMemorialImage(file, tempId);
+        if (uploadedUrl) {
+          setImageBase64(uploadedUrl);
+          return;
+        }
+      }
+
       if (file.type.startsWith('image/') && !file.type.includes('svg')) {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -191,6 +201,8 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       return;
     }
 
+    const imgVal = imageBase64 ? imageBase64.trim() : undefined;
+
     const baseData: Deceased = {
       id: editingDeceased ? editingDeceased.id : Date.now(),
       name: name.trim(),
@@ -201,8 +213,11 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       month,
       contactPhone: contactPhone.trim() || undefined,
       notes: notes.trim() || undefined,
-      image: imageBase64 || undefined,
-      imagePosition: imageBase64 ? imagePosition : undefined,
+      image: imgVal,
+      imageUrl: imgVal,
+      photoUrl: imgVal,
+      photo: imgVal,
+      imagePosition: imgVal ? imagePosition : undefined,
       ageAtDeath: ageAtDeath !== '' ? Number(ageAtDeath) : undefined,
       birthDate: birthDate.trim() || undefined,
 

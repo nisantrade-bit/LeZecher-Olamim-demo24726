@@ -4,9 +4,13 @@ import { Deceased } from '../types';
 
 export function getDeceasedPhoto(deceased?: Deceased | null): string | undefined {
   if (!deceased) return undefined;
-  const img = deceased.image || deceased.imageUrl || deceased.photoUrl;
-  if (img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-') {
-    return img.trim();
+  const anyDeceased = deceased as any;
+  const img = deceased.image || deceased.imageUrl || deceased.photoUrl || deceased.photo || anyDeceased.image_url || anyDeceased.photo_url;
+  if (img && typeof img === 'string') {
+    const trimmed = img.trim();
+    if (trimmed !== '' && trimmed !== '-' && trimmed !== 'null' && trimmed !== 'undefined') {
+      return trimmed;
+    }
   }
   return undefined;
 }
@@ -99,10 +103,17 @@ export const DeceasedPhotoFrame: React.FC<DeceasedPhotoFrameProps> = ({
   lang = 'he',
 }) => {
   const photo = getDeceasedPhoto(deceased);
+  const [hasError, setHasError] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    setHasError(false);
+  }, [photo, deceased?.id]);
+
+  const hasValidPhoto = Boolean(photo && !hasError);
 
   // 1. HERO SIZE (DeceasedMemorialPage)
   if (size === 'hero') {
-    if (photo) {
+    if (hasValidPhoto && photo) {
       return (
         <div className={`w-36 h-36 sm:w-44 sm:h-44 rounded-2xl border-2 border-[#c8a96e] shadow-[0_0_30px_rgba(200,169,110,0.5)] overflow-hidden bg-black/60 shrink-0 relative group ${className}`}>
           <img
@@ -111,6 +122,7 @@ export const DeceasedPhotoFrame: React.FC<DeceasedPhotoFrameProps> = ({
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             style={{ objectPosition: deceased?.imagePosition || 'center top' }}
             referrerPolicy="no-referrer"
+            onError={() => setHasError(true)}
           />
           {/* Small animated flickering candle overlayed on photo */}
           <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md border border-amber-400/80 p-1.5 rounded-xl shadow-xl flex items-center justify-center animate-pulse">
@@ -120,7 +132,7 @@ export const DeceasedPhotoFrame: React.FC<DeceasedPhotoFrameProps> = ({
       );
     }
 
-    // Default Placeholder when NO photo exists: Animated flickering Yahrzeit candle widget
+    // Default Placeholder when NO photo exists or image failed to load: Animated flickering Yahrzeit candle widget
     return (
       <div className={`w-36 h-36 sm:w-44 sm:h-44 rounded-2xl border-2 border-[#c8a96e] shadow-[0_0_30px_rgba(200,169,110,0.5)] bg-gradient-to-b from-[#1c150c] via-black to-[#131a26] shrink-0 relative flex flex-col items-center justify-center p-3 select-none overflow-hidden ${className}`}>
         <div className="absolute inset-0 bg-amber-500/10 rounded-2xl blur-xl animate-pulse"></div>
@@ -136,7 +148,7 @@ export const DeceasedPhotoFrame: React.FC<DeceasedPhotoFrameProps> = ({
 
   // 2. MODAL SIZE (MemorialDetailsModal / DedicatedStudyModal)
   if (size === 'modal') {
-    if (photo) {
+    if (hasValidPhoto && photo) {
       return (
         <div className={`w-28 h-28 sm:w-32 sm:h-32 rounded-2xl border-2 border-[#c8a96e] shadow-[0_0_25px_rgba(200,169,110,0.4)] overflow-hidden bg-black/60 shrink-0 relative group ${className}`}>
           <img
@@ -145,6 +157,7 @@ export const DeceasedPhotoFrame: React.FC<DeceasedPhotoFrameProps> = ({
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             style={{ objectPosition: deceased?.imagePosition || 'center top' }}
             referrerPolicy="no-referrer"
+            onError={() => setHasError(true)}
           />
           {/* Small animated candle badge overlaying photo */}
           <div className="absolute bottom-1.5 right-1.5 bg-black/85 backdrop-blur-md border border-amber-400/80 p-1 rounded-lg shadow-md flex items-center justify-center">
@@ -170,7 +183,7 @@ export const DeceasedPhotoFrame: React.FC<DeceasedPhotoFrameProps> = ({
 
   // 3. CARD SIZE (BulletinBoard today cards, DedicatedStudyModal header)
   if (size === 'card') {
-    if (photo) {
+    if (hasValidPhoto && photo) {
       return (
         <div className={`relative shrink-0 ${className}`}>
           <img
@@ -179,6 +192,7 @@ export const DeceasedPhotoFrame: React.FC<DeceasedPhotoFrameProps> = ({
             referrerPolicy="no-referrer"
             className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
             style={{ objectPosition: deceased?.imagePosition || 'center top' }}
+            onError={() => setHasError(true)}
           />
           <div className="absolute -bottom-1 -right-1 bg-black/90 border border-amber-400 p-0.5 rounded-full shadow-md flex items-center justify-center">
             <RealisticFlame size="small" isLit={true} showWax={true} />
@@ -200,7 +214,7 @@ export const DeceasedPhotoFrame: React.FC<DeceasedPhotoFrameProps> = ({
 
   // 4. CARD-SM SIZE (BulletinBoard upcoming cards)
   if (size === 'card-sm') {
-    if (photo) {
+    if (hasValidPhoto && photo) {
       return (
         <div className={`relative shrink-0 ${className}`}>
           <img
@@ -209,6 +223,7 @@ export const DeceasedPhotoFrame: React.FC<DeceasedPhotoFrameProps> = ({
             referrerPolicy="no-referrer"
             className="w-11 h-11 rounded-full object-cover border border-[#c8a96e]/50 group-hover:scale-105 transition-transform duration-300 shrink-0 shadow-md"
             style={{ objectPosition: deceased?.imagePosition || 'center top' }}
+            onError={() => setHasError(true)}
           />
           <div className="absolute -bottom-1 -right-1 bg-black/90 border border-amber-400/80 p-0.5 rounded-full shadow flex items-center justify-center">
             <RealisticFlame size="small" isLit={true} showWax={true} />
@@ -229,7 +244,7 @@ export const DeceasedPhotoFrame: React.FC<DeceasedPhotoFrameProps> = ({
   }
 
   // 5. THUMB SIZE (MemorialBook list items)
-  if (photo) {
+  if (hasValidPhoto && photo) {
     return (
       <div className={`relative shrink-0 ${className}`}>
         <div className="w-10 h-10 rounded-full overflow-hidden border border-[#c8a96e]/30 flex items-center justify-center bg-black">
@@ -239,6 +254,7 @@ export const DeceasedPhotoFrame: React.FC<DeceasedPhotoFrameProps> = ({
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover"
             style={{ objectPosition: deceased?.imagePosition || 'center top' }}
+            onError={() => setHasError(true)}
           />
         </div>
         <div className="absolute -bottom-0.5 -right-0.5 bg-black/90 border border-amber-400/80 p-0.5 rounded-full shadow flex items-center justify-center">

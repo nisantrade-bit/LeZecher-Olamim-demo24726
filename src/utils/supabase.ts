@@ -26,6 +26,40 @@ export function isSupabaseConfigured(): boolean {
 }
 
 /**
+ * Uploads a memorial photo file to Supabase Storage bucket ('photos' or 'memorial-images')
+ * and returns the public URL string. Returns null if Supabase is unconfigured or upload fails.
+ */
+export async function uploadMemorialImage(file: File, deceasedId: number | string): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const fileName = `${deceasedId}_${Date.now()}.${fileExt}`;
+    const filePath = `deceased/${fileName}`;
+
+    // Try 'photos' bucket first, fallback to 'memorial-images'
+    let bucketName = 'photos';
+    let { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, { upsert: true });
+
+    if (error && (error.message?.includes('not found') || error.message?.includes('Bucket') || (error as any).statusCode === '404')) {
+      bucketName = 'memorial-images';
+      const res = await supabase.storage.from(bucketName).upload(filePath, file, { upsert: true });
+      data = res.data;
+      error = res.error;
+    }
+
+    if (!error && data) {
+      const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+      if (publicUrlData?.publicUrl) {
+        return publicUrlData.publicUrl;
+      }
+    }
+  } catch (err) {
+    console.warn("[Supabase Storage] Bucket upload notice:", err);
+  }
+  return null;
+}
+
+/**
  * Helper to log detailed Supabase errors to DevTools console.
  */
 function logSupabaseError(context: string, error: any) {
@@ -174,6 +208,20 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
   copy.name = sanitizeValueForSupabase(copy.name, 'לא צוין');
   copy.gender = sanitizeValueForSupabase(copy.gender, 'male');
   copy.month = sanitizeValueForSupabase(copy.month, 'תשרי');
+
+  // 3. Synchronize image/photo properties across column aliases if present
+  const imgVal = copy.image || copy.imageUrl || copy.photoUrl || copy.photo || copy.image_url || copy.photo_url;
+  if (imgVal && typeof imgVal === 'string') {
+    const cleanImg = imgVal.trim();
+    if (cleanImg !== '' && cleanImg !== '-') {
+      copy.image = cleanImg;
+      copy.imageUrl = cleanImg;
+      copy.photoUrl = cleanImg;
+      copy.photo = cleanImg;
+      copy.image_url = cleanImg;
+      copy.photo_url = cleanImg;
+    }
+  }
 
   return copy as T;
 }
