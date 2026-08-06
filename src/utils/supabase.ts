@@ -1,28 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 import { parseAndNormalizeDateFields } from './hebrewDate';
 
+// החלף את המרכאות בפרטים האמיתיים מ-Supabase
 const envUrl = 'https://YOUR_PROJECT_ID.supabase.co';
 const envKey = 'YOUR_ANON_KEY';
 
 export const supabase = createClient(envUrl, envKey);
-export function isSupabaseConfigured(): boolean {
-  return (
-    !!envUrl &&
-    envUrl !== '' &&
-    !envUrl.includes('placeholder.supabase.co') &&
-    !!envKey &&
-    envKey !== '' &&
-    envKey !== 'placeholder-anon-key'
-  );
-}
 
-/**
- export function isSupabaseConfigured(): boolean {
+export function isSupabaseConfigured(): boolean {
   return true;
 }
 
-    // Upload directly to 'memorial-images' bucket (with fallback to 'photos')
-    let bucketName = 'memorial-images';
+/**
+ * Uploads a memorial photo file to Supabase Storage bucket
+ */
+export async function uploadMemorialImage(file: File, deceasedId: number | string): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
     let { data, error } = await supabase.storage.from(bucketName).upload(fileName, file, { upsert: true });
 
     if (error && (error.message?.includes('not found') || error.message?.includes('Bucket') || (error as any).statusCode === '404')) {
