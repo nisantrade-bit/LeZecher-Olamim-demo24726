@@ -26,6 +26,24 @@ interface MemorialDetailsModalProps {
 }
 
 export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ deceased, lang, onClose, onEdit, onDelete }) => {
+  if (!deceased || !deceased.name || deceased.name.trim() === '' || deceased.name === 'undefined') {
+    return (
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div className="bg-[#131a26] border border-amber-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl text-center space-y-4 font-sans">
+          <p className="text-amber-400 font-bold text-base">
+            {lang === 'he' ? 'הכרטיס המבוקש לא נמצא במערכת' : lang === 'ru' ? 'Запрошенная карточка не найдена в системе' : 'The requested card was not found in the system'}
+          </p>
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-bold text-xs rounded-xl transition-all cursor-pointer"
+          >
+            {lang === 'he' ? 'סגור' : 'Close'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const t = translations[lang];
 
   const currentYear = new Date().getFullYear();

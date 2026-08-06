@@ -171,6 +171,30 @@ const lT = {
 };
 
 export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ deceased, lang, onSetLang, onExit }) => {
+  if (!deceased || !deceased.name || deceased.name.trim() === '' || deceased.name === 'undefined') {
+    return (
+      <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-4 p-4 text-center">
+        <div className="bg-[#131a26] border border-amber-500/40 rounded-2xl p-8 max-w-md w-full shadow-2xl space-y-4">
+          <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 text-xl font-bold">
+            !
+          </div>
+          <h2 className="text-xl font-serif font-bold text-amber-400">
+            {lang === 'he' ? 'הכרטיס המבוקש לא נמצא במערכת' : lang === 'ru' ? 'Запрошенная карточка не найдена в системе' : 'The requested card was not found in the system'}
+          </h2>
+          <p className="text-xs text-gray-300 leading-relaxed">
+            {lang === 'he' ? 'כרטיס זיכרון זה נמחק, אינו קיים במאגר או שהקישור שהוזן אינו תקין.' : 'This card was deleted, does not exist in the database, or the link is invalid.'}
+          </p>
+          <button
+            onClick={onExit}
+            className="w-full py-3 bg-[#c8a96e] hover:bg-[#b8952e] text-black text-xs font-bold rounded-xl transition-all shadow-lg cursor-pointer"
+          >
+            {lang === 'he' ? 'חזרה למערכת ההנצחה הכללית ←' : 'Return to main memorial system ←'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const t = translations[lang];
   const mt = lT[lang];
 

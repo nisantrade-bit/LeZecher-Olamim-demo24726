@@ -1,40 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 import { parseAndNormalizeDateFields } from './hebrewDate';
 
-const metaEnv = (import.meta as unknown as { env?: Record<string, string> }).env || {};
-const envUrl = metaEnv.VITE_SUPABASE_URL || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_URL : '');
-const envKey = metaEnv.VITE_SUPABASE_ANON_KEY || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_ANON_KEY : '');
+const envUrl = 'https://YOUR_PROJECT_ID.supabase.co';
+const envKey = 'YOUR_ANON_KEY';
 
-const supabaseUrl = envUrl && envUrl.trim() !== ''
-  ? envUrl.trim()
-  : 'https://placeholder.supabase.co';
-
-const supabaseAnonKey = envKey && envKey.trim() !== ''
-  ? envKey.trim()
-  : 'placeholder-anon-key';
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+export const supabase = createClient(envUrl, envKey);
 export function isSupabaseConfigured(): boolean {
   return (
     !!envUrl &&
-    envUrl.trim() !== '' &&
+    envUrl !== '' &&
     !envUrl.includes('placeholder.supabase.co') &&
     !!envKey &&
-    envKey.trim() !== '' &&
+    envKey !== '' &&
     envKey !== 'placeholder-anon-key'
   );
 }
 
 /**
- * Uploads a memorial photo file to Supabase Storage bucket ('photos' or 'memorial-images')
- * and returns the public URL string. Returns null if Supabase is unconfigured or upload fails.
- */
-export async function uploadMemorialImage(file: File, deceasedId: number | string): Promise<string | null> {
-  if (!isSupabaseConfigured()) return null;
-  try {
-    const fileExt = file.name.split('.').pop() || 'jpg';
-    const fileName = `deceased_${deceasedId}_${Date.now()}.${fileExt}`;
+ export function isSupabaseConfigured(): boolean {
+  return true;
+}
 
     // Upload directly to 'memorial-images' bucket (with fallback to 'photos')
     let bucketName = 'memorial-images';
