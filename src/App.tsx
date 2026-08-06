@@ -122,16 +122,17 @@ function MainAppContent() {
 
   // Manage direct deceased link view state across pathname /m/123, query ?d=123, and hash #m/123
   const [urlDeceasedId, setUrlDeceasedId] = useState<number | string | null>(() => {
-    const parseAndDecode = (raw: string | null | undefined): number | string | null => {
-      if (!raw) return null;
-      let decoded = raw.trim();
-      try {
-        decoded = decodeURIComponent(decoded);
-      } catch (e) {}
-      const num = parseInt(decoded, 10);
-      if (!isNaN(num) && String(num) === decoded) return num;
-      return decoded || null;
-    };
+   const parseAndDecode = (raw: string | null | undefined): number | string | null => {
+  if (!raw) return null;
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(decoded).trim();
+  } catch (e) {}
+  
+  const num = parseInt(decoded, 10);
+  if (!isNaN(num)) return num; // ממיר למספר בצורה נקייה בלי להיכשל על רווחים
+  return decoded || null;
+};
 
     // 1. Pathname check (/m/12345, /p/12345, /deceased/12345, /memorial/12345, /id/12345, /card/12345, /yahrzeit/12345)
     const pathMatch = window.location.pathname.match(/\/(?:m|p|deceased|memorial|id|card|yahrzeit)\/([^\/?#]+)(?:\.html)?/i);
@@ -273,27 +274,52 @@ function MainAppContent() {
     }
   }, [urlDeceasedFromPayload]);
 
-  // If urlDeceasedId is accessed directly (e.g. /m/12345) and card is not in local list, fetch from Supabase or server API
+  // If urlDeceasedId is accessed directly (e.g. ?m=41 or /m/41) and card is not in local list, fetch from Supabase
   useEffect(() => {
     if (urlDeceasedId && String(urlDeceasedId).trim() !== '' && !urlDeceasedFromPayload) {
-      const alreadyInMaster = masterList.some(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
-                              SEED_DATABASE.some(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId));
+      const cardId = typeof urlDeceasedId === 'number' ? urlDeceasedId : parseInt(String(urlDeceasedId), 10);
+      const queryId = !isNaN(cardId) ? cardId : urlDeceasedId;
+
+      const alreadyInMaster = masterList.some(d => Number(d.id) === Number(queryId) || String(d.id) === String(queryId)) ||
+                              SEED_DATABASE.some(d => Number(d.id) === Number(queryId) || String(d.id) === String(queryId));
+
       if (!alreadyInMaster && !remoteDeceasedNotFound && !fetchingRemoteDeceased) {
         setFetchingRemoteDeceased(true);
         const fetchRemote = async () => {
           try {
-            const { data, error } = await safeEq('id', urlDeceasedId, 'deceased', true);
-            if (error && isMissingTableError(error)) {
-              setSupabaseTableMissing(true);
-              console.warn("Supabase notice: 'deceased' table missing in schema cache, using server API fallback.");
-            } else if (error) {
-              console.warn("Supabase notice:", error);
+            let fetched: any = null;
+            if (isSupabaseConfigured()) {
+              const { data, error } = await supabase
+                .from('deceased')
+                .select('*')
+                .eq('id', queryId)
+                .maybeSingle();
+
+              if (error && isMissingTableError(error)) {
+                setSupabaseTableMissing(true);
+              }
+              if (data && data.id && data.name) {
+                fetched = data;
+              }
             }
-            if (!error && data && data.id && data.name) {
-              const enriched = enrichDeceasedTranslations(data as Deceased);
+
+            if (!fetched) {
+              // Fallback to Express server API
+              try {
+                const res = await fetch(`/api/deceased/${encodeURIComponent(String(queryId))}`);
+                if (res.ok) {
+                  const record = await res.json();
+                  if (record && record.id && record.name) {
+                    fetched = record;
+                  }
+                }
+              } catch (e) {}
+            }
+
+            if (fetched && fetched.id && fetched.name) {
+              const enriched = enrichDeceasedTranslations(normalizeFetchedRecord(fetched));
               setMasterList(prev => {
-                const base = prev.length > 0 ? prev : SEED_DATABASE;
-                const merged = smartMergeDeceasedLists(base, [enriched]);
+                const merged = smartMergeDeceasedLists(prev, [enriched]);
                 const finalData = deduplicateSingleList(merged);
                 try {
                   localStorage.setItem('eternal_db', JSON.stringify(finalData));
@@ -302,27 +328,9 @@ function MainAppContent() {
               });
               setFetchingRemoteDeceased(false);
               return;
+            } else {
+              setRemoteDeceasedNotFound(true);
             }
-
-            // Fallback to Express server API
-            const res = await fetch(`/api/deceased/${urlDeceasedId}`);
-            if (res.ok) {
-              const record = await res.json();
-              if (record && record.id && record.name) {
-                const enriched = enrichDeceasedTranslations(record);
-                setMasterList(prev => {
-                  const base = prev.length > 0 ? prev : SEED_DATABASE;
-                  const merged = smartMergeDeceasedLists(base, [enriched]);
-                  const finalData = deduplicateSingleList(merged);
-                  try {
-                    localStorage.setItem('eternal_db', JSON.stringify(finalData));
-                  } catch (e) {}
-                  return finalData;
-                });
-                return;
-              }
-            }
-            setRemoteDeceasedNotFound(true);
           } catch (err) {
             console.error("Failed to fetch remote deceased record:", err);
             setRemoteDeceasedNotFound(true);
@@ -948,24 +956,28 @@ function MainAppContent() {
   if (urlDeceasedId || urlDeceasedFromPayload) {
     let urlDeceased: Deceased | null = urlDeceasedFromPayload;
     if (!urlDeceased && urlDeceasedId) {
-      urlDeceased = masterList.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
-                    displayedList.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) ||
-                    SEED_DATABASE.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) || null;
+      const cardId = typeof urlDeceasedId === 'number' ? urlDeceasedId : parseInt(String(urlDeceasedId), 10);
+      const queryId = !isNaN(cardId) ? cardId : urlDeceasedId;
+
+      urlDeceased = masterList.find(d => Number(d.id) === Number(queryId) || String(d.id) === String(queryId)) ||
+                    displayedList.find(d => Number(d.id) === Number(queryId) || String(d.id) === String(queryId)) ||
+                    SEED_DATABASE.find(d => Number(d.id) === Number(queryId) || String(d.id) === String(queryId)) || null;
+
       if (!urlDeceased) {
         try {
           const stored = localStorage.getItem('eternal_db');
           if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed)) {
-              urlDeceased = parsed.find(d => Number(d.id) === Number(urlDeceasedId) || String(d.id) === String(urlDeceasedId)) || null;
+              urlDeceased = parsed.find(d => Number(d.id) === Number(queryId) || String(d.id) === String(queryId)) || null;
             }
           }
         } catch (e) {}
       }
     }
 
-    if (urlDeceased) {
-      // Auto-sync address bar URL to clean ID-only link (?m=12345) without any verbose Base64 data payload
+    if (urlDeceased && urlDeceased.name && urlDeceased.name !== 'undefined' && urlDeceased.name.trim() !== '') {
+      // Auto-sync address bar URL to clean ID-only link (?m=12345)
       const targetUrl = `/?m=${urlDeceased.id}${lang !== 'he' ? `&lang=${lang}` : ''}`;
       if (typeof window !== 'undefined' && (window.location.pathname + window.location.search) !== targetUrl) {
         window.history.replaceState({}, document.title, targetUrl);
@@ -985,10 +997,10 @@ function MainAppContent() {
       );
     }
 
-    // Show loading while fetching remote deceased OR while we haven't definitively confirmed remoteDeceasedNotFound
-    if (fetchingRemoteDeceased || !remoteDeceasedNotFound) {
+    // Show loading while fetching remote deceased
+    if (fetchingRemoteDeceased) {
       return (
-        <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-3">
+        <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-3 p-4">
           <div className="w-8 h-8 border-4 border-[#c8a96e] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-xs text-[#c8a96e] font-medium font-sans">
             {lang === 'he' ? 'טוען דף הנצחה אישי משרת הענן והקישור...' : lang === 'ru' ? 'Загрузка поминальной страницы из облачной базы данных...' : 'Loading memorial page from cloud server & link...'}
@@ -997,21 +1009,30 @@ function MainAppContent() {
       );
     }
 
-    // Fallback if deceased ID is invalid or deleted
+    // Fallback if deceased ID is invalid or deleted (DO NOT render an empty/black card container!)
     return (
       <div className="min-h-screen bg-[#070b12] text-gray-100 flex flex-col items-center justify-center font-sans gap-4 p-4 text-center">
-        <p className="text-base text-amber-400 font-bold">
-          {lang === 'he' ? 'לא נמצא דף הנצחה עבור כרטיס זה.' : lang === 'ru' ? 'Страница памяти не найдена.' : 'No memorial page found for this card.'}
-        </p>
-        <p className="text-xs text-gray-400">
-          {lang === 'he' ? 'יתכן שהכרטיס אינו קיים במערכת או שהקישור שונה.' : lang === 'ru' ? 'Возможно, запись не существует или ссылка была изменена.' : 'The card may not exist in the system or the link was altered.'}
-        </p>
-        <button 
-          onClick={handleExitMemorialPage}
-          className="px-4 py-2 bg-[#c8a96e] hover:bg-[#b8952e] text-black text-xs font-bold rounded-xl transition-all cursor-pointer"
-        >
-          {lang === 'he' ? 'חזרה למערכת ההנצחה הכללית ←' : lang === 'ru' ? 'Вернуться в главный раздел ←' : 'Return to main memorial system ←'}
-        </button>
+        <div className="bg-[#131a26] border border-amber-500/40 rounded-2xl p-8 max-w-md w-full shadow-2xl space-y-4 font-sans">
+          <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 text-xl font-bold">
+            !
+          </div>
+          <h2 className="text-xl font-serif font-bold text-amber-400">
+            {lang === 'he' ? 'הכרטיס המבוקש לא נמצא במערכת' : lang === 'ru' ? 'Запрошенная карточка не найдена в системе' : 'The requested card was not found in the system'}
+          </h2>
+          <p className="text-xs text-gray-300 leading-relaxed">
+            {lang === 'he' 
+              ? 'כרטיס זיכרון זה נמחק, אינו קיים במאגר או שהקישור שהוזן אינו תקין.' 
+              : lang === 'ru'
+                ? 'Запись была удалена, не существует в базе данных или ссылка недействительна.'
+                : 'This memorial card was deleted, does not exist in the system, or the link is invalid.'}
+          </p>
+          <button 
+            onClick={handleExitMemorialPage}
+            className="w-full py-3 bg-[#c8a96e] hover:bg-[#b8952e] text-black text-xs font-bold rounded-xl transition-all shadow-lg cursor-pointer"
+          >
+            {lang === 'he' ? 'חזרה למערכת ההנצחה הכללית ←' : lang === 'ru' ? 'Вернуться в главный раздел ←' : 'Return to main memorial system ←'}
+          </button>
+        </div>
       </div>
     );
   }
