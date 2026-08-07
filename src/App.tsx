@@ -617,41 +617,19 @@ function MainAppContent() {
       deceased.id = Number(existing.id);
     }
 
-    // Save directly to Supabase with error alert
-    if (isSupabaseConfigured()) {
-      try {
-        const { error } = await safeUpsert([deceased]);
-        if (error) {
-          console.error("[Supabase Save Error]", error);
-          if (isMissingTableError(error)) {
-            setSupabaseTableMissing(true);
-            alert(lang === 'he' ? "שגיאה ב-Supabase: הטבלה 'deceased' אינה קיימת בממסד הנתונים." : "Supabase Error: 'deceased' table missing.");
-          } else {
-            alert(lang === 'he' ? `שגיאת שמירה ב-Supabase: ${error.message || JSON.stringify(error)}` : `Supabase save error: ${error.message || JSON.stringify(error)}`);
-          }
-          return; // Stop if failed
-        }
-        console.log(`[Supabase Save Success] Saved deceased record ID ${deceased.id}`);
-        await cleanAndDeduplicateSupabase();
-        await refreshFromSupabase();
-      } catch (e: any) {
-        console.error("[Supabase Save Exception]", e);
-        alert(`Supabase save error: ${e.message || String(e)}`);
-        return;
-      }
-    } else {
-      const updated = masterList.some(d => Number(d.id) === Number(deceased.id))
-        ? masterList.map(d => Number(d.id) === Number(deceased.id) ? deceased : d)
-        : [...masterList, deceased];
-      setMasterList(updated);
-      try {
-        localStorage.setItem('eternal_db', JSON.stringify(updated));
-      } catch (e) {
-        console.error("Storage access error:", e);
-      }
+    // Always update local state & LocalStorage immediately
+    const updated = masterList.some(d => Number(d.id) === Number(deceased.id))
+      ? masterList.map(d => Number(d.id) === Number(deceased.id) ? deceased : d)
+      : [...masterList, deceased];
+    
+    setMasterList(updated);
+    try {
+      localStorage.setItem('eternal_db', JSON.stringify(updated));
+    } catch (e) {
+      console.error("Storage access error:", e);
     }
 
-    // Sync to backup server API
+    // Always sync to server API
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
         await fetch('/api/deceased', {
@@ -661,6 +639,22 @@ function MainAppContent() {
         }).catch(e => console.warn("Backup API save notice:", e));
       } catch (e) {
         console.warn("Failed to save record to server database:", e);
+      }
+    }
+
+    // Also sync to Supabase if configured
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await safeUpsert([deceased]);
+        if (error) {
+          console.error("[Supabase Save Error]", error);
+        } else {
+          console.log(`[Supabase Save Success] Saved deceased record ID ${deceased.id}`);
+          await cleanAndDeduplicateSupabase();
+          await refreshFromSupabase();
+        }
+      } catch (e: any) {
+        console.error("[Supabase Save Exception]", e);
       }
     }
 
@@ -682,31 +676,17 @@ function MainAppContent() {
 
   // Delete a deceased record from Supabase & LocalStorage
   const handleDeleteDeceased = async (id: number) => {
-    if (isSupabaseConfigured()) {
-      try {
-        const { error } = await safeDelete('id', id);
-        if (error) {
-          console.error("[Supabase Delete Error]", error);
-          if (isMissingTableError(error)) {
-            setSupabaseTableMissing(true);
-            alert(lang === 'he' ? "שגיאה ב-Supabase: הטבלה 'deceased' אינה קיימת בממסד הנתונים." : "Supabase Error: 'deceased' table missing.");
-          } else {
-            alert(lang === 'he' 
-              ? `שגיאה במחיקת הנפטר מ-Supabase: ${error.message || JSON.stringify(error)}` 
-              : `Supabase delete error: ${error.message || JSON.stringify(error)}`);
-          }
-          return; // Stop if delete failed
-        }
-        console.log(`[Supabase Delete Success] Deleted record ID ${id} from Supabase.`);
-      } catch (e: any) {
-        console.error("[Supabase Delete Exception]", e);
-        alert(lang === 'he' ? `שגיאת תקשורת במחיקת הנפטר מ-Supabase: ${e.message || String(e)}` : `Supabase delete error: ${e.message || String(e)}`);
-        return;
-      }
-    }
-
+    // Update local state & LocalStorage
     const updated = masterList.filter(d => Number(d.id) !== Number(id));
 
+    setMasterList(updated);
+    try {
+      localStorage.setItem('eternal_db', JSON.stringify(updated));
+    } catch (e) {
+      console.error("Storage access error:", e);
+    }
+
+    // Sync to server API
     if (!(window as any).__OFFLINE_DATABASE_DATA__) {
       try {
         await fetch(`/api/deceased/${id}`, {
@@ -717,7 +697,21 @@ function MainAppContent() {
       }
     }
 
-    // Clear caches & update local state
+    // Also sync delete to Supabase if configured
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await safeDelete('id', id);
+        if (error) {
+          console.error("[Supabase Delete Error]", error);
+        } else {
+          console.log(`[Supabase Delete Success] Deleted record ID ${id} from Supabase.`);
+        }
+      } catch (e: any) {
+        console.error("[Supabase Delete Exception]", e);
+      }
+    }
+
+    // Clear caches
     try {
       ['he', 'en', 'ru'].forEach(l => {
         localStorage.removeItem(`eternal_db_translated_${l}`);
@@ -727,12 +721,6 @@ function MainAppContent() {
       console.error("Storage access error:", e);
     }
 
-    setMasterList(updated);
-    try {
-      localStorage.setItem('eternal_db', JSON.stringify(updated));
-    } catch (e) {
-      console.error("Storage access error:", e);
-    }
     if (editingDeceased && Number(editingDeceased.id) === Number(id)) {
       setEditingDeceased(null);
     }
@@ -741,7 +729,7 @@ function MainAppContent() {
     }
   };
 
-  // Bulk import deceased records with direct Supabase insert/upsert & error feedback
+  // Bulk import deceased records with direct Supabase insert/upsert & fallback local state
   const handleImportDeceased = async (newList: Deceased[]) => {
     const currentDb = masterList || [];
 
@@ -763,6 +751,31 @@ function MainAppContent() {
       return enriched;
     });
 
+    // Update local state and LocalStorage
+    const merged = smartMergeDeceasedLists(masterList, supabaseRecords);
+    const updated = deduplicateSingleList(merged);
+
+    setMasterList(updated);
+    try {
+      localStorage.setItem('eternal_db', JSON.stringify(updated));
+    } catch (e) {
+      console.error("Storage access error:", e);
+    }
+
+    // Sync to server API
+    if (!(window as any).__OFFLINE_DATABASE_DATA__) {
+      try {
+        await fetch('/api/deceased/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(supabaseRecords)
+        }).catch(e => console.warn("Failed backup import:", e));
+      } catch (e) {
+        console.warn("Failed to import records to server database:", e);
+      }
+    }
+
+    // Sync to Supabase if configured
     if (isSupabaseConfigured()) {
       try {
         let { data, error } = await supabase.from('deceased').upsert(supabaseRecords, { onConflict: 'id' });
@@ -779,58 +792,22 @@ function MainAppContent() {
 
         if (error) {
           console.error("[Supabase Import Error]", error);
-          if (isMissingTableError(error)) {
-            setSupabaseTableMissing(true);
-            alert(lang === 'he' ? "שגיאה ב-Supabase: הטבלה 'deceased' אינה קיימת בממסד הנתונים." : "Supabase Error: 'deceased' table missing.");
-          } else {
-            const errorMsg = error.message || error.details || error.hint || JSON.stringify(error);
-            alert(lang === 'he' 
-              ? `שגיאת הזנה ב-Supabase: ${errorMsg}` 
-              : `Supabase import error: ${errorMsg}`);
-          }
-          return; // Stop if failed
+        } else {
+          console.log("[Supabase Import Success] Inserted/upserted records successfully:", data);
+          await cleanAndDeduplicateSupabase();
+          await refreshFromSupabase();
         }
-
-        console.log("[Supabase Import Success] Inserted/upserted records successfully:", data);
-        await cleanAndDeduplicateSupabase();
-        await refreshFromSupabase();
-        return;
       } catch (e: any) {
         console.error("[Supabase Import Exception]", e);
-        const errMsg = e?.message || String(e);
-        alert(lang === 'he' ? `שגיאת תקשורת עם Supabase: ${errMsg}` : `Supabase connection error: ${errMsg}`);
-        return;
-      }
-    }
-
-    // Sync to local state if Supabase is not configured
-    const merged = smartMergeDeceasedLists(masterList, supabaseRecords);
-    const updated = deduplicateSingleList(merged);
-
-    if (!(window as any).__OFFLINE_DATABASE_DATA__) {
-      try {
-        await fetch('/api/deceased/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(supabaseRecords)
-        }).catch(e => console.warn("Failed backup import:", e));
-      } catch (e) {
-        console.warn("Failed to import records to server database:", e);
       }
     }
 
     // Clear caches
     try {
-      localStorage.removeItem('eternal_db_translated_he');
-      localStorage.removeItem('eternal_db_translated_en');
-      localStorage.removeItem('eternal_db_translated_ru');
-    } catch (e) {
-      console.error("Storage access error:", e);
-    }
-
-    setMasterList(updated);
-    try {
-      localStorage.setItem('eternal_db', JSON.stringify(updated));
+      ['he', 'en', 'ru'].forEach(l => {
+        localStorage.removeItem(`eternal_db_translated_${l}`);
+        localStorage.removeItem(`eternal_db_translated_${l}_fingerprint`);
+      });
     } catch (e) {
       console.error("Storage access error:", e);
     }
