@@ -1,14 +1,26 @@
 import { createClient } from '@supabase/supabase-js';
 import { parseAndNormalizeDateFields } from './hebrewDate';
 
-// החלף את המרכאות בפרטים האמיתיים מ-Supabase
-const envUrl = 'https://YOUR_PROJECT_ID.supabase.co';
-const envKey = 'YOUR_ANON_KEY';
+const metaEnv = (import.meta as unknown as { env?: Record<string, string> }).env || {};
+const rawUrl = metaEnv.VITE_SUPABASE_URL || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_URL : '') || '';
+const rawKey = metaEnv.VITE_SUPABASE_ANON_KEY || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_ANON_KEY : '') || '';
+
+const envUrl = rawUrl.trim() && !rawUrl.includes('YOUR_PROJECT_ID') ? rawUrl.trim() : 'https://placeholder.supabase.co';
+const envKey = rawKey.trim() && !rawKey.includes('YOUR_ANON_KEY') ? rawKey.trim() : 'placeholder-anon-key';
 
 export const supabase = createClient(envUrl, envKey);
 
 export function isSupabaseConfigured(): boolean {
-  return true;
+  return (
+    !!envUrl &&
+    envUrl !== '' &&
+    !envUrl.includes('placeholder.supabase.co') &&
+    !envUrl.includes('YOUR_PROJECT_ID') &&
+    !!envKey &&
+    envKey !== '' &&
+    envKey !== 'placeholder-anon-key' &&
+    envKey !== 'YOUR_ANON_KEY'
+  );
 }
 
 /**
@@ -17,6 +29,10 @@ export function isSupabaseConfigured(): boolean {
 export async function uploadMemorialImage(file: File, deceasedId: number | string): Promise<string | null> {
   if (!isSupabaseConfigured()) return null;
   try {
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const fileName = `deceased_${deceasedId}_${Date.now()}.${fileExt}`;
+    let bucketName = 'memorial-images';
+
     let { data, error } = await supabase.storage.from(bucketName).upload(fileName, file, { upsert: true });
 
     if (error && (error.message?.includes('not found') || error.message?.includes('Bucket') || (error as any).statusCode === '404')) {

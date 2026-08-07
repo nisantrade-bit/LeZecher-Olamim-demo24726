@@ -1519,41 +1519,7 @@ function MainAppContent() {
           </div>
         )}
 
-        {/* Supabase SQL Setup Modal */}
-        {(showSqlSetupModal || supabaseTableMissing) && (
-          <div className="fixed bottom-4 left-4 z-50 font-sans max-w-sm w-full">
-            <div className="bg-[#131a26] border border-[#c8a96e]/40 p-3.5 rounded-2xl shadow-2xl space-y-2 text-right">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
-                  Supabase Status
-                </span>
-                <button 
-                  onClick={() => { setSupabaseTableMissing(false); setShowSqlSetupModal(false); }}
-                  className="text-gray-400 hover:text-white text-xs px-1 font-bold cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-              <p className="text-xs text-gray-300 leading-snug">
-                {lang === 'he' 
-                  ? 'טבלת public.deceased עדיין לא נוצרה במסד הנתונים Supabase. המערכת פועלת באופן מלא דרך השרת המקומי.'
-                  : 'The public.deceased table is not yet created in Supabase. System is running seamlessly via local database.'}
-              </p>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(SUPABASE_SETUP_SQL);
-                    setSqlCopied(true);
-                    setTimeout(() => setSqlCopied(false), 3000);
-                  }}
-                  className="w-full py-1.5 px-3 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-bold text-xs rounded-xl transition-all shadow cursor-pointer text-center"
-                >
-                  {sqlCopied ? '✓ קוד ה-SQL הועתק!' : 'העתק SQL ליצירת הטבלה ב-Supabase'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Mobile Floating Action Button (FAB) */}
         <button
