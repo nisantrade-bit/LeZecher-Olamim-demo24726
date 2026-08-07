@@ -27,41 +27,44 @@ export function isSupabaseConfigured(): boolean {
  * Uploads a memorial photo file to Supabase Storage bucket.
  * Cleans the filename to pure ASCII characters and handles any storage errors gracefully.
  */
-export async function uploadMemorialImage(file: File, deceasedId: number | string): Promise<string | null> {
+export async function uploadMemorialImage(file: File, deceasedId?: number | string): Promise<string | null> {
   if (!isSupabaseConfigured() || !file) return null;
   try {
     const originalName = file.name || '';
-    const rawExt = originalName.includes('.') ? (originalName.split('.').pop() || 'jpg') : 'jpg';
+    const rawExt = originalName.includes('.') ? (originalName.split('.').pop() || 'png') : 'png';
     const cleanExt = rawExt.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'bmp', 'svg'].includes(cleanExt) ? cleanExt : 'jpg';
+    const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'bmp', 'svg'].includes(cleanExt) ? cleanExt : 'png';
 
     const cleanId = String(deceasedId || '0').replace(/[^a-zA-Z0-9_-]/g, '') || '0';
-    const fileName = `deceased_${cleanId}_${Date.now()}.${safeExt}`;
+    const filePath = `deceased_${cleanId}_${Date.now()}_${Math.floor(Math.random() * 10000)}.${safeExt}`;
 
     let bucketName = 'memorial-images';
 
-    let { data, error } = await supabase.storage.from(bucketName).upload(fileName, file, {
+    let { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, {
       upsert: true,
       contentType: file.type || `image/${safeExt}`
-    });
+    }).catch(err => ({ data: null, error: err }));
 
     if (error && (
       error.message?.includes('not found') ||
       error.message?.includes('Bucket') ||
+      error.message?.includes('Invalid path') ||
       (error as any).statusCode === '404' ||
-      (error as any).status === 404
+      (error as any).status === 404 ||
+      (error as any).statusCode === 400 ||
+      (error as any).status === 400
     )) {
       bucketName = 'photos';
-      const res = await supabase.storage.from(bucketName).upload(fileName, file, {
+      const res = await supabase.storage.from(bucketName).upload(filePath, file, {
         upsert: true,
         contentType: file.type || `image/${safeExt}`
-      });
+      }).catch(err => ({ data: null, error: err }));
       data = res.data;
       error = res.error;
     }
 
     if (!error && data) {
-      const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(fileName);
+      const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(filePath);
       if (publicUrlData?.publicUrl) {
         const publicUrl = publicUrlData.publicUrl;
         if (deceasedId) {
