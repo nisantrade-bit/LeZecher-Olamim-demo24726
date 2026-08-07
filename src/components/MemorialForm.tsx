@@ -119,18 +119,8 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
     setBirthDate('');
   };
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (isSupabaseConfigured()) {
-        const tempId = editingDeceased ? editingDeceased.id : Date.now();
-        const uploadedUrl = await uploadMemorialImage(file, tempId);
-        if (uploadedUrl) {
-          setImageBase64(uploadedUrl);
-          return;
-        }
-      }
-
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
       if (file.type.startsWith('image/') && !file.type.includes('svg')) {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -156,24 +146,45 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
             const ctx = canvas.getContext('2d');
             if (ctx) {
               ctx.drawImage(img, 0, 0, width, height);
-              const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
-              setImageBase64(compressedDataUrl);
+              resolve(canvas.toDataURL('image/jpeg', 0.7));
             } else {
-              setImageBase64(reader.result as string);
+              resolve((reader.result as string) || '');
             }
           };
-          img.onerror = () => {
-            setImageBase64(reader.result as string);
-          };
+          img.onerror = () => resolve((reader.result as string) || '');
           img.src = reader.result as string;
         };
+        reader.onerror = () => resolve('');
         reader.readAsDataURL(file);
       } else {
         const reader = new FileReader();
-        reader.onloadend = () => {
-          setImageBase64(reader.result as string);
-        };
+        reader.onloadend = () => resolve((reader.result as string) || '');
+        reader.onerror = () => resolve('');
         reader.readAsDataURL(file);
+      }
+    });
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 1. Generate compressed Base64 immediately so photo is saved locally no matter what
+    const localBase64 = await convertFileToBase64(file);
+    if (localBase64) {
+      setImageBase64(localBase64);
+    }
+
+    // 2. Try uploading to Supabase Storage in background if configured
+    if (isSupabaseConfigured()) {
+      try {
+        const tempId = editingDeceased ? editingDeceased.id : Date.now();
+        const uploadedUrl = await uploadMemorialImage(file, tempId);
+        if (uploadedUrl) {
+          setImageBase64(uploadedUrl);
+        }
+      } catch (err) {
+        console.warn("[Supabase Storage upload failed - Base64 kept]", err);
       }
     }
   };

@@ -5,7 +5,7 @@ const metaEnv = (import.meta as unknown as { env?: Record<string, string> }).env
 const rawUrl = metaEnv.VITE_SUPABASE_URL || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_URL : '') || '';
 const rawKey = metaEnv.VITE_SUPABASE_ANON_KEY || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_ANON_KEY : '') || '';
 
-const envUrl = rawUrl.trim() && !rawUrl.includes('YOUR_PROJECT_ID') ? rawUrl.trim() : 'https://placeholder.supabase.co';
+const envUrl = rawUrl.trim() && !rawUrl.includes('YOUR_PROJECT_ID') ? rawUrl.trim().replace(/\/+$/, '') : 'https://placeholder.supabase.co';
 const envKey = rawKey.trim() && !rawKey.includes('YOUR_ANON_KEY') ? rawKey.trim() : 'placeholder-anon-key';
 
 export const supabase = createClient(envUrl, envKey);
@@ -24,20 +24,38 @@ export function isSupabaseConfigured(): boolean {
 }
 
 /**
- * Uploads a memorial photo file to Supabase Storage bucket
+ * Uploads a memorial photo file to Supabase Storage bucket.
+ * Cleans the filename to pure ASCII characters and handles any storage errors gracefully.
  */
 export async function uploadMemorialImage(file: File, deceasedId: number | string): Promise<string | null> {
-  if (!isSupabaseConfigured()) return null;
+  if (!isSupabaseConfigured() || !file) return null;
   try {
-    const fileExt = file.name.split('.').pop() || 'jpg';
-    const fileName = `deceased_${deceasedId}_${Date.now()}.${fileExt}`;
+    const originalName = file.name || '';
+    const rawExt = originalName.includes('.') ? (originalName.split('.').pop() || 'jpg') : 'jpg';
+    const cleanExt = rawExt.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'bmp', 'svg'].includes(cleanExt) ? cleanExt : 'jpg';
+
+    const cleanId = String(deceasedId || '0').replace(/[^a-zA-Z0-9_-]/g, '') || '0';
+    const fileName = `deceased_${cleanId}_${Date.now()}.${safeExt}`;
+
     let bucketName = 'memorial-images';
 
-    let { data, error } = await supabase.storage.from(bucketName).upload(fileName, file, { upsert: true });
+    let { data, error } = await supabase.storage.from(bucketName).upload(fileName, file, {
+      upsert: true,
+      contentType: file.type || `image/${safeExt}`
+    });
 
-    if (error && (error.message?.includes('not found') || error.message?.includes('Bucket') || (error as any).statusCode === '404')) {
+    if (error && (
+      error.message?.includes('not found') ||
+      error.message?.includes('Bucket') ||
+      (error as any).statusCode === '404' ||
+      (error as any).status === 404
+    )) {
       bucketName = 'photos';
-      const res = await supabase.storage.from(bucketName).upload(fileName, file, { upsert: true });
+      const res = await supabase.storage.from(bucketName).upload(fileName, file, {
+        upsert: true,
+        contentType: file.type || `image/${safeExt}`
+      });
       data = res.data;
       error = res.error;
     }
@@ -46,23 +64,20 @@ export async function uploadMemorialImage(file: File, deceasedId: number | strin
       const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(fileName);
       if (publicUrlData?.publicUrl) {
         const publicUrl = publicUrlData.publicUrl;
-        // Update ONLY the imageUrl column for the specific deceased record in Supabase:
-        // supabase.from('deceased').update({ imageUrl: publicUrl }).eq('id', cardId)
         if (deceasedId) {
           const numId = Number(deceasedId);
           if (!isNaN(numId) && numId > 0) {
-            const { error: updateErr } = await supabase.from('deceased').update({ imageUrl: publicUrl }).eq('id', numId);
-            if (updateErr) {
-              console.warn("[Supabase Record Image Update Warning]", updateErr);
-            } else {
-              console.log(`[Supabase Storage Success] Updated imageUrl specifically for deceased ID ${numId}`);
+            try {
+              await supabase.from('deceased').update({ imageUrl: publicUrl }).eq('id', numId);
+            } catch (e) {
+              console.warn("[Supabase Record Image Update Exception]", e);
             }
           }
         }
         return publicUrl;
       }
     } else if (error) {
-      console.warn("[Supabase Storage Upload Warning]", error);
+      console.warn("[Supabase Storage Upload Warning]", error.message || error);
     }
   } catch (err) {
     console.warn("[Supabase Storage Exception]", err);
