@@ -259,102 +259,120 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
   if (!record || typeof record !== 'object') return record;
   const copy: any = { ...record };
 
-  const defaultTextColumns: Record<string, string> = {
-    name: 'לא צוין',
-    nameHe: 'לא צוין',
-    nameEn: 'N/A',
-    nameRu: 'Не указано',
-    gender: 'male',
-    month: 'תשרי',
-    fatherName: '-',
-    motherName: '-',
-    fatherNameHe: '-',
-    fatherNameEn: 'N/A',
-    fatherNameRu: '-',
-    motherNameHe: '-',
-    motherNameEn: 'N/A',
-    motherNameRu: '-',
-    notes: '-',
-    notesHe: '-',
-    notesEn: 'N/A',
-    notesRu: '-',
-    contactPhone: '-',
-    image: '-',
-    imageUrl: '-',
-    photoUrl: '-',
-    birthDate: '-'
+  // 1. Map all snake_case field aliases to camelCase matching types.ts
+  const snakeToCamelMap: Record<string, string> = {
+    father_name: 'fatherName',
+    mother_name: 'motherName',
+    contact_phone: 'contactPhone',
+    image_url: 'imageUrl',
+    photo_url: 'photoUrl',
+    image_position: 'imagePosition',
+    age_at_death: 'ageAtDeath',
+    birth_date: 'birthDate',
+    hebrew_date: 'hebrewDate',
+    pass_date: 'passDate',
+    candles_count: 'candlesCount',
+    likes_count: 'likesCount',
+    name_he: 'nameHe',
+    name_en: 'nameEn',
+    name_ru: 'nameRu',
+    father_name_he: 'fatherNameHe',
+    father_name_en: 'fatherNameEn',
+    father_name_ru: 'fatherNameRu',
+    mother_name_he: 'motherNameHe',
+    mother_name_en: 'motherNameEn',
+    mother_name_ru: 'motherNameRu',
+    notes_he: 'notesHe',
+    notes_en: 'notesEn',
+    notes_ru: 'notesRu'
   };
 
-  // 1. Sanitize all string fields to ensure no empty string "" is sent to Supabase
-  for (const key of Object.keys(copy)) {
-    const val = copy[key];
-    if (typeof val === 'string') {
-      const trimmed = val.trim();
-      if (trimmed.length === 0) {
-        if (defaultTextColumns[key]) {
-          copy[key] = defaultTextColumns[key];
-        } else if (key.endsWith('En')) {
-          copy[key] = 'N/A';
-        } else if (key.endsWith('Ru')) {
-          copy[key] = 'Не указано';
-        } else if (key.endsWith('He') || key === 'name') {
-          copy[key] = 'לא צוין';
-        } else {
-          copy[key] = '-';
-        }
-      } else {
-        copy[key] = trimmed;
+  for (const [snakeKey, camelKey] of Object.entries(snakeToCamelMap)) {
+    if (snakeKey in copy) {
+      if (copy[camelKey] === undefined || copy[camelKey] === null || copy[camelKey] === '') {
+        copy[camelKey] = copy[snakeKey];
       }
+      delete copy[snakeKey];
     }
   }
 
-  // 2. Ensure mandatory string fields are never empty
-  copy.name = sanitizeValueForSupabase(copy.name, 'לא צוין');
-  copy.gender = sanitizeValueForSupabase(copy.gender, 'male');
-  copy.month = sanitizeValueForSupabase(copy.month, 'תשרי');
+  // Handle photo property alias
+  if (copy.photo) {
+    if (!copy.image) copy.image = copy.photo;
+    delete copy.photo;
+  }
 
-  // 3. Synchronize image/photo properties across column aliases if present
-  const imgVal = copy.image || copy.imageUrl || copy.photoUrl || copy.photo || copy.image_url || copy.photo_url;
+  // Synchronize image fields
+  const imgVal = copy.imageUrl || copy.image || copy.photoUrl;
   if (imgVal && typeof imgVal === 'string') {
     const cleanImg = imgVal.trim();
     if (cleanImg !== '' && cleanImg !== '-') {
       copy.image = cleanImg;
       copy.imageUrl = cleanImg;
       copy.photoUrl = cleanImg;
-      copy.photo = cleanImg;
-      copy.image_url = cleanImg;
-      copy.photo_url = cleanImg;
     }
   }
 
-  // 4. Ensure mapped columns for Supabase schema compatibility and date standardization
+  // Normalize dates
   const normDate = parseAndNormalizeDateFields({
     day: copy.day,
     month: copy.month,
     hebrewDate: copy.hebrewDate,
     passDate: copy.passDate
   });
-  copy.day = normDate.day;
-  copy.month = normDate.month;
-  copy.hebrewDate = normDate.hebrewDate;
-  copy.passDate = normDate.passDate;
+  copy.day = normDate.day || 1;
+  copy.month = normDate.month || 'תשרי';
+  copy.hebrewDate = normDate.hebrewDate || null;
+  copy.passDate = normDate.passDate || null;
 
   if (!copy.bio && copy.notes) {
     copy.bio = copy.notes;
   }
-  if (!copy.imageUrl && copy.image) {
-    copy.imageUrl = copy.image;
+
+  // 2. Main Sanitization Pass:
+  // - Remove any undefined properties
+  // - Convert empty or whitespace-only string fields to null
+  for (const key of Object.keys(copy)) {
+    const val = copy[key];
+    if (val === undefined) {
+      delete copy[key];
+    } else if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (trimmed.length === 0) {
+        copy[key] = null;
+      } else {
+        copy[key] = trimmed;
+      }
+    }
   }
 
-  // 5. Ensure id and candlesCount are sent as numbers
+  // 3. Mandatory field constraints: 'name' and 'gender' must not be null
+  if (!copy.name) {
+    copy.name = 'לא צוין';
+  }
+  if (!copy.gender) {
+    copy.gender = 'male';
+  }
+
+  // Ensure ID and numbers are clean
   if (copy.id !== undefined && copy.id !== null) {
     const parsedId = Number(copy.id);
     if (!isNaN(parsedId) && parsedId > 0) {
       copy.id = parsedId;
+    } else {
+      delete copy.id;
     }
   }
-  const parsedCandles = Number(copy.candlesCount !== undefined ? copy.candlesCount : (copy.candles_count !== undefined ? copy.candles_count : 0));
-  copy.candlesCount = !isNaN(parsedCandles) ? parsedCandles : 0;
+
+  if (copy.candlesCount !== undefined && copy.candlesCount !== null) {
+    const parsed = Number(copy.candlesCount);
+    copy.candlesCount = !isNaN(parsed) ? parsed : 0;
+  }
+
+  if (copy.ageAtDeath !== undefined && copy.ageAtDeath !== null) {
+    const parsedAge = Number(copy.ageAtDeath);
+    copy.ageAtDeath = !isNaN(parsedAge) ? parsedAge : null;
+  }
 
   return copy as T;
 }
@@ -561,13 +579,17 @@ export async function safeIlike(
 
 /**
  * Safe insert wrapper for Supabase.
- * Checks for non-empty records, sanitizes text fields, and defaults empty required text.
+ * Checks for non-empty records, sanitizes text fields, and converts empty text to null.
  */
 export async function safeInsert(
   records: any | any[],
   tableName: string = 'deceased'
 ): Promise<{ data: any; error: any }> {
-  if (!isSupabaseConfigured() || !records) return { data: [], error: null };
+  if (!isSupabaseConfigured() || !records) {
+    const err = new Error('Supabase is not configured or no records provided');
+    console.error('[safeInsert Error]', err);
+    return { data: [], error: err.message };
+  }
   const arr = Array.isArray(records) ? records : [records];
   if (arr.length === 0) return { data: [], error: null };
 
@@ -583,11 +605,18 @@ export async function safeInsert(
     const { data, error } = await (supabase.from(tableName as any) as any)
       .insert(sanitized)
       .select();
-    if (error) logSupabaseError('safeInsert', error);
-    return { data: data || [], error };
-  } catch (err) {
+
+    if (error) {
+      console.error('[Supabase safeInsert Error]', error);
+      logSupabaseError('safeInsert', error);
+      const errMsg = error.message || error.details || error.hint || 'שגיאה בהוספת נתונים ל-Supabase';
+      return { data: null, error: errMsg };
+    }
+    return { data: data || [], error: null };
+  } catch (err: any) {
+    console.error('[Supabase safeInsert Exception]', err);
     logSupabaseException('safeInsert', err);
-    return { data: null, error: err };
+    return { data: null, error: err?.message || 'שגיאה בהוספת נתונים ל-Supabase' };
   }
 }
 
@@ -602,83 +631,97 @@ export async function safeUpdate(
   tableName: string = 'deceased'
 ): Promise<{ data: any; error: any }> {
   if (!isSupabaseConfigured() || !isValidQueryString(value)) {
-    return { data: null, error: null };
+    const err = new Error('Supabase is not configured or query value is invalid');
+    console.error('[safeUpdate Error]', err);
+    return { data: null, error: err.message };
   }
   const cleanValue = typeof value === 'string' ? value.trim() : value;
   if (typeof cleanValue === 'string' && cleanValue.length === 0) {
-    return { data: null, error: null };
+    const err = new Error('Update target value cannot be empty');
+    console.error('[safeUpdate Error]', err);
+    return { data: null, error: err.message };
   }
+
   const sanitized = sanitizeRecordForSupabase(updateData);
+
   try {
-    const { data, error } = await (supabase
-      .from(tableName as any) as any)
+    const { data, error } = await (supabase.from(tableName as any) as any)
       .update(sanitized)
-      .eq(column, cleanValue);
-    if (error) logSupabaseError('safeUpdate', error);
-    return { data, error };
-  } catch (err) {
+      .eq(column, cleanValue)
+      .select();
+
+    if (error) {
+      console.error('[Supabase safeUpdate Error]', error);
+      logSupabaseError('safeUpdate', error);
+      const errMsg = error.message || error.details || error.hint || 'שגיאה בעדכון נתונים ב-Supabase';
+      return { data: null, error: errMsg };
+    }
+    return { data, error: null };
+  } catch (err: any) {
+    console.error('[Supabase safeUpdate Exception]', err);
     logSupabaseException('safeUpdate', err);
-    return { data: null, error: err };
+    return { data: null, error: err?.message || 'שגיאה בעדכון נתונים ב-Supabase' };
   }
 }
 
 /**
  * Safe upsert wrapper for Supabase.
- * Checks for non-empty records, sanitizes text fields, and defaults empty required text.
+ * Checks for non-empty records, sanitizes text fields, and converts empty text to null.
  */
 export async function safeUpsert(
   records: any | any[],
   tableName: string = 'deceased'
 ): Promise<{ data: any; error: any }> {
-  if (!isSupabaseConfigured() || !records) return { data: [], error: null };
+  if (!isSupabaseConfigured() || !records) {
+    const err = new Error('Supabase is not configured or no records provided');
+    console.error('[safeUpsert Error]', err);
+    return { data: [], error: err.message };
+  }
   const arr = Array.isArray(records) ? records : [records];
   if (arr.length === 0) return { data: [], error: null };
 
   const sanitized = arr.map(item => sanitizeRecordForSupabase(item));
+
   try {
-    let { data, error } = await (supabase.from(tableName as any) as any).upsert(sanitized, { onConflict: 'id' });
+    let { data, error } = await (supabase.from(tableName as any) as any)
+      .upsert(sanitized, { onConflict: 'id' })
+      .select();
+
     if (error) {
-      const fallbackRes = await (supabase.from(tableName as any) as any).upsert(sanitized);
+      console.error('[Supabase safeUpsert Error]', error);
+      logSupabaseError('safeUpsert', error);
+
+      const fallbackRes = await (supabase.from(tableName as any) as any)
+        .upsert(sanitized)
+        .select();
+
       if (!fallbackRes.error) {
         error = null;
         data = fallbackRes.data;
       } else {
-        const coreOnly = sanitized.map(item => ({
-          id: item.id,
-          name: item.name,
-          gender: item.gender,
-          fatherName: item.fatherName,
-          motherName: item.motherName,
-          day: item.day,
-          month: item.month,
-          contactPhone: item.contactPhone || '-',
-          notes: item.notes || '-',
-          image: item.image || '-'
-        }));
-        const coreRes = await (supabase.from(tableName as any) as any).upsert(coreOnly);
-        if (!coreRes.error) {
-          error = null;
-          data = coreRes.data;
-        } else {
-          error = coreRes.error;
-          data = coreRes.data;
-          if (!isMissingTableError(error)) {
-            logSupabaseError('safeUpsert', error);
-          }
-        }
+        console.error('[Supabase safeUpsert Fallback Error]', fallbackRes.error);
+        error = fallbackRes.error;
       }
     }
 
     // Also sync to alternate table name ('memorials' or 'deceased') so any schema works
     const altTable = tableName === 'deceased' ? 'memorials' : 'deceased';
     try {
-      await (supabase.from(altTable as any) as any).upsert(sanitized, { onConflict: 'id' });
+      await (supabase.from(altTable as any) as any)
+        .upsert(sanitized, { onConflict: 'id' })
+        .catch(() => {});
     } catch (e) {}
 
-    return { data, error };
-  } catch (err) {
+    if (error) {
+      const errMsg = typeof error === 'string' ? error : (error.message || error.details || error.hint || 'שגיאה בשמירת הנתונים ב-Supabase');
+      return { data: null, error: errMsg };
+    }
+
+    return { data: data || [], error: null };
+  } catch (err: any) {
+    console.error('[Supabase safeUpsert Exception]', err);
     logSupabaseException('safeUpsert', err);
-    return { data: null, error: err };
+    return { data: null, error: err?.message || 'שגיאה בשמירת הנתונים ב-Supabase' };
   }
 }
 
