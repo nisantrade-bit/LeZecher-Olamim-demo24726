@@ -274,74 +274,71 @@ function MainAppContent() {
     }
   }, [urlDeceasedFromPayload]);
 
-  // If urlDeceasedId is accessed directly (e.g. ?m=41 or /m/41) and card is not in local list, fetch from Supabase
+  // If urlDeceasedId is accessed directly (e.g. ?m=41 or /m/41), perform a direct select query from Supabase
   useEffect(() => {
     if (urlDeceasedId && String(urlDeceasedId).trim() !== '' && !urlDeceasedFromPayload) {
       const cardId = typeof urlDeceasedId === 'number' ? urlDeceasedId : parseInt(String(urlDeceasedId), 10);
       const queryId = !isNaN(cardId) ? cardId : urlDeceasedId;
 
-      const alreadyInMaster = masterList.some(d => Number(d.id) === Number(queryId) || String(d.id) === String(queryId)) ||
-                              SEED_DATABASE.some(d => Number(d.id) === Number(queryId) || String(d.id) === String(queryId));
-
-      if (!alreadyInMaster && !remoteDeceasedNotFound && !fetchingRemoteDeceased) {
+      const fetchRemote = async () => {
         setFetchingRemoteDeceased(true);
-        const fetchRemote = async () => {
-          try {
-            let fetched: any = null;
-            if (isSupabaseConfigured()) {
-              const { data, error } = await supabase
-                .from('deceased')
-                .select('*')
-                .eq('id', queryId)
-                .maybeSingle();
+        try {
+          let fetched: any = null;
+          if (isSupabaseConfigured()) {
+            const { data, error } = await supabase
+              .from('deceased')
+              .select('*')
+              .eq('id', queryId)
+              .maybeSingle();
 
-              if (error && isMissingTableError(error)) {
-                setSupabaseTableMissing(true);
-              }
-              if (data && data.id && data.name) {
-                fetched = data;
-              }
+            if (error && isMissingTableError(error)) {
+              setSupabaseTableMissing(true);
             }
+            if (data && data.id && data.name) {
+              fetched = normalizeFetchedRecord(data);
+            }
+          }
 
-            if (!fetched) {
-              // Fallback to Express server API
-              try {
-                const res = await fetch(`/api/deceased/${encodeURIComponent(String(queryId))}`);
-                if (res.ok) {
-                  const record = await res.json();
-                  if (record && record.id && record.name) {
-                    fetched = record;
-                  }
+          if (!fetched) {
+            // Fallback to Express server API
+            try {
+              const res = await fetch(`/api/deceased/${encodeURIComponent(String(queryId))}`);
+              if (res.ok) {
+                const record = await res.json();
+                if (record && record.id && record.name) {
+                  fetched = normalizeFetchedRecord(record);
                 }
-              } catch (e) {}
-            }
+              }
+            } catch (e) {}
+          }
 
-            if (fetched && fetched.id && fetched.name) {
-              const enriched = enrichDeceasedTranslations(normalizeFetchedRecord(fetched));
-              setMasterList(prev => {
-                const merged = smartMergeDeceasedLists(prev, [enriched]);
-                const finalData = deduplicateSingleList(merged);
-                try {
-                  localStorage.setItem('eternal_db', JSON.stringify(finalData));
-                } catch (e) {}
-                return finalData;
-              });
-              setFetchingRemoteDeceased(false);
-              return;
-            } else {
+          if (fetched && fetched.id && fetched.name) {
+            const enriched = enrichDeceasedTranslations(fetched);
+            setMasterList(prev => {
+              const merged = smartMergeDeceasedLists(prev, [enriched]);
+              const finalData = deduplicateSingleList(merged);
+              try {
+                localStorage.setItem('eternal_db', JSON.stringify(finalData));
+              } catch (e) {}
+              return finalData;
+            });
+            setRemoteDeceasedNotFound(false);
+          } else {
+            const existsLocally = masterList.some(d => Number(d.id) === Number(queryId) || String(d.id) === String(queryId));
+            if (!existsLocally) {
               setRemoteDeceasedNotFound(true);
             }
-          } catch (err) {
-            console.error("Failed to fetch remote deceased record:", err);
-            setRemoteDeceasedNotFound(true);
-          } finally {
-            setFetchingRemoteDeceased(false);
           }
-        };
-        fetchRemote();
-      }
+        } catch (err) {
+          console.error("Failed to fetch remote deceased record:", err);
+        } finally {
+          setFetchingRemoteDeceased(false);
+        }
+      };
+
+      fetchRemote();
     }
-  }, [urlDeceasedId, urlDeceasedFromPayload, masterList, remoteDeceasedNotFound, fetchingRemoteDeceased]);
+  }, [urlDeceasedId, urlDeceasedFromPayload]);
 
   // Helper to merge urlDeceasedFromPayload into any loaded list
   const mergeWithUrlPayload = (list: Deceased[]): Deceased[] => {
@@ -420,12 +417,10 @@ function MainAppContent() {
           }
         }
 
-        // 4. Merge clean records (0 mock data)
+        // 4. Merge clean records directly from Supabase (top priority), local storage & server API
         let combined = smartMergeDeceasedLists([], supabaseRecords);
-        if (supabaseRecords.length === 0) {
-          combined = smartMergeDeceasedLists(combined, localRecords);
-          combined = smartMergeDeceasedLists(combined, serverRecords);
-        }
+        combined = smartMergeDeceasedLists(combined, localRecords);
+        combined = smartMergeDeceasedLists(combined, serverRecords);
         combined = mergeWithUrlPayload(combined);
 
         const finalMaster = filterOutMockRecords(deduplicateSingleList(combined));

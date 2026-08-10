@@ -1,12 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { parseAndNormalizeDateFields } from './hebrewDate';
 
+const FALLBACK_SUPABASE_URL = "https://aoendfkvzsywrykmcloy.supabase.co";
+const FALLBACK_SUPABASE_ANON_KEY = "sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj";
+
 const metaEnv = (import.meta as unknown as { env?: Record<string, string> }).env || {};
 const rawUrl = metaEnv.VITE_SUPABASE_URL || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_URL : '') || '';
 const rawKey = metaEnv.VITE_SUPABASE_ANON_KEY || (typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_ANON_KEY : '') || '';
 
-const envUrl = rawUrl.trim() && !rawUrl.includes('YOUR_PROJECT_ID') ? rawUrl.trim().replace(/\/+$/, '') : 'https://placeholder.supabase.co';
-const envKey = rawKey.trim() && !rawKey.includes('YOUR_ANON_KEY') ? rawKey.trim() : 'placeholder-anon-key';
+const envUrl = (rawUrl.trim() && !rawUrl.includes('YOUR_PROJECT_ID') && !rawUrl.includes('placeholder') ? rawUrl.trim() : FALLBACK_SUPABASE_URL).replace(/\/+$/, '');
+const envKey = (rawKey.trim() && !rawKey.includes('YOUR_ANON_KEY') && !rawKey.includes('placeholder') ? rawKey.trim() : FALLBACK_SUPABASE_ANON_KEY);
 
 export const supabase = createClient(envUrl, envKey);
 
