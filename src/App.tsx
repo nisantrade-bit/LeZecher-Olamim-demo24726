@@ -390,11 +390,16 @@ function MainAppContent() {
         let supabaseRecords: Deceased[] = [];
         if (isSupabaseConfigured()) {
           try {
-            const { data, error } = await safeSelect('deceased');
+            const { data, error } = await supabase.from('deceased').select('*');
             if (error && isMissingTableError(error)) {
               setSupabaseTableMissing(true);
             } else if (!error && Array.isArray(data)) {
               supabaseRecords = filterOutMockRecords(data as Deceased[]);
+            } else {
+              const res = await safeSelect('deceased');
+              if (!res.error && Array.isArray(res.data)) {
+                supabaseRecords = filterOutMockRecords(res.data as Deceased[]);
+              }
             }
           } catch (err) {
             console.warn("Supabase select notice:", err);
@@ -643,6 +648,7 @@ function MainAppContent() {
         const { error } = await safeUpsert([deceased]);
         if (error) {
           console.error("[Supabase Save Error]", error);
+          alert(`שגיאה בשמירת הכרטיס ב-Supabase: ${error.message || JSON.stringify(error)}`);
         } else {
           console.log(`[Supabase Save Success] Saved deceased record ID ${deceased.id}`);
           await cleanAndDeduplicateSupabase();
@@ -650,6 +656,7 @@ function MainAppContent() {
         }
       } catch (e: any) {
         console.error("[Supabase Save Exception]", e);
+        alert(`שגיאה בשמירת הכרטיס ב-Supabase: ${e?.message || String(e)}`);
       }
     }
 

@@ -12,6 +12,7 @@ const envUrl = (rawUrl.trim() && !rawUrl.includes('YOUR_PROJECT_ID') && !rawUrl.
 const envKey = (rawKey.trim() && !rawKey.includes('YOUR_ANON_KEY') && !rawKey.includes('placeholder') ? rawKey.trim() : FALLBACK_SUPABASE_ANON_KEY);
 
 export const supabase = createClient(envUrl, envKey);
+console.log("Supabase Client Initialized with URL:", envUrl);
 
 export function isSupabaseConfigured(): boolean {
   return (
