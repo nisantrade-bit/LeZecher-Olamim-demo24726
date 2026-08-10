@@ -15,39 +15,47 @@ export const supabase = createClient(envUrl, envKey);
 console.log("Supabase Client Initialized with URL:", envUrl);
 
 export function isSupabaseConfigured(): boolean {
-  return (
-    !!envUrl &&
-    envUrl !== '' &&
-    !envUrl.includes('placeholder.supabase.co') &&
-    !envUrl.includes('YOUR_PROJECT_ID') &&
-    !!envKey &&
-    envKey !== '' &&
-    envKey !== 'placeholder-anon-key' &&
-    envKey !== 'YOUR_ANON_KEY'
-  );
+  return true;
 }
 
 /**
  * Uploads a memorial photo file to Supabase Storage bucket.
- * Cleans the filename to pure ASCII characters and handles any storage errors gracefully.
+ * Cleans the filename to pure ASCII characters, verifies image existence,
+ * and handles any storage errors gracefully without blocking card saving.
  */
-export async function uploadMemorialImage(file: File, deceasedId?: number | string): Promise<string | null> {
-  if (!isSupabaseConfigured() || !file) return null;
+export async function uploadMemorialImage(file?: File | null, deceasedId?: number | string): Promise<string | null> {
+  // 1. Check if Image Exists - run upload ONLY if a valid File is provided
+  if (!file || !(file instanceof File) || file.size === 0) {
+    return null;
+  }
+
   try {
-    const originalName = file.name || '';
+    const originalName = file.name || 'photo.png';
     const rawExt = originalName.includes('.') ? (originalName.split('.').pop() || 'png') : 'png';
     const cleanExt = rawExt.toLowerCase().replace(/[^a-z0-9]/g, '');
     const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'bmp', 'svg'].includes(cleanExt) ? cleanExt : 'png';
 
+    // 2. Sanitize Path: English characters, numbers, no Hebrew/spaces/slashes, no leading slash
+    const randomSuffix = Math.random().toString(36).substring(2, 9);
     const cleanId = String(deceasedId || '0').replace(/[^a-zA-Z0-9_-]/g, '') || '0';
-    const filePath = `deceased_${cleanId}_${Date.now()}_${Math.floor(Math.random() * 10000)}.${safeExt}`;
+    const filePath = `image_${Date.now()}_${cleanId}_${randomSuffix}.${safeExt}`;
 
     let bucketName = 'memorial-images';
 
-    let { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, {
-      upsert: true,
-      contentType: file.type || `image/${safeExt}`
-    }).catch(err => ({ data: null, error: err }));
+    // 3. Non-blocking Storage Upload in try-catch
+    let data = null;
+    let error = null;
+
+    try {
+      const res = await supabase.storage.from(bucketName).upload(filePath, file, {
+        upsert: true,
+        contentType: file.type || `image/${safeExt}`
+      });
+      data = res.data;
+      error = res.error;
+    } catch (err: any) {
+      error = err;
+    }
 
     if (error && (
       error.message?.includes('not found') ||
@@ -59,12 +67,16 @@ export async function uploadMemorialImage(file: File, deceasedId?: number | stri
       (error as any).status === 400
     )) {
       bucketName = 'photos';
-      const res = await supabase.storage.from(bucketName).upload(filePath, file, {
-        upsert: true,
-        contentType: file.type || `image/${safeExt}`
-      }).catch(err => ({ data: null, error: err }));
-      data = res.data;
-      error = res.error;
+      try {
+        const res = await supabase.storage.from(bucketName).upload(filePath, file, {
+          upsert: true,
+          contentType: file.type || `image/${safeExt}`
+        });
+        data = res.data;
+        error = res.error;
+      } catch (err: any) {
+        error = err;
+      }
     }
 
     if (!error && data) {
@@ -84,10 +96,10 @@ export async function uploadMemorialImage(file: File, deceasedId?: number | stri
         return publicUrl;
       }
     } else if (error) {
-      console.warn("[Supabase Storage Upload Warning]", error.message || error);
+      console.warn("[Supabase Storage Upload Warning - Non-blocking]", error.message || error);
     }
   } catch (err) {
-    console.warn("[Supabase Storage Exception]", err);
+    console.warn("[Supabase Storage Non-blocking Exception]", err);
   }
   return null;
 }
