@@ -648,7 +648,6 @@ function MainAppContent() {
         const { error } = await safeUpsert([deceased]);
         if (error) {
           console.error("[Supabase Save Error]", error);
-          alert(`שגיאה בשמירת הכרטיס ב-Supabase: ${error.message || JSON.stringify(error)}`);
         } else {
           console.log(`[Supabase Save Success] Saved deceased record ID ${deceased.id}`);
           await cleanAndDeduplicateSupabase();
@@ -656,7 +655,6 @@ function MainAppContent() {
         }
       } catch (e: any) {
         console.error("[Supabase Save Exception]", e);
-        alert(`שגיאה בשמירת הכרטיס ב-Supabase: ${e?.message || String(e)}`);
       }
     }
 
