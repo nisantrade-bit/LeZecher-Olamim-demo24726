@@ -721,12 +721,12 @@ export async function safeDeleteAll(
   try {
     const { data, error } = await (supabase.from(tableName as any) as any)
       .delete()
-      .not('id', 'is', null);
+      .neq('id', 0);
 
     if (tableName === 'deceased') {
       await (supabase.from('memorials' as any) as any)
         .delete()
-        .not('id', 'is', null)
+        .neq('id', 0)
         .catch(() => {});
     }
 
@@ -886,32 +886,6 @@ export async function fetchMemorialCardById(rawId: string | number): Promise<{ d
     return { data: fetchedData, error: null };
   }
 
-  // Fallback: Check Express server API if Supabase returned nothing or table is missing
-  try {
-    const res = await fetch(`/api/deceased/${encodeURIComponent(decodedId)}`);
-    if (res.ok) {
-      const record = await res.json();
-      if (record && record.id && record.name) {
-        return { data: record, error: null };
-      }
-    }
-    // Also try fetching all deceased list from server API just in case single route failed
-    const allRes = await fetch('/api/deceased');
-    if (allRes.ok) {
-      const list = await allRes.json();
-      if (Array.isArray(list)) {
-        const found = list.find((item: any) => 
-          String(item.id) === String(decodedId) || Number(item.id) === Number(decodedId)
-        );
-        if (found) {
-          return { data: found, error: null };
-        }
-      }
-    }
-  } catch (apiErr) {
-    console.error('[Memorial Fetch] Server API fallback error:', apiErr);
-  }
-
-  return { data: null, error: lastError || new Error('Record not found in Supabase or API') };
+  return { data: null, error: lastError || new Error('Record not found in Supabase') };
 }
 

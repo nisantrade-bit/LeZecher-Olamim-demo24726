@@ -263,14 +263,7 @@ function MainAppContent() {
         }
       })();
 
-      // Sync to cloud server API database as backup
-      if (!(window as any).__OFFLINE_DATABASE_DATA__) {
-        fetch('/api/deceased', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(enrichedPayload)
-        }).catch(e => console.warn("Cloud database sync notice:", e));
-      }
+
     }
   }, [urlDeceasedFromPayload]);
 
@@ -299,18 +292,7 @@ function MainAppContent() {
             }
           }
 
-          if (!fetched) {
-            // Fallback to Express server API
-            try {
-              const res = await fetch(`/api/deceased/${encodeURIComponent(String(queryId))}`);
-              if (res.ok) {
-                const record = await res.json();
-                if (record && record.id && record.name) {
-                  fetched = normalizeFetchedRecord(record);
-                }
-              }
-            } catch (e) {}
-          }
+
 
           if (fetched && fetched.id && fetched.name) {
             const enriched = enrichDeceasedTranslations(fetched);
@@ -406,26 +388,9 @@ function MainAppContent() {
           }
         }
 
-        // 3. Fallback to Express server API if Supabase returned no data
-        let serverRecords: Deceased[] = [];
-        if (supabaseRecords.length === 0 && !isSupabaseConfigured()) {
-          try {
-            const response = await fetch('/api/deceased');
-            if (response.ok) {
-              const data = await response.json();
-              if (Array.isArray(data)) {
-                serverRecords = filterOutMockRecords(data);
-              }
-            }
-          } catch (err) {
-            console.error("Failed to load database from server:", err);
-          }
-        }
-
-        // 4. Merge clean records directly from Supabase (top priority), local storage & server API
+        // Merge clean records directly from Supabase (top priority) & local storage
         let combined = smartMergeDeceasedLists([], supabaseRecords);
         combined = smartMergeDeceasedLists(combined, localRecords);
-        combined = smartMergeDeceasedLists(combined, serverRecords);
         combined = mergeWithUrlPayload(combined);
 
         const finalMaster = filterOutMockRecords(deduplicateSingleList(combined));
@@ -521,41 +486,19 @@ function MainAppContent() {
         }
       }
 
-      // 2. Perform translation via API (with client-side fallback)
+      // 2. Perform translation via client-side translation helper
       setTranslating(true);
       try {
-        const response = await fetch('/api/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deceasedList: masterList, targetLang: lang })
-        });
-
-        if (!response.ok) {
-          throw new Error(`Translation status ${response.status}`);
-        }
-
-        const data = await response.json();
-        if (data.translatedList && Array.isArray(data.translatedList) && data.translatedList.length > 0) {
-          const fullyTranslated = translateDeceasedListClientSide(data.translatedList, lang);
-          setDisplayedList(fullyTranslated);
-          try {
-            localStorage.setItem(`eternal_db_translated_${lang}`, JSON.stringify(fullyTranslated));
-            localStorage.setItem(`eternal_db_translated_${lang}_fingerprint`, currentFingerprint);
-          } catch (e) {
-            console.error("Storage access error:", e);
-          }
-        } else {
-          throw new Error("Invalid translation response structure");
-        }
-      } catch (err: any) {
-        const fallbackTranslated = translateDeceasedListClientSide(masterList, lang);
-        setDisplayedList(fallbackTranslated);
+        const fullyTranslated = translateDeceasedListClientSide(masterList, lang);
+        setDisplayedList(fullyTranslated);
         try {
-          localStorage.setItem(`eternal_db_translated_${lang}`, JSON.stringify(fallbackTranslated));
+          localStorage.setItem(`eternal_db_translated_${lang}`, JSON.stringify(fullyTranslated));
           localStorage.setItem(`eternal_db_translated_${lang}_fingerprint`, currentFingerprint);
         } catch (e) {
           console.error("Storage access error:", e);
         }
+      } catch (err: any) {
+        console.warn("Translation notice:", err);
       } finally {
         setTranslating(false);
       }
@@ -631,18 +574,7 @@ function MainAppContent() {
       console.error("Storage access error:", e);
     }
 
-    // Always sync to server API
-    if (!(window as any).__OFFLINE_DATABASE_DATA__) {
-      try {
-        await fetch('/api/deceased', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(deceased)
-        }).catch(e => console.warn("Backup API save notice:", e));
-      } catch (e) {
-        console.warn("Failed to save record to server database:", e);
-      }
-    }
+
 
     // Also sync to Supabase if configured
     if (isSupabaseConfigured()) {
@@ -708,16 +640,7 @@ function MainAppContent() {
       console.error("Storage access error:", e);
     }
 
-    // Sync to server API
-    if (!(window as any).__OFFLINE_DATABASE_DATA__) {
-      try {
-        await fetch(`/api/deceased/${id}`, {
-          method: 'DELETE'
-        }).catch(e => console.warn("Backup API delete notice:", e));
-      } catch (e) {
-        console.warn("Failed to delete record from server database:", e);
-      }
-    }
+
 
     // Also sync delete to Supabase if configured
     if (isSupabaseConfigured()) {
@@ -784,18 +707,7 @@ function MainAppContent() {
       console.error("Storage access error:", e);
     }
 
-    // Sync to server API
-    if (!(window as any).__OFFLINE_DATABASE_DATA__) {
-      try {
-        await fetch('/api/deceased/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(supabaseRecords)
-        }).catch(e => console.warn("Failed backup import:", e));
-      } catch (e) {
-        console.warn("Failed to import records to server database:", e);
-      }
-    }
+
 
     // Sync to Supabase if configured
     if (isSupabaseConfigured()) {
@@ -914,15 +826,7 @@ function MainAppContent() {
       console.warn("Supabase notice:", err);
     }
 
-    if (!(window as any).__OFFLINE_DATABASE_DATA__) {
-      try {
-        await fetch('/api/deceased', {
-          method: 'DELETE'
-        });
-      } catch (err) {
-        console.error("Failed to reset database on server:", err);
-      }
-    }
+
 
     setMasterList([]);
     setDisplayedList([]);
