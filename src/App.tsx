@@ -613,6 +613,8 @@ function MainAppContent() {
       ((d.name || '').trim().toLowerCase() === normName && (d.fatherName || '').trim().toLowerCase() === normFather)
     );
 
+    const isUpdate = !!existing && !!existing.id && Number(existing.id) > 0;
+
     if (existing) {
       deceased.id = Number(existing.id);
     }
@@ -645,14 +647,32 @@ function MainAppContent() {
     // Also sync to Supabase if configured
     if (isSupabaseConfigured()) {
       try {
-        const { error } = await safeUpsert([deceased]);
-        if (error) {
-          console.error("[Supabase Save Error]", error);
-          alert(`שגיאה בשמירת הכרטיס ב-Supabase: ${error.message || JSON.stringify(error)}`);
+        if (isUpdate) {
+          // UPDATE operation: send record WITH id
+          const { error } = await safeUpsert([deceased]);
+          if (error) {
+            console.error("[Supabase Save Error]", error);
+            alert(`שגיאה בעדכון הכרטיס ב-Supabase: ${error.message || JSON.stringify(error)}`);
+          } else {
+            console.log(`[Supabase Update Success] Updated deceased record ID ${deceased.id}`);
+            await cleanAndDeduplicateSupabase();
+            await refreshFromSupabase();
+          }
         } else {
-          console.log(`[Supabase Save Success] Saved deceased record ID ${deceased.id}`);
-          await cleanAndDeduplicateSupabase();
-          await refreshFromSupabase();
+          // INSERT operation: strip id so Supabase autogenerates identity ID
+          const { id, ...recordWithoutId } = deceased;
+          const { data, error } = await safeInsert([recordWithoutId]);
+          if (error) {
+            console.error("[Supabase Insert Error]", error);
+            alert(`שגיאה בהוספת הכרטיס ב-Supabase: ${error.message || JSON.stringify(error)}`);
+          } else {
+            console.log(`[Supabase Insert Success] Saved new deceased record`);
+            if (data && data[0] && data[0].id) {
+              deceased.id = Number(data[0].id);
+            }
+            await cleanAndDeduplicateSupabase();
+            await refreshFromSupabase();
+          }
         }
       } catch (e: any) {
         console.error("[Supabase Save Exception]", e);
