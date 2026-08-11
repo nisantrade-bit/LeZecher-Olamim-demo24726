@@ -19,6 +19,7 @@ export interface Deceased {
   hebrewDate?: string; // Optional Hebrew date string (Supabase schema)
   passDate?: string; // Optional date of passing (Supabase schema)
   candlesCount?: number; // Optional candles lit count (Supabase schema)
+  likesCount?: number; // Optional likes count (Supabase schema)
   image?: string; // Optional Base64 image
   imageUrl?: string; // Optional image URL
   photoUrl?: string; // Optional photo URL

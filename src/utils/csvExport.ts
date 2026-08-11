@@ -54,6 +54,39 @@ function triggerCsvDownload(csvContentWithoutBom: string, filename: string) {
   }
 }
 
+export const CANONICAL_EXCEL_CSV_HEADERS = [
+  'id',
+  'name',
+  'gender',
+  'fatherName',
+  'motherName',
+  'passDate',
+  'hebrewDate',
+  'birthDate',
+  'bio',
+  'notes',
+  'image',
+  'imageUrl',
+  'photoUrl',
+  'imagePosition',
+  'contactPhone',
+  'candlesCount',
+  'likesCount',
+  'ageAtDeath',
+  'nameHe',
+  'nameEn',
+  'nameRu',
+  'fatherNameHe',
+  'fatherNameEn',
+  'fatherNameRu',
+  'motherNameHe',
+  'motherNameEn',
+  'motherNameRu',
+  'notesHe',
+  'notesEn',
+  'notesRu'
+];
+
 /**
  * Exports a single language CSV file with strict Supabase schema English headers
  */
@@ -63,22 +96,8 @@ export function exportSingleLanguageCsv(deceasedList: Deceased[], lang: Language
   // Ensure list is cleanly translated into target language
   const translatedList = translateDeceasedListClientSide(deceasedList, lang);
 
-  // Headers MUST remain strictly in English matching Supabase column names
-  const headers = [
-    'id',
-    'name',
-    'gender',
-    'fatherName',
-    'motherName',
-    'passDate',
-    'hebrewDate',
-    'bio',
-    'imageUrl',
-    'candlesCount'
-  ];
-
   const rows: string[] = [];
-  rows.push(headers.map(h => escapeCsvCell(h)).join(','));
+  rows.push(CANONICAL_EXCEL_CSV_HEADERS.map(h => escapeCsvCell(h)).join(','));
 
   translatedList.forEach(item => {
     const hebDate = item.hebrewDate || (item.day && item.month ? `${item.day} ${item.month}` : '');
@@ -86,6 +105,7 @@ export function exportSingleLanguageCsv(deceasedList: Deceased[], lang: Language
     const bioText = item.bio || item.notes || '';
     const imgUrl = item.imageUrl || item.image || item.photoUrl || item.photo || '';
     const candles = item.candlesCount !== undefined ? item.candlesCount : 0;
+    const likes = item.likesCount !== undefined ? item.likesCount : 0;
 
     const row = [
       escapeCsvCell(item.id || ''),
@@ -95,9 +115,29 @@ export function exportSingleLanguageCsv(deceasedList: Deceased[], lang: Language
       escapeCsvCell(item.motherName || ''),
       escapeCsvCell(pDate),
       escapeCsvCell(hebDate),
+      escapeCsvCell(item.birthDate || ''),
       escapeCsvCell(bioText),
+      escapeCsvCell(item.notes || bioText),
       escapeCsvCell(imgUrl),
-      escapeCsvCell(candles)
+      escapeCsvCell(imgUrl),
+      escapeCsvCell(imgUrl),
+      escapeCsvCell(item.imagePosition || 'center'),
+      escapeCsvCell(item.contactPhone || ''),
+      escapeCsvCell(candles),
+      escapeCsvCell(likes),
+      escapeCsvCell(item.ageAtDeath !== undefined ? item.ageAtDeath : ''),
+      escapeCsvCell(item.nameHe || ''),
+      escapeCsvCell(item.nameEn || ''),
+      escapeCsvCell(item.nameRu || ''),
+      escapeCsvCell(item.fatherNameHe || ''),
+      escapeCsvCell(item.fatherNameEn || ''),
+      escapeCsvCell(item.fatherNameRu || ''),
+      escapeCsvCell(item.motherNameHe || ''),
+      escapeCsvCell(item.motherNameEn || ''),
+      escapeCsvCell(item.motherNameRu || ''),
+      escapeCsvCell(item.notesHe || ''),
+      escapeCsvCell(item.notesEn || ''),
+      escapeCsvCell(item.notesRu || '')
     ];
     rows.push(row.join(','));
   });

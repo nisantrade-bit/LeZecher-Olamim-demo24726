@@ -9,7 +9,7 @@ import { translations, sanitizeParentName } from '../utils/translations';
 import { normalizeMonthName } from '../utils/hebrewDate';
 import { Download, Upload, Clipboard, CheckCircle, AlertTriangle, FileSpreadsheet, Sparkles, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { downloadDeceasedCsv, exportCombined3LanguageCsv, exportSingleLanguageCsv } from '../utils/csvExport';
+import { downloadDeceasedCsv, exportCombined3LanguageCsv, exportSingleLanguageCsv, CANONICAL_EXCEL_CSV_HEADERS } from '../utils/csvExport';
 import { translateDeceasedListClientSide, translateDeceasedListClientSize } from '../utils/transliteration';
 
 interface BulkImportProps {
@@ -85,24 +85,32 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     let motherIdx = -1;
     let passDateIdx = -1;
     let hebrewDateIdx = -1;
+    let birthDateIdx = -1;
+    let bioIdx = -1;
+    let notesIdx = -1;
+    let imageIdx = -1;
+    let imageUrlIdx = -1;
+    let photoUrlIdx = -1;
+    let imagePosIdx = -1;
+    let phoneIdx = -1;
+    let candlesIdx = -1;
+    let likesIdx = -1;
+    let ageIdx = -1;
+    let nameHeIdx = -1, nameEnIdx = -1, nameRuIdx = -1;
+    let fatherHeIdx = -1, fatherEnIdx = -1, fatherRuIdx = -1;
+    let motherHeIdx = -1, motherEnIdx = -1, motherRuIdx = -1;
+    let notesHeIdx = -1, notesEnIdx = -1, notesRuIdx = -1;
     let dayIdx = -1;
     let monthIdx = -1;
-    let phoneIdx = -1;
-    let bioIdx = -1;
-    let imageIdx = -1;
-    let candlesIdx = -1;
 
     let startRow = 0;
 
-    // Check if row 0 is a header row
     const firstRow = rows[0] || [];
     const firstRowStr = firstRow.map(c => (c || '').toLowerCase().trim()).join(' ');
 
     const isHeaderRow = firstRowStr.includes('name') || 
                         firstRowStr.includes('שם') || 
                         firstRowStr.includes('имя') || 
-                        firstRowStr.includes('fio') ||
-                        firstRowStr.includes('фио') ||
                         firstRowStr.includes('gender') ||
                         firstRowStr.includes('מין') ||
                         firstRowStr.includes('id') ||
@@ -111,62 +119,48 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
 
     if (isHeaderRow) {
       startRow = 1; // skip header row
-      // Dynamically match columns if header names exist
       firstRow.forEach((cell, idx) => {
         const c = (cell || '').toLowerCase().trim();
-        if (c === 'id' || c.includes('id_') || c.includes('_id')) {
-          idIdx = idx;
-        } else if ((c === 'name' || c.includes('full name') || c.includes('שם מלא') || c.includes('полное имя') || c.includes('фиו') || c === 'שם' || c === 'имя') && !c.includes('father') && !c.includes('mother') && !c.includes('אב') && !c.includes('אם') && !c.includes('отца') && !c.includes('матери')) {
-          nameIdx = idx;
-        } else if (c === 'gender' || c.includes('sex') || c.includes('מין') || c.includes('пол')) {
-          genderIdx = idx;
-        } else if (c === 'fathername' || c.includes('father_name') || c.includes('father name') || c.includes('father') || c.includes('שם אב') || c.includes('שם האב') || c.includes('אב') || c.includes('отца') || c.includes('отец')) {
-          fatherIdx = idx;
-        } else if (c === 'mothername' || c.includes('mother_name') || c.includes('mother name') || c.includes('mother') || c.includes('שם אם') || c.includes('שם האם') || c.includes('אם') || c.includes('матери') || c.includes('мать')) {
-          motherIdx = idx;
-        } else if (c === 'passdate' || c.includes('pass_date') || c.includes('pass date') || c.includes('תאריך פטירה') || c.includes('дата кончины')) {
-          passDateIdx = idx;
-        } else if (c === 'hebrewdate' || c.includes('hebrew_date') || c.includes('hebrew date') || c.includes('תאריך עברי') || c.includes('еврейская дата')) {
-          hebrewDateIdx = idx;
-        } else if (c === 'day' || c.includes('hebrewday') || c.includes('יום') || c.includes('день')) {
-          dayIdx = idx;
-        } else if (c === 'month' || c.includes('hebrewmonth') || c.includes('חודש') || c.includes('месяц')) {
-          monthIdx = idx;
-        } else if (c.includes('phone') || c.includes('contact') || c.includes('טלפון') || c.includes('телефон')) {
-          phoneIdx = idx;
-        } else if (c === 'bio' || c === 'notes' || c.includes('story') || c.includes('הערות') || c.includes('סיפור') || c.includes('קורות חיים') || c.includes('история') || c.includes('примечания')) {
-          bioIdx = idx;
-        } else if (c === 'imageurl' || c === 'image_url' || c === 'image' || c === 'photourl' || c === 'photo_url' || c === 'photo' || c.includes('תמונה') || c.includes('фото')) {
-          imageIdx = idx;
-        } else if (c === 'candlescount' || c.includes('candles_count') || c.includes('candles count') || c.includes('candles') || c.includes('נרות') || c.includes('свечи')) {
-          candlesIdx = idx;
-        }
+        if (c === 'id' || c.includes('id_') || c.includes('_id')) idIdx = idx;
+        else if (c === 'namehe' || c === 'name_he') nameHeIdx = idx;
+        else if (c === 'nameen' || c === 'name_en') nameEnIdx = idx;
+        else if (c === 'nameru' || c === 'name_ru') nameRuIdx = idx;
+        else if ((c === 'name' || c.includes('full name') || c.includes('שם מלא') || c === 'שם' || c === 'имя') && !c.includes('father') && !c.includes('mother') && !c.includes('אב') && !c.includes('אם')) nameIdx = idx;
+        else if (c === 'gender' || c.includes('sex') || c.includes('מין') || c.includes('пол')) genderIdx = idx;
+        else if (c === 'fathernamehe' || c === 'father_name_he') fatherHeIdx = idx;
+        else if (c === 'fathernameen' || c === 'father_name_en') fatherEnIdx = idx;
+        else if (c === 'fathernameru' || c === 'father_name_ru') fatherRuIdx = idx;
+        else if (c === 'fathername' || c === 'father_name' || c.includes('father name') || c.includes('father') || c.includes('שם אב') || c.includes('שם האב')) fatherIdx = idx;
+        else if (c === 'mothernamehe' || c === 'mother_name_he') motherHeIdx = idx;
+        else if (c === 'mothernameen' || c === 'mother_name_en') motherEnIdx = idx;
+        else if (c === 'mothernameru' || c === 'mother_name_ru') motherRuIdx = idx;
+        else if (c === 'mothername' || c === 'mother_name' || c.includes('mother name') || c.includes('mother') || c.includes('שם אם') || c.includes('שם האם')) motherIdx = idx;
+        else if (c === 'passdate' || c.includes('pass_date') || c.includes('pass date') || c.includes('תאריך פטירה')) passDateIdx = idx;
+        else if (c === 'hebrewdate' || c.includes('hebrew_date') || c.includes('hebrew date') || c.includes('תאריך עברי')) hebrewDateIdx = idx;
+        else if (c === 'birthdate' || c.includes('birth_date') || c.includes('birth date') || c.includes('תאריך לידה')) birthDateIdx = idx;
+        else if (c === 'noteshe' || c === 'notes_he') notesHeIdx = idx;
+        else if (c === 'notesen' || c === 'notes_en') notesEnIdx = idx;
+        else if (c === 'notesru' || c === 'notes_ru') notesRuIdx = idx;
+        else if (c === 'bio') bioIdx = idx;
+        else if (c === 'notes' || c.includes('story') || c.includes('הערות')) notesIdx = idx;
+        else if (c === 'imageurl' || c === 'image_url') imageUrlIdx = idx;
+        else if (c === 'photourl' || c === 'photo_url') photoUrlIdx = idx;
+        else if (c === 'image' || c === 'photo' || c.includes('תמונה')) imageIdx = idx;
+        else if (c === 'imageposition' || c === 'image_position') imagePosIdx = idx;
+        else if (c === 'contactphone' || c === 'contact_phone' || c.includes('phone') || c.includes('טלפון')) phoneIdx = idx;
+        else if (c === 'candlescount' || c === 'candles_count' || c.includes('candles') || c.includes('נרות')) candlesIdx = idx;
+        else if (c === 'likescount' || c === 'likes_count' || c.includes('likes')) likesIdx = idx;
+        else if (c === 'ageatdeath' || c === 'age_at_death' || c === 'age' || c.includes('גיל')) ageIdx = idx;
+        else if (c === 'day' || c.includes('hebrewday') || c.includes('יום')) dayIdx = idx;
+        else if (c === 'month' || c.includes('hebrewmonth') || c.includes('חודש')) monthIdx = idx;
       });
     }
 
-    // Fallbacks if header positions weren't detected
     if (nameIdx === -1) {
       if (firstRow[0] && (firstRow[0].toLowerCase() === 'id' || !isNaN(Number(firstRow[0])))) {
-        idIdx = 0;
-        nameIdx = 1;
-        genderIdx = 2;
-        fatherIdx = 3;
-        motherIdx = 4;
-        passDateIdx = 5;
-        hebrewDateIdx = 6;
-        bioIdx = 7;
-        imageIdx = 8;
-        candlesIdx = 9;
+        idIdx = 0; nameIdx = 1; genderIdx = 2; fatherIdx = 3; motherIdx = 4;
       } else {
-        nameIdx = 0;
-        genderIdx = 1;
-        fatherIdx = 2;
-        motherIdx = 3;
-        passDateIdx = 4;
-        hebrewDateIdx = 5;
-        bioIdx = 6;
-        imageIdx = 7;
-        candlesIdx = 8;
+        nameIdx = 0; genderIdx = 1; fatherIdx = 2; motherIdx = 3;
       }
     }
 
@@ -183,12 +177,35 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       const rawMother = motherIdx !== -1 ? row[motherIdx] || '' : '';
       const rawPassDate = passDateIdx !== -1 ? (row[passDateIdx] || '').trim() : '';
       const rawHebrewDate = hebrewDateIdx !== -1 ? (row[hebrewDateIdx] || '').trim() : '';
+      const rawBirthDate = birthDateIdx !== -1 ? (row[birthDateIdx] || '').trim() : '';
+      const rawBio = bioIdx !== -1 ? (row[bioIdx] || '').trim() : '';
+      const rawNotes = notesIdx !== -1 ? (row[notesIdx] || '').trim() : '';
+      const rawImage = imageIdx !== -1 ? (row[imageIdx] || '').trim() : '';
+      const rawImageUrl = imageUrlIdx !== -1 ? (row[imageUrlIdx] || '').trim() : '';
+      const rawPhotoUrl = photoUrlIdx !== -1 ? (row[photoUrlIdx] || '').trim() : '';
+      const rawImagePos = imagePosIdx !== -1 ? (row[imagePosIdx] || '').trim() : '';
+      const rawPhone = phoneIdx !== -1 ? (row[phoneIdx] || '').trim() : '';
+      const rawCandles = candlesIdx !== -1 ? (row[candlesIdx] || '').trim() : '';
+      const rawLikes = likesIdx !== -1 ? (row[likesIdx] || '').trim() : '';
+      const rawAge = ageIdx !== -1 ? (row[ageIdx] || '').trim() : '';
       const rawDay = dayIdx !== -1 ? (row[dayIdx] || '').trim() : '';
       const rawMonth = monthIdx !== -1 ? (row[monthIdx] || '').trim() : '';
-      const rawPhone = phoneIdx !== -1 ? (row[phoneIdx] || '').trim() : '';
-      const rawBio = bioIdx !== -1 ? (row[bioIdx] || '').trim() : '';
-      const rawImage = imageIdx !== -1 ? (row[imageIdx] || '').trim() : '';
-      const rawCandles = candlesIdx !== -1 ? (row[candlesIdx] || '').trim() : '';
+
+      const rawNameHe = nameHeIdx !== -1 ? row[nameHeIdx] : undefined;
+      const rawNameEn = nameEnIdx !== -1 ? row[nameEnIdx] : undefined;
+      const rawNameRu = nameRuIdx !== -1 ? row[nameRuIdx] : undefined;
+
+      const rawFatherHe = fatherHeIdx !== -1 ? row[fatherHeIdx] : undefined;
+      const rawFatherEn = fatherEnIdx !== -1 ? row[fatherEnIdx] : undefined;
+      const rawFatherRu = fatherRuIdx !== -1 ? row[fatherRuIdx] : undefined;
+
+      const rawMotherHe = motherHeIdx !== -1 ? row[motherHeIdx] : undefined;
+      const rawMotherEn = motherEnIdx !== -1 ? row[motherEnIdx] : undefined;
+      const rawMotherRu = motherRuIdx !== -1 ? row[motherRuIdx] : undefined;
+
+      const rawNotesHe = notesHeIdx !== -1 ? row[notesHeIdx] : undefined;
+      const rawNotesEn = notesEnIdx !== -1 ? row[notesEnIdx] : undefined;
+      const rawNotesRu = notesRuIdx !== -1 ? row[notesRuIdx] : undefined;
 
       if (!rawName) continue; // skip empty names
 
@@ -203,17 +220,24 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       }
       const finalId = parsedId || (Date.now() + Math.floor(Math.random() * 1000000) + index);
 
-      // Parse candlesCount integer
       let parsedCandles = 0;
       if (rawCandles) {
         const clean = String(rawCandles).replace(/\D/g, '');
-        if (clean) {
-          const p = parseInt(clean, 10);
-          if (!isNaN(p)) parsedCandles = p;
-        }
+        if (clean) { const p = parseInt(clean, 10); if (!isNaN(p)) parsedCandles = p; }
       }
 
-      // Normalize gender
+      let parsedLikes = 0;
+      if (rawLikes) {
+        const clean = String(rawLikes).replace(/\D/g, '');
+        if (clean) { const p = parseInt(clean, 10); if (!isNaN(p)) parsedLikes = p; }
+      }
+
+      let parsedAge: number | undefined = undefined;
+      if (rawAge) {
+        const clean = String(rawAge).replace(/\D/g, '');
+        if (clean) { const p = parseInt(clean, 10); if (!isNaN(p)) parsedAge = p; }
+      }
+
       let gender: Gender = 'male';
       if (
         rawGender.includes('female') || 
@@ -222,13 +246,11 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         rawGender.includes('f') || 
         rawGender.includes('בת') || 
         rawGender.includes('жен') ||
-        rawGender.includes('ж') ||
-        rawGender.includes('woman')
+        rawGender.includes('ж')
       ) {
         gender = 'female';
       }
 
-      // Day & Month resolution
       let dayNum = 1;
       const dayDigits = rawDay.replace(/\D/g, '');
       if (dayDigits) {
@@ -248,8 +270,8 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
 
       const hebrewDateVal = rawHebrewDate || `${dayNum} ${normalizedMonth}`;
       const passDateVal = rawPassDate || hebrewDateVal;
-      const bioVal = rawBio || '-';
-      const imgVal = rawImage || '-';
+      const bioVal = rawBio || rawNotes || '-';
+      const imgVal = rawImageUrl || rawPhotoUrl || rawImage || '-';
 
       const newItem: Deceased = {
         id: Number(finalId),
@@ -261,6 +283,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         month: normalizedMonth,
         hebrewDate: hebrewDateVal,
         passDate: passDateVal,
+        birthDate: rawBirthDate || undefined,
         contactPhone: rawPhone || undefined,
         notes: bioVal,
         bio: bioVal,
@@ -268,7 +291,22 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         imageUrl: imgVal,
         photoUrl: imgVal,
         photo: imgVal,
-        candlesCount: Number(parsedCandles)
+        imagePosition: (rawImagePos as any) || undefined,
+        candlesCount: Number(parsedCandles),
+        likesCount: Number(parsedLikes),
+        ageAtDeath: parsedAge,
+        nameHe: rawNameHe,
+        nameEn: rawNameEn,
+        nameRu: rawNameRu,
+        fatherNameHe: rawFatherHe,
+        fatherNameEn: rawFatherEn,
+        fatherNameRu: rawFatherRu,
+        motherNameHe: rawMotherHe,
+        motherNameEn: rawMotherEn,
+        motherNameRu: rawMotherRu,
+        notesHe: rawNotesHe,
+        notesEn: rawNotesEn,
+        notesRu: rawNotesRu
       };
 
       result.push(newItem);
@@ -531,23 +569,48 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
 
     try {
       const workbook = XLSX.utils.book_new();
-
-      // Headers strictly in English matching Supabase schema
-      const headers = ['id', 'name', 'gender', 'fatherName', 'motherName', 'passDate', 'hebrewDate', 'bio', 'imageUrl', 'candlesCount'];
+      const headers = CANONICAL_EXCEL_CSV_HEADERS;
       
       const translatedList = translateDeceasedListClientSide(deceasedList, lang);
-      const rows = translatedList.map(item => [
-        item.id || '',
-        item.name || '',
-        item.gender || 'male',
-        item.fatherName || '',
-        item.motherName || '',
-        item.passDate || item.hebrewDate || (item.day && item.month ? `${item.day} ${item.month}` : ''),
-        item.hebrewDate || (item.day && item.month ? `${item.day} ${item.month}` : ''),
-        item.bio || item.notes || '',
-        item.imageUrl || item.image || item.photoUrl || item.photo || '',
-        item.candlesCount !== undefined ? item.candlesCount : 0
-      ]);
+      const rows = translatedList.map(item => {
+        const hebDate = item.hebrewDate || (item.day && item.month ? `${item.day} ${item.month}` : '');
+        const pDate = item.passDate || hebDate;
+        const bioText = item.bio || item.notes || '';
+        const imgUrl = item.imageUrl || item.image || item.photoUrl || item.photo || '';
+
+        return [
+          item.id || '',
+          item.name || '',
+          item.gender || 'male',
+          item.fatherName || '',
+          item.motherName || '',
+          pDate,
+          hebDate,
+          item.birthDate || '',
+          bioText,
+          item.notes || bioText,
+          imgUrl,
+          imgUrl,
+          imgUrl,
+          item.imagePosition || 'center',
+          item.contactPhone || '',
+          item.candlesCount !== undefined ? item.candlesCount : 0,
+          item.likesCount !== undefined ? item.likesCount : 0,
+          item.ageAtDeath !== undefined ? item.ageAtDeath : '',
+          item.nameHe || '',
+          item.nameEn || '',
+          item.nameRu || '',
+          item.fatherNameHe || '',
+          item.fatherNameEn || '',
+          item.fatherNameRu || '',
+          item.motherNameHe || '',
+          item.motherNameEn || '',
+          item.motherNameRu || '',
+          item.notesHe || '',
+          item.notesEn || '',
+          item.notesRu || ''
+        ];
+      });
 
       const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
       XLSX.utils.book_append_sheet(workbook, ws, 'Deceased Database');
@@ -574,25 +637,25 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     }
   };
 
-  // Download sample CSV template matching exact Supabase schema (English headers)
+  // Download sample CSV template matching exact Supabase schema (30 canonical English headers)
   const handleDownloadCsvSample = () => {
-    const headers = ['id', 'name', 'gender', 'fatherName', 'motherName', 'passDate', 'hebrewDate', 'bio', 'imageUrl', 'candlesCount'];
+    const headers = CANONICAL_EXCEL_CSV_HEADERS;
     
     let sampleRows: string[][] = [];
     if (lang === 'he') {
       sampleRows = [
-        ['1', 'משה כהן', 'male', 'אברהם', 'שרה', '15 תשרי 5784', '15 תשרי', 'סבא יקר ואהוב', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
-        ['2', 'רחל לוי', 'female', 'יצחק', 'רבקה', '10 ניסן 5780', '10 ניסן', 'אמא מסורה ואהובה', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+        ['1', 'משה כהן', 'male', 'אברהם', 'שרה', '15 תשרי 5784', '15 תשרי', '01/01/1940', 'סבא יקר ואהוב', 'סבא יקר ואהוב', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'center', '050-1234567', '0', '0', '84', 'משה כהן', 'Moshe Cohen', 'Моше Коэн', 'אברהם', 'Avraham', 'Авраам', 'שרה', 'Sarah', 'Сарра', 'סבא יקר ואהוב', 'Beloved grandfather', 'Дорогой дедушка'],
+        ['2', 'רחל לוי', 'female', 'יצחק', 'רבקה', '10 ניסן 5780', '10 ניסן', '15/05/1945', 'אמא מסורה ואהובה', 'אמא מסורה ואהובה', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'center', '052-7654321', '0', '0', '75', 'רחל לוי', 'Rachel Levi', 'Рахель Леви', 'יצחק', 'Yitzhak', 'Ицхак', 'רבקה', 'Rivka', 'Ривка', 'אמא מסורה ואהובה', 'Devoted mother', 'Преданная мама']
       ];
     } else if (lang === 'ru') {
       sampleRows = [
-        ['1', 'Моше Коэн', 'male', 'Авраам', 'Сарра', '15 Тишрей 5784', '15 Тишрей', 'Дорогой и любимый дедушка', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
-        ['2', 'Рахель Леви', 'female', 'Ицхак', 'Ривка', '10 Нисан 5780', '10 Нисан', 'Преданная и любимая мама', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+        ['1', 'Моше Коэн', 'male', 'Авраам', 'Сарра', '15 Тишрей 5784', '15 Тишрей', '01/01/1940', 'Дорогой дедушка', 'Дорогой дедушка', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'center', '+972-50-1234567', '0', '0', '84', 'משה כהן', 'Moshe Cohen', 'Моше Коэн', 'אברהם', 'Avraham', 'Авраам', 'שרה', 'Sarah', 'Сарра', 'סבא יקר ואהוב', 'Beloved grandfather', 'Дорогой дедушка'],
+        ['2', 'Рахель Леви', 'female', 'Ицхак', 'Ривка', '10 Нисан 5780', '10 Нисан', '15/05/1945', 'Преданная мама', 'Преданная мама', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'center', '+972-52-7654321', '0', '0', '75', 'רחל לוי', 'Rachel Levi', 'Рахель Леви', 'יצחק', 'Yitzhak', 'Ицхак', 'רבקה', 'Rivka', 'Ривка', 'אמא מסורה ואהובה', 'Devoted mother', 'Преданная мама']
       ];
     } else {
       sampleRows = [
-        ['1', 'Moshe Cohen', 'male', 'Avraham', 'Sarah', '15 Tishrei 5784', '15 Tishrei', 'Beloved grandfather', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
-        ['2', 'Rachel Levi', 'female', 'Yitzhak', 'Rivka', '10 Nisan 5780', '10 Nisan', 'Devoted and beloved mother', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+        ['1', 'Moshe Cohen', 'male', 'Avraham', 'Sarah', '15 Tishrei 5784', '15 Tishrei', '01/01/1940', 'Beloved grandfather', 'Beloved grandfather', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'center', '+972-50-1234567', '0', '0', '84', 'משה כהן', 'Moshe Cohen', 'Моше Коэн', 'אברהם', 'Avraham', 'Авраам', 'שרה', 'Sarah', 'Сарра', 'סבא יקר ואהוב', 'Beloved grandfather', 'Дорогой дедушка'],
+        ['2', 'Rachel Levi', 'female', 'Yitzhak', 'Rivka', '10 Nisan 5780', '10 Nisan', '15/05/1945', 'Devoted mother', 'Devoted mother', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'center', '+972-52-7654321', '0', '0', '75', 'רחל לוי', 'Rachel Levi', 'Рахель Леви', 'יצחק', 'Yitzhak', 'Ицхак', 'רבקה', 'Rivka', 'Ривка', 'אמא מסורה ואהובה', 'Devoted mother', 'Преданная мама']
       ];
     }
 
@@ -616,25 +679,25 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     }, 1000);
   };
 
-  // Download sample Excel template matching exact Supabase schema (English headers)
+  // Download sample Excel template matching exact Supabase schema (30 canonical English headers)
   const handleDownloadExcelSample = () => {
-    const headers = ['id', 'name', 'gender', 'fatherName', 'motherName', 'passDate', 'hebrewDate', 'bio', 'imageUrl', 'candlesCount'];
+    const headers = CANONICAL_EXCEL_CSV_HEADERS;
     
     let sampleRows: string[][] = [];
     if (lang === 'he') {
       sampleRows = [
-        ['1', 'משה כהן', 'male', 'אברהם', 'שרה', '15 תשרי 5784', '15 תשרי', 'סבא יקר ואהוב', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
-        ['2', 'רחל לוי', 'female', 'יצחק', 'רבקה', '10 ניסן 5780', '10 ניסן', 'אמא מסורה ואהובה', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+        ['1', 'משה כהן', 'male', 'אברהם', 'שרה', '15 תשרי 5784', '15 תשרי', '01/01/1940', 'סבא יקר ואהוב', 'סבא יקר ואהוב', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'center', '050-1234567', '0', '0', '84', 'משה כהן', 'Moshe Cohen', 'Моше Коэн', 'אברהם', 'Avraham', 'Авраам', 'שרה', 'Sarah', 'Сарра', 'סבא יקר ואהוב', 'Beloved grandfather', 'Дорогой дедушка'],
+        ['2', 'רחל לוי', 'female', 'יצחק', 'רבקה', '10 ניסן 5780', '10 ניסן', '15/05/1945', 'אמא מסורה ואהובה', 'אמא מסורה ואהובה', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'center', '052-7654321', '0', '0', '75', 'רחל לוי', 'Rachel Levi', 'Рахель Леви', 'יצחק', 'Yitzhak', 'Ицхак', 'רבקה', 'Rivka', 'Ривка', 'אמא מסורה ואהובה', 'Devoted mother', 'Преданная мама']
       ];
     } else if (lang === 'ru') {
       sampleRows = [
-        ['1', 'Моше Коэн', 'male', 'Авраам', 'Сарра', '15 Тишрей 5784', '15 Тишрей', 'Дорогой и любимый дедушка', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
-        ['2', 'Рахель Леви', 'female', 'Ицхак', 'Ривка', '10 Нисан 5780', '10 Нисан', 'Преданная и любимая мама', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+        ['1', 'Моше Коэн', 'male', 'Авраам', 'Сарра', '15 Тишрей 5784', '15 Тишрей', '01/01/1940', 'Дорогой дедушка', 'Дорогой дедушка', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'center', '+972-50-1234567', '0', '0', '84', 'משה כהן', 'Moshe Cohen', 'Моше Коэн', 'אברהם', 'Avraham', 'Авраам', 'שרה', 'Sarah', 'Сарра', 'סבא יקר ואהוב', 'Beloved grandfather', 'Дорогой дедушка'],
+        ['2', 'Рахель Леви', 'female', 'Ицхак', 'Ривка', '10 Нисан 5780', '10 Нисан', '15/05/1945', 'Преданная мама', 'Преданная мама', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'center', '+972-52-7654321', '0', '0', '75', 'רחל לוי', 'Rachel Levi', 'Рахель Леви', 'יצחק', 'Yitzhak', 'Ицхак', 'רבקה', 'Rivka', 'Ривка', 'אמא מסורה ואהובה', 'Devoted mother', 'Преданная мама']
       ];
     } else {
       sampleRows = [
-        ['1', 'Moshe Cohen', 'male', 'Avraham', 'Sarah', '15 Tishrei 5784', '15 Tishrei', 'Beloved grandfather', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', '0'],
-        ['2', 'Rachel Levi', 'female', 'Yitzhak', 'Rivka', '10 Nisan 5780', '10 Nisan', 'Devoted and beloved mother', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', '0']
+        ['1', 'Moshe Cohen', 'male', 'Avraham', 'Sarah', '15 Tishrei 5784', '15 Tishrei', '01/01/1940', 'Beloved grandfather', 'Beloved grandfather', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400', 'center', '+972-50-1234567', '0', '0', '84', 'משה כהן', 'Moshe Cohen', 'Моше Коэн', 'אברהם', 'Avraham', 'Авраам', 'שרה', 'Sarah', 'Сарра', 'סבא יקר ואהוב', 'Beloved grandfather', 'Дорогой дедушка'],
+        ['2', 'Rachel Levi', 'female', 'Yitzhak', 'Rivka', '10 Nisan 5780', '10 Nisan', '15/05/1945', 'Devoted mother', 'Devoted mother', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400', 'center', '+972-52-7654321', '0', '0', '75', 'רחל לוי', 'Rachel Levi', 'Рахель Леви', 'יצחק', 'Yitzhak', 'Ицхак', 'רבקה', 'Rivka', 'Ривка', 'אמא מסורה ואהובה', 'Devoted mother', 'Преданная мама']
       ];
     }
 
