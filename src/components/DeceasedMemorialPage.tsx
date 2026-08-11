@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Deceased, Language } from '../types';
 import { translations, formatParentRelation } from '../utils/translations';
 import { translateText } from '../utils/transliteration';
@@ -11,10 +11,10 @@ import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, findYa
 import { getTorahPortionDetails, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
 import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
 import { getRandomMishnah, getRandomPsalm, getRandomHalakha, MishnahRecord, PsalmRecord, HalakhaRecord } from '../utils/memorialStudy';
-import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
+import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText, shareMemorialWithSnapshot, downloadMemorialSnapshot } from '../utils/shareUtils';
 import { FullReadingModal } from './FullReadingModal';
 import { DeceasedPhotoFrame, getDeceasedPhoto } from './YahrzeitCandle';
-import { Flame, Globe, BookOpen, Calendar, MessageCircle, RefreshCw, Star, User, Heart, Share2, ArrowLeft, Phone, MapPin, Copy, Check } from 'lucide-react';
+import { Flame, Globe, BookOpen, Calendar, MessageCircle, RefreshCw, Star, User, Heart, Share2, ArrowLeft, Phone, MapPin, Copy, Check, Download, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface DeceasedMemorialPageProps {
@@ -300,6 +300,10 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [successMsg, setSuccessMsg] = useState<boolean>(false);
+  
+  const heroCardRef = useRef<HTMLDivElement>(null);
+  const [isCapturingShare, setIsCapturingShare] = useState<boolean>(false);
+  const [isCapturingDownload, setIsCapturingDownload] = useState<boolean>(false);
 
   // Fetch memories for this deceased
   const fetchMemories = async () => {
@@ -539,11 +543,28 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
     });
   };
 
-  // WhatsApp sharing logic
-  const shareMemorialPage = () => {
-    const shabbatInfo = yahrzeitGregDate ? getShabbatYahrzeitInfo(yahrzeitGregDate, hebcalItems, lang) : null;
-    const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
-    openWhatsAppShare(text);
+  // Dynamic WhatsApp snapshot sharing logic
+  const shareMemorialPage = async () => {
+    setIsCapturingShare(true);
+    try {
+      const shabbatInfo = yahrzeitGregDate ? getShabbatYahrzeitInfo(yahrzeitGregDate, hebcalItems, lang) : null;
+      await shareMemorialWithSnapshot(heroCardRef.current, deceased, lang, shabbatInfo);
+    } catch (e) {
+      console.error('Error sharing snapshot:', e);
+    } finally {
+      setIsCapturingShare(false);
+    }
+  };
+
+  const handleDownloadCardImage = async () => {
+    setIsCapturingDownload(true);
+    try {
+      await downloadMemorialSnapshot(heroCardRef.current, deceased);
+    } catch (e) {
+      console.error('Error downloading card image:', e);
+    } finally {
+      setIsCapturingDownload(false);
+    }
   };
 
   // Get localized Hebrew month name
@@ -610,7 +631,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
       <div className="max-w-4xl mx-auto space-y-8 relative z-10">
         
         {/* HERO SECTION - Large Memorial Flame and Name display */}
-        <div className={`border-2 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden text-center flex flex-col items-center ${heroBorderClass}`}>
+        <div ref={heroCardRef} className={`border-2 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden text-center flex flex-col items-center ${heroBorderClass}`}>
           {/* Decorative corner borders */}
           <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-[#c8a96e]/50 rounded-tl-xl pointer-events-none"></div>
           <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-[#c8a96e]/50 rounded-tr-xl pointer-events-none"></div>
@@ -787,15 +808,42 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
             </span>
           </div>
 
-          {/* WhatsApp Share Button */}
-          <div className="mt-6 flex items-center justify-center">
+          {/* WhatsApp Share & Snapshot Download Action Buttons */}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3.5 skip-snapshot">
             <button
               type="button"
               onClick={shareMemorialPage}
-              className="inline-flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm py-3 px-6 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer border border-emerald-500/30"
+              disabled={isCapturingShare}
+              className="inline-flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 text-white font-bold text-xs sm:text-sm py-3 px-6 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer border border-emerald-500/30 disabled:opacity-75"
             >
-              <MessageCircle className="w-5 h-5 shrink-0" />
-              <span>{mt.sharePage}</span>
+              {isCapturingShare ? (
+                <Loader2 className="w-5 h-5 shrink-0 animate-spin text-emerald-200" />
+              ) : (
+                <MessageCircle className="w-5 h-5 shrink-0" />
+              )}
+              <span>
+                {isCapturingShare
+                  ? (lang === 'he' ? 'מכין תמונת כרטיס לשיתוף...' : lang === 'ru' ? 'Создание карточки...' : 'Generating Card Snapshot...')
+                  : mt.sharePage}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadCardImage}
+              disabled={isCapturingDownload}
+              className="inline-flex items-center gap-2 bg-[#1c2433] hover:bg-[#283246] text-[#c8a96e] hover:text-amber-300 font-bold text-xs sm:text-sm py-3 px-5 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer border border-[#c8a96e]/30 disabled:opacity-75"
+            >
+              {isCapturingDownload ? (
+                <Loader2 className="w-4.5 h-4.5 shrink-0 animate-spin text-amber-400" />
+              ) : (
+                <Download className="w-4.5 h-4.5 shrink-0" />
+              )}
+              <span>
+                {isCapturingDownload
+                  ? (lang === 'he' ? 'מוריד תמונה...' : lang === 'ru' ? 'Загрузка...' : 'Downloading...')
+                  : (lang === 'he' ? 'הורד תמונת כרטיס זיכרון (PNG)' : lang === 'ru' ? 'Скачать карточку (PNG)' : 'Download Card Image (PNG)')}
+              </span>
             </button>
           </div>
         </div>
