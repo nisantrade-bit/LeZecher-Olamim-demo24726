@@ -13,8 +13,7 @@ import { X, Phone, CalendarRange, MapPin, Edit, Trash2, Heart, Clock, BookOpen, 
 import { getTorahPortionDetails, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
 import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
 import { getRandomMishnah, getRandomPsalm, getRandomHalakha, getRandomPirkeiAvot, getRandomGeneralMishnah, MishnahRecord, PsalmRecord, HalakhaRecord } from '../utils/memorialStudy';
-import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText, shareMemorialWithSnapshot, downloadMemorialSnapshot } from '../utils/shareUtils';
-import { Download } from 'lucide-react';
+import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
 import { FullReadingModal } from './FullReadingModal';
 import { DeceasedPhotoFrame } from './YahrzeitCandle';
 
@@ -287,32 +286,11 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
   // Grab rich portion details if loaded
   const portionDetails = parshaInfo ? getTorahPortionDetails(parshaInfo.hebrewName, parshaInfo.name) : null;
 
-  const modalCardRef = React.useRef<HTMLDivElement>(null);
-  const [isCapturingModalShare, setIsCapturingModalShare] = useState<boolean>(false);
-  const [isCapturingModalDownload, setIsCapturingModalDownload] = useState<boolean>(false);
-
-  // WhatsApp dynamic card image share trigger
-  const shareMemorial = async () => {
-    setIsCapturingModalShare(true);
-    try {
-      const shabbatInfo = yahrzeitGregDate ? getShabbatYahrzeitInfo(yahrzeitGregDate, hebcalItems, lang) : null;
-      await shareMemorialWithSnapshot(modalCardRef.current, deceased, lang, shabbatInfo);
-    } catch (e) {
-      console.error('Error sharing modal card snapshot:', e);
-    } finally {
-      setIsCapturingModalShare(false);
-    }
-  };
-
-  const handleDownloadModalCard = async () => {
-    setIsCapturingModalDownload(true);
-    try {
-      await downloadMemorialSnapshot(modalCardRef.current, deceased);
-    } catch (e) {
-      console.error('Error downloading modal card image:', e);
-    } finally {
-      setIsCapturingModalDownload(false);
-    }
+  // WhatsApp share trigger
+  const shareMemorial = () => {
+    const shabbatInfo = yahrzeitGregDate ? getShabbatYahrzeitInfo(yahrzeitGregDate, hebcalItems, lang) : null;
+    const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
+    openWhatsAppShare(text);
   };
 
   const getAgeIfAliveToday = (birthStr: string | undefined): number | null => {
@@ -372,7 +350,7 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
         {/* Modal Scroll Content */}
         <div className="overflow-y-auto flex-1 p-6 space-y-6">
           {/* Top Banner: Framed Image with Memorial Candle to the side */}
-          <div ref={modalCardRef} className="relative w-full min-h-[220px] bg-gradient-to-b from-[#181109] via-[#10141e] to-[#0d0d0d] rounded-2xl border border-[#c8a96e]/40 p-5 flex flex-col items-center justify-center shadow-lg overflow-hidden">
+          <div className="relative w-full min-h-[220px] bg-gradient-to-b from-[#181109] via-[#10141e] to-[#0d0d0d] rounded-2xl border border-[#c8a96e]/40 p-5 flex flex-col items-center justify-center shadow-lg overflow-hidden">
             {/* Ambient gold glow behind portrait and candle */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
@@ -428,42 +406,15 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
             </div>
           </div>
 
-          {/* Action Buttons: WhatsApp Share & Card Image Download */}
-          <div className="flex flex-col sm:flex-row gap-2.5 skip-snapshot">
+          {/* Action Button: WhatsApp Share */}
+          <div className="flex">
             <button
               type="button"
               onClick={shareMemorial}
-              disabled={isCapturingModalShare}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 border border-emerald-500/30 shadow-lg cursor-pointer hover:scale-[1.01] active:scale-[0.99] disabled:opacity-75"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 border border-emerald-500/30 shadow-lg cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
             >
-              {isCapturingModalShare ? (
-                <Loader2 className="w-4.5 h-4.5 animate-spin text-emerald-200 shrink-0" />
-              ) : (
-                <MessageCircle className="w-4.5 h-4.5 shrink-0" />
-              )}
-              <span>
-                {isCapturingModalShare
-                  ? (lang === 'he' ? 'מכין תמונת כרטיס...' : lang === 'ru' ? 'Создание...' : 'Generating Snapshot...')
-                  : st.shareWhatsApp}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDownloadModalCard}
-              disabled={isCapturingModalDownload}
-              className="bg-[#1c2433] hover:bg-[#283246] text-[#c8a96e] hover:text-amber-300 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 border border-[#c8a96e]/30 shadow-lg cursor-pointer hover:scale-[1.01] active:scale-[0.99] disabled:opacity-75"
-            >
-              {isCapturingModalDownload ? (
-                <Loader2 className="w-4.5 h-4.5 animate-spin text-amber-400 shrink-0" />
-              ) : (
-                <Download className="w-4.5 h-4.5 shrink-0" />
-              )}
-              <span>
-                {isCapturingModalDownload
-                  ? (lang === 'he' ? 'מוריד תמונה...' : lang === 'ru' ? 'Загрузка...' : 'Downloading...')
-                  : (lang === 'he' ? 'הורד תמונת כרטיס (PNG)' : lang === 'ru' ? 'Скачать карточку (PNG)' : 'Download Card PNG')}
-              </span>
+              <MessageCircle className="w-5 h-5" />
+              <span>{st.shareWhatsApp}</span>
             </button>
           </div>
 

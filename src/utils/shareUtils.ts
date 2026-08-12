@@ -6,7 +6,6 @@ import { Deceased, Language } from '../types';
 import { formatParentRelation } from './translations';
 import { getLocalizedName } from './transliteration';
 import { ShabbatYahrzeitInfo } from './torahPortionHelper';
-import { toBlob, toPng } from 'html-to-image';
 
 export const PUBLIC_PRODUCTION_URL = 'https://peaceful-tarsier-9f8a3d.netlify.app';
 
@@ -249,102 +248,5 @@ export function generateWhatsAppShareText(
       `🔗 ${shortUrl}`;
   }
 }
-
-/**
- * Captures a visual snapshot of the specific deceased card using html-to-image
- * and shares it natively via Web Share API or downloads it and opens WhatsApp.
- */
-export async function shareMemorialWithSnapshot(
-  cardElement: HTMLElement | null,
-  deceased: Deceased,
-  lang: Language,
-  shabbatInfo?: ShabbatYahrzeitInfo | null
-): Promise<{ success: boolean; method: string; error?: string }> {
-  const shareText = generateWhatsAppShareText(deceased, lang, shabbatInfo);
-  if (!cardElement) {
-    openWhatsAppShare(shareText);
-    return { success: true, method: 'whatsapp_text_only' };
-  }
-
-  const cleanName = (deceased.name || 'memorial').replace(/[^a-zA-Z0-9_\u0590-\u05FF]/g, '_');
-  const fileName = `memorial_${cleanName}_${deceased.id}.png`;
-
-  try {
-    const blob = await toBlob(cardElement, {
-      quality: 0.95,
-      pixelRatio: 2,
-      cacheBust: true,
-      filter: (node) => {
-        // Exclude buttons or interactive elements if marked with data-skip-snapshot
-        return !node.classList?.contains('skip-snapshot');
-      }
-    });
-
-    if (!blob) {
-      openWhatsAppShare(shareText);
-      return { success: true, method: 'whatsapp_text_fallback' };
-    }
-
-    const file = new File([blob], fileName, { type: 'image/png' });
-
-    // Use Web Share API if supported with files (Mobile Chrome, Safari, WhatsApp native)
-    if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({
-        title: `לזכר ${deceased.name}`,
-        text: shareText,
-        files: [file]
-      });
-      return { success: true, method: 'web_share_api' };
-    }
-
-    // Fallback on desktop / web browsers:
-    // 1. Trigger image download
-    const link = document.createElement('a');
-    link.download = fileName;
-    link.href = URL.createObjectURL(blob);
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-
-    // 2. Open WhatsApp Share with link + text
-    openWhatsAppShare(shareText);
-
-    return { success: true, method: 'download_and_whatsapp' };
-  } catch (err: any) {
-    console.warn('[Snapshot share fallback]', err);
-    openWhatsAppShare(shareText);
-    return { success: false, method: 'whatsapp_text_only', error: err?.message };
-  }
-}
-
-/**
- * Captures and downloads high-resolution PNG image of the specific deceased card.
- */
-export async function downloadMemorialSnapshot(
-  cardElement: HTMLElement | null,
-  deceased: Deceased
-): Promise<boolean> {
-  if (!cardElement) return false;
-  const cleanName = (deceased.name || 'memorial').replace(/[^a-zA-Z0-9_\u0590-\u05FF]/g, '_');
-  const fileName = `memorial_card_${cleanName}_${deceased.id}.png`;
-
-  try {
-    const dataUrl = await toPng(cardElement, {
-      quality: 0.98,
-      pixelRatio: 2,
-      cacheBust: true,
-      filter: (node) => !node.classList?.contains('skip-snapshot')
-    });
-
-    const link = document.createElement('a');
-    link.download = fileName;
-    link.href = dataUrl;
-    link.click();
-    return true;
-  } catch (err) {
-    console.error('[Download Snapshot Error]', err);
-    return false;
-  }
-}
-
 
 
