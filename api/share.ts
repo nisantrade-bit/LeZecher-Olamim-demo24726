@@ -31,38 +31,27 @@ export default async function handler(req: any, res: any) {
   if (cleanId) {
     try {
       const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      
-      // Query payload column from deceased table as required
-      const { data, error } = await supabase
-        .from('deceased')
-        .select('payload')
-        .eq('id', cleanId)
-        .single();
+      const numId = Number(cleanId);
+      const isNumeric = !isNaN(numId) && String(numId) === cleanId;
+      const queryId = isNumeric ? numId : cleanId;
 
+      // Try fetching record from deceased table
       let p: any = null;
-      if (!error && data?.payload) {
-        p = typeof data.payload === 'string' ? JSON.parse(data.payload) : data.payload;
-      }
+      const { data } = await supabase
+        .from('deceased')
+        .select('*')
+        .eq('id', queryId)
+        .maybeSingle();
 
-      // Fallback query if payload column query didn't return payload object
-      if (!p) {
-        const { data: fullRow } = await supabase
-          .from('deceased')
-          .select('*')
-          .eq('id', cleanId)
-          .single();
-        if (fullRow) {
-          p = fullRow.payload 
-            ? (typeof fullRow.payload === 'string' ? JSON.parse(fullRow.payload) : fullRow.payload)
-            : fullRow;
-        }
+      if (data) {
+        p = data.payload ? (typeof data.payload === 'string' ? JSON.parse(data.payload) : data.payload) : data;
       }
 
       if (p) {
-        const name = p.name || p.fullName || '';
-        const fatherName = p.fatherName || '';
-        const motherName = p.motherName || '';
-        const hebrewDate = p.hebrewDate || '';
+        const name = p.name || p.fullName || p.nameHe || '';
+        const fatherName = p.fatherName || p.father_name || p.fatherNameHe || '';
+        const motherName = p.motherName || p.mother_name || p.motherNameHe || '';
+        const hebrewDate = p.hebrewDate || p.hebrew_date || (p.day && p.month ? `${p.day} ב${p.month}` : '');
 
         if (name) {
           title = `לזכר עולמים — ${name}`;
@@ -76,7 +65,7 @@ export default async function handler(req: any, res: any) {
             : `דף זיכרון והנצחה לעילוי נשמת ${name}.`;
         }
 
-        const candidateImage = p.photoUrl || p.imageUrl || p.image || p.photo;
+        const candidateImage = p.photoUrl || p.imageUrl || p.image || p.photo || p.photo_url || p.image_url;
         if (candidateImage && typeof candidateImage === 'string' && candidateImage.startsWith('http')) {
           imageUrl = candidateImage;
         }
@@ -89,7 +78,7 @@ export default async function handler(req: any, res: any) {
   const safeTitle = escapeHtml(title);
   const safeDesc = escapeHtml(description);
   const safeImg = escapeHtml(imageUrl);
-  const safeCanonical = escapeHtml(`https://eternal-memory.vercel.app/share/${cleanId || ''}`);
+  const safeCanonical = escapeHtml(`https://le-zecher-olamim-demo24726.vercel.app/share/${cleanId || ''}`);
   const safeRedirect = escapeHtml(redirectUrl);
 
   const html = `<!DOCTYPE html>
