@@ -183,17 +183,13 @@ export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: stri
     baseOrigin = PUBLIC_PRODUCTION_URL;
   }
 
-  let idParam = '';
+  const langQuery = (lang && lang !== 'he') ? `?lang=${lang}` : '';
+
   if (idVal !== null && idVal !== undefined && String(idVal).trim() !== '') {
-    idParam = `m=${idVal}`;
+    return `${baseOrigin}/share/${idVal}${langQuery}`;
   }
 
-  const langQuery = (lang && lang !== 'he') ? `lang=${lang}` : '';
-  const params = [idParam, langQuery].filter(Boolean);
-  const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
-
-  // Return clean short memorial URL with ID only — no Base64, JSON, or personal details
-  return `${baseOrigin}/${queryStr}`;
+  return `${baseOrigin}/${langQuery}`;
 }
 
 export function openWhatsAppShare(text: string) {
