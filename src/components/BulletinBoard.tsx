@@ -354,10 +354,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
 
   // Triggers the WhatsApp share invitation
   const shareOnWhatsApp = (deceased: Deceased, gregDate: Date, hebrewDateStr: string, parashaName: string | null, e: React.MouseEvent) => {
-    if (e) {
-      e.stopPropagation(); // prevent opening details modal
-      e.preventDefault();
-    }
+    e.stopPropagation(); // prevent opening details modal
     const shabbatInfo = getShabbatYahrzeitInfo(gregDate, hebcalEvents, lang);
     const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
     openWhatsAppShare(text);

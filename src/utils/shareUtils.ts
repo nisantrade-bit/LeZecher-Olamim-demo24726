@@ -8,7 +8,7 @@ import { getLocalizedName } from './transliteration';
 import { ShabbatYahrzeitInfo } from './torahPortionHelper';
 import { toBlob, toPng } from 'html-to-image';
 
-export const PUBLIC_PRODUCTION_URL = 'https://le-zecher-olamim-demo24726.vercel.app';
+export const PUBLIC_PRODUCTION_URL = 'https://peaceful-tarsier-9f8a3d.netlify.app';
 
 /**
  * Encodes a Deceased object into a URL-safe Base64URL string.
@@ -183,13 +183,17 @@ export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: stri
     baseOrigin = PUBLIC_PRODUCTION_URL;
   }
 
-  const langQuery = (lang && lang !== 'he') ? `?lang=${lang}` : '';
-
+  let idParam = '';
   if (idVal !== null && idVal !== undefined && String(idVal).trim() !== '') {
-    return `${baseOrigin}/share/${idVal}${langQuery}`;
+    idParam = `m=${idVal}`;
   }
 
-  return `${baseOrigin}/${langQuery}`;
+  const langQuery = (lang && lang !== 'he') ? `lang=${lang}` : '';
+  const params = [idParam, langQuery].filter(Boolean);
+  const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
+
+  // Return clean short memorial URL with ID only — no Base64, JSON, or personal details
+  return `${baseOrigin}/${queryStr}`;
 }
 
 export function openWhatsAppShare(text: string) {
@@ -198,15 +202,13 @@ export function openWhatsAppShare(text: string) {
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
   
   try {
-    const win = window.open(whatsappUrl, '_blank');
-    if (win) {
-      return;
+    const win = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+      window.location.href = `https://wa.me/?text=${encodedText}`;
     }
-  } catch (e) {}
-
-  try {
+  } catch (e) {
     window.location.href = `https://wa.me/?text=${encodedText}`;
-  } catch (e) {}
+  }
 }
 
 /**
@@ -308,10 +310,6 @@ export async function shareMemorialWithSnapshot(
 
     return { success: true, method: 'download_and_whatsapp' };
   } catch (err: any) {
-    if (err?.name === 'AbortError') {
-      console.log('[Snapshot share canceled by user]');
-      return { success: false, method: 'canceled', error: 'User canceled share' };
-    }
     console.warn('[Snapshot share fallback]', err);
     openWhatsAppShare(shareText);
     return { success: false, method: 'whatsapp_text_only', error: err?.message };
