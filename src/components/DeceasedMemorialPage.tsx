@@ -11,7 +11,7 @@ import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, findYa
 import { getTorahPortionDetails, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
 import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
 import { getRandomMishnah, getRandomPsalm, getRandomHalakha, MishnahRecord, PsalmRecord, HalakhaRecord } from '../utils/memorialStudy';
-import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
+import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText, shareMemorialCard } from '../utils/shareUtils';
 import { FullReadingModal } from './FullReadingModal';
 import { DeceasedPhotoFrame, getDeceasedPhoto } from './YahrzeitCandle';
 import { Flame, Globe, BookOpen, Calendar, MessageCircle, RefreshCw, Star, User, Heart, Share2, ArrowLeft, Phone, MapPin, Copy, Check } from 'lucide-react';
@@ -542,8 +542,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
   // WhatsApp sharing logic
   const shareMemorialPage = () => {
     const shabbatInfo = yahrzeitGregDate ? getShabbatYahrzeitInfo(yahrzeitGregDate, hebcalItems, lang) : null;
-    const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
-    openWhatsAppShare(text);
+    shareMemorialCard(deceased, lang, shabbatInfo);
   };
 
   // Get localized Hebrew month name

@@ -134,8 +134,8 @@ function MainAppContent() {
   return decoded || null;
 };
 
-    // 1. Pathname check (/m/12345, /p/12345, /deceased/12345, /memorial/12345, /id/12345, /card/12345, /yahrzeit/12345)
-    const pathMatch = window.location.pathname.match(/\/(?:m|p|deceased|memorial|id|card|yahrzeit)\/([^\/?#]+)(?:\.html)?/i);
+    // 1. Pathname check (/share/12345, /m/12345, /p/12345, /deceased/12345, /memorial/12345, /id/12345, /card/12345, /yahrzeit/12345)
+    const pathMatch = window.location.pathname.match(/\/(?:share|m|p|deceased|memorial|id|card|yahrzeit)\/([^\/?#]+)(?:\.html)?/i);
     if (pathMatch && pathMatch[1]) {
       const parsed = parseAndDecode(pathMatch[1]);
       if (parsed !== null) return parsed;

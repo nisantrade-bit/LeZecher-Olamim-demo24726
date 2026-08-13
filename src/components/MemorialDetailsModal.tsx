@@ -13,7 +13,7 @@ import { X, Phone, CalendarRange, MapPin, Edit, Trash2, Heart, Clock, BookOpen, 
 import { getTorahPortionDetails, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
 import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
 import { getRandomMishnah, getRandomPsalm, getRandomHalakha, getRandomPirkeiAvot, getRandomGeneralMishnah, MishnahRecord, PsalmRecord, HalakhaRecord } from '../utils/memorialStudy';
-import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
+import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText, shareMemorialCard } from '../utils/shareUtils';
 import { FullReadingModal } from './FullReadingModal';
 import { DeceasedPhotoFrame } from './YahrzeitCandle';
 
@@ -289,8 +289,7 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
   // WhatsApp share trigger
   const shareMemorial = () => {
     const shabbatInfo = yahrzeitGregDate ? getShabbatYahrzeitInfo(yahrzeitGregDate, hebcalItems, lang) : null;
-    const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
-    openWhatsAppShare(text);
+    shareMemorialCard(deceased, lang, shabbatInfo);
   };
 
   const getAgeIfAliveToday = (birthStr: string | undefined): number | null => {

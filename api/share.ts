@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://aoendfkvzsywrykmcloy.supabase.co";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj";
 
-const FALLBACK_IMAGE = "https://aoendfkvzsywrykmcloy.supabase.co/storage/v1/object/public/memorial-images/WhatsApp%20Image%202026-07-30%20at%2018.31.10.jpeg";
+const BASE_URL = "https://le-zecher-olamim-demo24726.vercel.app";
+const DEFAULT_IMAGE = `${BASE_URL}/og-banner.png`;
 
 function escapeHtml(str: string): string {
   if (!str) return '';
@@ -16,7 +17,7 @@ function escapeHtml(str: string): string {
 }
 
 export default async function handler(req: any, res: any) {
-  let rawId = req.query?.id;
+  let rawId = req.query?.id || req.query?.m;
   if (Array.isArray(rawId)) {
     rawId = rawId[0];
   }
@@ -26,48 +27,54 @@ export default async function handler(req: any, res: any) {
 
   let title = "לזכר עולמים - ספר זיכרון דיגיטלי ומעקב יארצייט";
   let description = "לוח הנצחה עולמי, הדלקת נר נשמה, תהילים ומשניות לעילוי נשמת יקירינו";
-  let imageUrl = FALLBACK_IMAGE;
+  let imageUrl = DEFAULT_IMAGE;
+  const canonicalUrl = cleanId ? `${BASE_URL}/share/${cleanId}` : `${BASE_URL}/`;
 
   if (cleanId) {
     try {
       const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      const numId = Number(cleanId);
-      const isNumeric = !isNaN(numId) && String(numId) === cleanId;
-      const queryId = isNumeric ? numId : cleanId;
 
-      // Try fetching record from deceased table
-      let p: any = null;
-      const { data } = await supabase
+      // Query deceased table directly by string id
+      const { data, error } = await supabase
         .from('deceased')
-        .select('*')
-        .eq('id', queryId)
+        .select('id, name, photoUrl, photo, payload')
+        .eq('id', cleanId)
         .maybeSingle();
 
-      if (data) {
-        p = data.payload ? (typeof data.payload === 'string' ? JSON.parse(data.payload) : data.payload) : data;
-      }
+      if (!error && data) {
+        const p = data.payload 
+          ? (typeof data.payload === 'string' ? JSON.parse(data.payload) : data.payload)
+          : data;
 
-      if (p) {
-        const name = p.name || p.fullName || p.nameHe || '';
-        const fatherName = p.fatherName || p.father_name || p.fatherNameHe || '';
-        const motherName = p.motherName || p.mother_name || p.motherNameHe || '';
-        const hebrewDate = p.hebrewDate || p.hebrew_date || (p.day && p.month ? `${p.day} ב${p.month}` : '');
-
+        const name = data.name || p?.name || p?.fullName || p?.nameHe || '';
         if (name) {
           title = `לזכר עולמים — ${name}`;
-          let descParts = [];
+          
+          let descParts: string[] = [];
+          const fatherName = p?.fatherName || p?.father_name || p?.fatherNameHe || '';
+          const motherName = p?.motherName || p?.mother_name || p?.motherNameHe || '';
+          const hebrewDate = p?.hebrewDate || p?.hebrew_date || (p?.day && p?.month ? `${p.day} ב${p.month}` : '');
+
           if (fatherName) descParts.push(`בן/בת ${fatherName}`);
           if (motherName) descParts.push(`ורחל/חנה ${motherName}`);
           if (hebrewDate) descParts.push(`תאריך פטירה עברי: ${hebrewDate}`);
-          
+
           description = descParts.length > 0 
             ? `דף זיכרון והנצחה לזכר ${name}. ${descParts.join(' • ')}`
             : `דף זיכרון והנצחה לעילוי נשמת ${name}.`;
         }
 
-        const candidateImage = p.photoUrl || p.imageUrl || p.image || p.photo || p.photo_url || p.image_url;
-        if (candidateImage && typeof candidateImage === 'string' && candidateImage.startsWith('http')) {
-          imageUrl = candidateImage;
+        // Determine image strictly by priority: photoUrl -> photo -> payload candidate -> default og-banner.png
+        const candidateImage = data.photoUrl || p?.photoUrl || p?.imageUrl || p?.image || data.photo || p?.photo;
+        if (candidateImage && typeof candidateImage === 'string' && candidateImage.trim() !== '') {
+          const trimmedImg = candidateImage.trim();
+          if (trimmedImg.startsWith('http://') || trimmedImg.startsWith('https://')) {
+            imageUrl = trimmedImg;
+          } else if (trimmedImg.startsWith('/')) {
+            imageUrl = `${BASE_URL}${trimmedImg}`;
+          } else {
+            imageUrl = `${BASE_URL}/${trimmedImg}`;
+          }
         }
       }
     } catch (e) {
@@ -78,7 +85,7 @@ export default async function handler(req: any, res: any) {
   const safeTitle = escapeHtml(title);
   const safeDesc = escapeHtml(description);
   const safeImg = escapeHtml(imageUrl);
-  const safeCanonical = escapeHtml(`https://le-zecher-olamim-demo24726.vercel.app/share/${cleanId || ''}`);
+  const safeCanonical = escapeHtml(canonicalUrl);
   const safeRedirect = escapeHtml(redirectUrl);
 
   const html = `<!DOCTYPE html>
@@ -87,7 +94,7 @@ export default async function handler(req: any, res: any) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${safeTitle}</title>
-  
+
   <!-- Primary Meta Tags -->
   <meta name="title" content="${safeTitle}" />
   <meta name="description" content="${safeDesc}" />
@@ -114,7 +121,7 @@ export default async function handler(req: any, res: any) {
     window.location.href = ${JSON.stringify(redirectUrl)};
   </script>
 </head>
-<body style="background:#070b12;color:#f0f4f8;font-family:sans-serif;display:flex;align-items:center;justify-center;height:100vh;margin:0;text-align:center;">
+<body style="background:#070b12;color:#f0f4f8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;">
   <div>
     <p>מעביר לעמוד הזיכרון...</p>
     <a href="${safeRedirect}" style="color:#c8a96e;">לחץ כאן אם אינך מועבר אוטומטית</a>
@@ -123,6 +130,6 @@ export default async function handler(req: any, res: any) {
 </html>`;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=60');
   return res.status(200).send(html);
 }

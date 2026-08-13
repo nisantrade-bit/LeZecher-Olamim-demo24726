@@ -11,7 +11,7 @@ import { translateText } from '../utils/transliteration';
 import { getHebrewDate, isYahrzeitMatch, HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, normalizeMonthName, getYahrzeitEveDate } from '../utils/hebrewDate';
 import { Bell, Heart, Share2, BookOpen, Calendar, MessageCircle, Info, MapPin, Flame, Sparkles, Clock } from 'lucide-react';
 import { getTorahPortionDetails, getLocalizedEventName, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
-import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText } from '../utils/shareUtils';
+import { getShortMemorialUrl, openWhatsAppShare, generateWhatsAppShareText, shareMemorialCard } from '../utils/shareUtils';
 import { DedicatedStudyModal } from './DedicatedStudyModal';
 import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
 import { DeceasedPhotoFrame, RealisticFlame } from './YahrzeitCandle';
@@ -356,8 +356,7 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
   const shareOnWhatsApp = (deceased: Deceased, gregDate: Date, hebrewDateStr: string, parashaName: string | null, e: React.MouseEvent) => {
     e.stopPropagation(); // prevent opening details modal
     const shabbatInfo = getShabbatYahrzeitInfo(gregDate, hebcalEvents, lang);
-    const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
-    openWhatsAppShare(text);
+    shareMemorialCard(deceased, lang, shabbatInfo);
   };
 
   const bulletinTranslations = {

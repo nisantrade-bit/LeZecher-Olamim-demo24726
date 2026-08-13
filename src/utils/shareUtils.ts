@@ -7,7 +7,7 @@ import { formatParentRelation } from './translations';
 import { getLocalizedName } from './transliteration';
 import { ShabbatYahrzeitInfo } from './torahPortionHelper';
 
-export const PUBLIC_PRODUCTION_URL = 'https://peaceful-tarsier-9f8a3d.netlify.app';
+export const PUBLIC_PRODUCTION_URL = 'https://le-zecher-olamim-demo24726.vercel.app';
 
 /**
  * Encodes a Deceased object into a URL-safe Base64URL string.
@@ -105,7 +105,7 @@ export function decodeDeceasedFromUrlPayload(encodedStr: string): Deceased | nul
         nameEn: parsed.nameEn || parsed.nEn || undefined,
         nameRu: parsed.nameRu || parsed.nRu || undefined,
         fatherNameHe: parsed.fatherNameHe || parsed.fnHe || undefined,
-        fatherNameEn: parsed.fatherNameEn || parsed.fnEn || undefined,
+        fatherNameEn: parsed.fatherNameEn || parsed.fnHe || undefined,
         fatherNameRu: parsed.fatherNameRu || parsed.fnRu || undefined,
         motherNameHe: parsed.motherNameHe || parsed.mnHe || undefined,
         motherNameEn: parsed.motherNameEn || parsed.mnEn || undefined,
@@ -182,17 +182,13 @@ export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: stri
     baseOrigin = PUBLIC_PRODUCTION_URL;
   }
 
-  let idParam = '';
+  const langQuery = (lang && lang !== 'he') ? `?lang=${lang}` : '';
+
   if (idVal !== null && idVal !== undefined && String(idVal).trim() !== '') {
-    idParam = `m=${idVal}`;
+    return `${baseOrigin}/share/${idVal}${langQuery}`;
   }
 
-  const langQuery = (lang && lang !== 'he') ? `lang=${lang}` : '';
-  const params = [idParam, langQuery].filter(Boolean);
-  const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
-
-  // Return clean short memorial URL with ID only — no Base64, JSON, or personal details
-  return `${baseOrigin}/${queryStr}`;
+  return `${baseOrigin}/${langQuery}`;
 }
 
 export function openWhatsAppShare(text: string) {
@@ -200,13 +196,18 @@ export function openWhatsAppShare(text: string) {
   const encodedText = encodeURIComponent(text);
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
   
+  let opened = false;
   try {
-    const win = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-    if (!win || win.closed || typeof win.closed === 'undefined') {
-      window.location.href = `https://wa.me/?text=${encodedText}`;
+    const win = window.open(whatsappUrl, '_blank');
+    if (win && !win.closed) {
+      opened = true;
     }
-  } catch (e) {
-    window.location.href = `https://wa.me/?text=${encodedText}`;
+  } catch (e) {}
+
+  if (!opened) {
+    try {
+      window.location.href = `https://wa.me/?text=${encodedText}`;
+    } catch (e) {}
   }
 }
 
@@ -249,4 +250,35 @@ export function generateWhatsAppShareText(
   }
 }
 
+/**
+ * Universal Share Function:
+ * Uses Web Share API (navigator.share) if available.
+ * If user cancels (AbortError), terminates cleanly without opening WhatsApp.
+ * Otherwise, falls back to openWhatsAppShare.
+ */
+export async function shareMemorialCard(
+  deceased: Deceased,
+  lang: Language,
+  shabbatInfo?: ShabbatYahrzeitInfo | null
+): Promise<void> {
+  const shortUrl = getShortMemorialUrl(deceased, lang);
+  const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
+  const title = `לזכר עולמים — ${deceased.name}`;
 
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    try {
+      await navigator.share({
+        title,
+        text,
+        url: shortUrl
+      });
+      return;
+    } catch (err: any) {
+      if (err && (err.name === 'AbortError' || String(err).includes('AbortError'))) {
+        return;
+      }
+    }
+  }
+
+  openWhatsAppShare(text);
+}
