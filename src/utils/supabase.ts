@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { parseAndNormalizeDateFields } from './hebrewDate';
+import { isSameDeceasedRecord, mergeDeceasedRecords } from './deduplication';
 
 const FALLBACK_SUPABASE_URL = "https://aoendfkvzsywrykmcloy.supabase.co";
 const FALLBACK_SUPABASE_ANON_KEY = "sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj";
@@ -105,9 +106,9 @@ export async function uploadMemorialImage(file?: File | null, deceasedId?: numbe
 }
 
 /**
- * Scans Supabase 'deceased' table for duplicate records by name/fatherName,
- * permanently deletes duplicate rows from Supabase keeping 1 clean record per person,
- * and returns the clean unique count.
+ * Scans Supabase 'deceased' table for duplicate records using unified cross-lingual matching,
+ * merges missing language fields/information into the retained row,
+ * permanently deletes duplicate rows from Supabase, and returns the clean unique count.
  */
 export async function cleanAndDeduplicateSupabase(): Promise<{ count: number; deleted: number }> {
   if (!isSupabaseConfigured()) return { count: 0, deleted: 0 };
@@ -117,46 +118,51 @@ export async function cleanAndDeduplicateSupabase(): Promise<{ count: number; de
       return { count: Array.isArray(data) ? data.length : 0, deleted: 0 };
     }
 
-    const seenMap = new Map<string, any>();
+    const uniqueList: any[] = [];
     const duplicateIdsToDelete: (number | string)[] = [];
+    const mergedToUpdate: any[] = [];
 
-    for (const record of data) {
-      if (!record || !record.name) continue;
-      const normName = String(record.name).trim().toLowerCase().replace(/\s+/g, ' ');
-      const normFather = String(record.fatherName || record.father_name || '').trim().toLowerCase().replace(/\s+/g, ' ');
-      const key = `${normName}_${normFather}`;
+    for (const rawRecord of data) {
+      if (!rawRecord) continue;
+      const record = normalizeFetchedRecord(rawRecord);
+      if (!record || (!record.name && !record.nameHe && !record.nameRu && !record.nameEn)) continue;
 
-      if (!seenMap.has(key)) {
-        seenMap.set(key, record);
+      const existingIndex = uniqueList.findIndex(u => isSameDeceasedRecord(u, record));
+
+      if (existingIndex === -1) {
+        uniqueList.push(record);
       } else {
-        const existing = seenMap.get(key);
-        const existingId = Number(existing.id);
-        const currentId = Number(record.id);
+        const existing = uniqueList[existingIndex];
+        const merged = mergeDeceasedRecords(existing, record);
+        uniqueList[existingIndex] = merged;
+        mergedToUpdate.push(merged);
 
-        if (!isNaN(existingId) && !isNaN(currentId)) {
-          if (currentId < existingId) {
-            duplicateIdsToDelete.push(existing.id);
-            seenMap.set(key, record);
-          } else {
-            duplicateIdsToDelete.push(record.id);
-          }
-        } else {
+        if (record.id !== undefined && record.id !== null && String(record.id) !== String(existing.id)) {
           duplicateIdsToDelete.push(record.id);
         }
       }
     }
 
-    if (duplicateIdsToDelete.length > 0) {
-      console.log(`[Supabase Cleanup] Permanently deleting ${duplicateIdsToDelete.length} duplicate rows from Supabase:`, duplicateIdsToDelete);
-      const { error: delErr } = await supabase.from('deceased').delete().in('id', duplicateIdsToDelete);
-      if (delErr) {
-        console.warn("[Supabase Cleanup Error]", delErr);
-      } else {
-        console.log(`[Supabase Cleanup Complete] Cleaned duplicate records. Remaining unique rows: ${seenMap.size}`);
+    if (mergedToUpdate.length > 0) {
+      for (const rec of mergedToUpdate) {
+        const sanitized = sanitizeRecord(rec);
+        try {
+          await supabase.from('deceased').upsert(sanitized, { onConflict: 'id' });
+        } catch (e) {
+          console.warn("[Supabase Cleanup Upsert Notice]", e);
+        }
       }
     }
 
-    return { count: seenMap.size, deleted: duplicateIdsToDelete.length };
+    if (duplicateIdsToDelete.length > 0) {
+      console.log(`[Supabase Cleanup] Deleting ${duplicateIdsToDelete.length} duplicate rows:`, duplicateIdsToDelete);
+      const { error: delErr } = await supabase.from('deceased').delete().in('id', duplicateIdsToDelete);
+      if (delErr) {
+        console.warn("[Supabase Cleanup Error]", delErr);
+      }
+    }
+
+    return { count: uniqueList.length, deleted: duplicateIdsToDelete.length };
   } catch (err) {
     console.warn("[Supabase Cleanup Exception]", err);
     return { count: 0, deleted: 0 };

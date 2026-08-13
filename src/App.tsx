@@ -18,7 +18,7 @@ import { Flame, Calendar, BookOpen, LayoutGrid, FileDown, Globe, Sparkles, Alert
 import { DeceasedMemorialPage } from './components/DeceasedMemorialPage';
 import { decodeDeceasedFromUrlPayload, encodeDeceasedToUrlPayload } from './utils/shareUtils';
 import { translateDeceasedListClientSide, enrichDeceasedTranslations } from './utils/transliteration';
-import { smartMergeDeceasedLists, deduplicateSingleList } from './utils/deduplication';
+import { smartMergeDeceasedLists, deduplicateSingleList, isSameDeceasedRecord, mergeDeceasedRecords } from './utils/deduplication';
 import { getUpcomingYahrzeits, requestNotificationPermission, sendYahrzeitNotification, UpcomingYahrzeitNotice } from './utils/notifications';
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
@@ -678,26 +678,31 @@ function MainAppContent() {
   const handleImportDeceased = async (newList: Deceased[]) => {
     const currentDb = masterList || [];
 
-    const supabaseRecords = newList.map((item, idx) => {
+    // Step 1: Clean duplicates inside the imported file itself
+    const internalCleaned = deduplicateSingleList(newList);
+
+    // Step 2: Match each imported item against the current master list using isSameDeceasedRecord
+    const supabaseRecords = internalCleaned.map((item, idx) => {
       const enriched = sanitizeRecord(enrichDeceasedTranslations(item));
-      const normName = (enriched.name || '').trim().toLowerCase();
-      const normFather = (enriched.fatherName || '').trim().toLowerCase();
-      const existingMatch = currentDb.find(d => 
-        (d.name || '').trim().toLowerCase() === normName &&
-        (d.fatherName || '').trim().toLowerCase() === normFather
-      );
+
+      // Find if this person already exists in the current database
+      const existingMatch = currentDb.find(d => isSameDeceasedRecord(d, enriched));
 
       if (existingMatch) {
-        enriched.id = Number(existingMatch.id);
-      } else if (!enriched.id) {
-        enriched.id = Date.now() + Math.floor(Math.random() * 100000) + idx;
+        // Merge with existing record, retaining existingMatch.id
+        const mergedRecord = mergeDeceasedRecords(existingMatch, enriched);
+        return sanitizeRecord(mergedRecord);
+      } else {
+        // Assign a new ID if missing or empty
+        if (enriched.id === undefined || enriched.id === null || String(enriched.id).trim() === '') {
+          enriched.id = Date.now() + Math.floor(Math.random() * 100000) + idx;
+        }
+        return enriched;
       }
-
-      return enriched;
     });
 
-    // Update local state and LocalStorage
-    const merged = smartMergeDeceasedLists(masterList, supabaseRecords);
+    // Update local state and LocalStorage with smart merge and deduplication
+    const merged = smartMergeDeceasedLists(currentDb, supabaseRecords);
     const updated = deduplicateSingleList(merged);
 
     setMasterList(updated);
@@ -706,8 +711,6 @@ function MainAppContent() {
     } catch (e) {
       console.error("Storage access error:", e);
     }
-
-
 
     // Sync to Supabase if configured
     if (isSupabaseConfigured()) {
