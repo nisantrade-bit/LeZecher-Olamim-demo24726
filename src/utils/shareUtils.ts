@@ -232,15 +232,15 @@ export function generateWhatsAppShareText(
 
     return `🕯️ לזכר עולמים – ${nameWithParent}\n\n` +
       `מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה ולהשתתף בהנצחה.\n\n` +
-      `🔗 ${shortUrl}\n\n` +
-      `${blessingSuffix}`;
+      `${blessingSuffix}\n\n` +
+      `🔗 ${shortUrl}`;
   } else if (lang === 'ru') {
     const nameWithParent = parentRel ? `${localizedName} (${parentRel})` : localizedName;
 
     return `🕯️ Светлая память – ${nameWithParent}\n\n` +
       `Приглашаем вас посетить страницу памяти, зажечь свечу и оставить добрые слова.\n\n` +
-      `🔗 ${shortUrl}\n\n` +
-      `Светлая и вечная память 🙏`;
+      `Светлая и вечная память 🙏\n\n` +
+      `🔗 ${shortUrl}`;
   } else {
     const nameWithParent = parentRel ? `${localizedName} (${parentRel})` : localizedName;
 
@@ -261,7 +261,6 @@ export async function shareMemorialCard(
   lang: Language,
   shabbatInfo?: ShabbatYahrzeitInfo | null
 ): Promise<void> {
-  const shortUrl = getShortMemorialUrl(deceased, lang);
   const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
   const title = `לזכר עולמים — ${deceased.name}`;
 
@@ -269,8 +268,7 @@ export async function shareMemorialCard(
     try {
       await navigator.share({
         title,
-        text,
-        url: shortUrl
+        text
       });
       return;
     } catch (err: any) {

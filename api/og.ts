@@ -36,26 +36,24 @@ export default async function handler(req: any, res: any) {
       // Query deceased table directly by string id: m
       const { data, error } = await supabase
         .from('deceased')
-        .select('id, name, photoUrl, photo, payload')
+        .select('*')
         .eq('id', m)
         .maybeSingle();
 
       if (!error && data) {
-        const p = data.payload 
-          ? (typeof data.payload === 'string' ? JSON.parse(data.payload) : data.payload)
-          : data;
+        const p = data;
 
-        const name = data.name || p?.name || p?.fullName || p?.nameHe || '';
+        const name = data.name || data.nameHe || '';
         if (name) {
           title = `לזכר עולמים — ${name}`;
           
           let descParts: string[] = [];
-          const fatherName = p?.fatherName || p?.father_name || p?.fatherNameHe || '';
-          const motherName = p?.motherName || p?.mother_name || p?.motherNameHe || '';
-          const hebrewDate = p?.hebrewDate || p?.hebrew_date || (p?.day && p?.month ? `${p.day} ב${p.month}` : '');
+          const fatherName = data.fatherName || data.father_name || data.fatherNameHe || '';
+          const motherName = data.motherName || data.mother_name || data.motherNameHe || '';
+          const hebrewDate = data.hebrewDate || data.hebrew_date || (data.day && data.month ? `${data.day} ב${data.month}` : '');
 
-          if (fatherName) descParts.push(`בן/בת ${fatherName}`);
-          if (motherName) descParts.push(`ורחל/חנה ${motherName}`);
+          if (fatherName && fatherName !== '-') descParts.push(`בן/בת ${fatherName}`);
+          if (motherName && motherName !== '-') descParts.push(`ורחל/חנה ${motherName}`);
           if (hebrewDate) descParts.push(`תאריך פטירה עברי: ${hebrewDate}`);
 
           description = descParts.length > 0 
@@ -63,16 +61,22 @@ export default async function handler(req: any, res: any) {
             : `דף זיכרון והנצחה לעילוי נשמת ${name}.`;
         }
 
-        // Determine image strictly by priority: photoUrl -> photo -> payload candidate -> default og-banner.png
-        const candidateImage = data.photoUrl || p?.photoUrl || p?.imageUrl || p?.image || data.photo || p?.photo;
-        if (candidateImage && typeof candidateImage === 'string' && candidateImage.trim() !== '') {
-          const trimmedImg = candidateImage.trim();
+        // Determine image strictly by priority: photoUrl -> imageUrl -> image_url -> image -> default og-banner.png
+        const rawCandidate = [
+          data.photoUrl,
+          data.imageUrl,
+          data.image_url,
+          data.image
+        ].find(img => img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-');
+
+        if (rawCandidate) {
+          const trimmedImg = rawCandidate.trim();
           if (trimmedImg.startsWith('http://') || trimmedImg.startsWith('https://')) {
             imageUrl = trimmedImg;
           } else if (trimmedImg.startsWith('/')) {
             imageUrl = `${BASE_URL}${trimmedImg}`;
-          } else {
-            imageUrl = `${BASE_URL}/${trimmedImg}`;
+          } else if (trimmedImg.startsWith('data:') || trimmedImg.length > 100) {
+            imageUrl = `${BASE_URL}/api/og-image?id=${m}`;
           }
         }
       }
