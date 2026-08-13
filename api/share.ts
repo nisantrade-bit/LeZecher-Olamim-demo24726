@@ -46,20 +46,12 @@ export default async function handler(req: any, res: any) {
 
         const name = data.name || data.nameHe || '';
         if (name) {
-          title = `לזכר עולמים — ${name}`;
-          
-          let descParts: string[] = [];
-          const fatherName = data.fatherName || data.father_name || data.fatherNameHe || '';
-          const motherName = data.motherName || data.mother_name || data.motherNameHe || '';
-          const hebrewDate = data.hebrewDate || data.hebrew_date || (data.day && data.month ? `${data.day} ב${data.month}` : '');
+          const isFemale = data.gender === 'female';
+          const isMale = data.gender === 'male';
+          const blessing = isFemale ? 'זכרונה לברכה' : isMale ? 'זכרונו לברכה' : 'זכרונו/ה לברכה';
 
-          if (fatherName && fatherName !== '-') descParts.push(`בן/בת ${fatherName}`);
-          if (motherName && motherName !== '-') descParts.push(`ורחל/חנה ${motherName}`);
-          if (hebrewDate) descParts.push(`תאריך פטירה עברי: ${hebrewDate}`);
-
-          description = descParts.length > 0 
-            ? `דף זיכרון והנצחה לזכר ${name}. ${descParts.join(' • ')}`
-            : `דף זיכרון והנצחה לעילוי נשמת ${name}.`;
+          title = `🕯️ לזכר עולמים – ${name} ${blessing}`;
+          description = 'מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה ולהשתתף בהנצחה.';
         }
 
         // Determine image strictly by priority: photoUrl -> imageUrl -> image_url -> image -> default og-banner.png

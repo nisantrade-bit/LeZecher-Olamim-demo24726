@@ -233,20 +233,20 @@ export function generateWhatsAppShareText(
     return `🕯️ לזכר עולמים – ${nameWithParent}\n\n` +
       `מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה ולהשתתף בהנצחה.\n\n` +
       `${blessingSuffix}\n\n` +
-      `🔗 ${shortUrl}`;
+      `${shortUrl}`;
   } else if (lang === 'ru') {
     const nameWithParent = parentRel ? `${localizedName} (${parentRel})` : localizedName;
 
     return `🕯️ Светлая память – ${nameWithParent}\n\n` +
       `Приглашаем вас посетить страницу памяти, зажечь свечу и оставить добрые слова.\n\n` +
       `Светлая и вечная память 🙏\n\n` +
-      `🔗 ${shortUrl}`;
+      `${shortUrl}`;
   } else {
     const nameWithParent = parentRel ? `${localizedName} (${parentRel})` : localizedName;
 
     return `🕯️ In loving memory – ${nameWithParent}\n\n` +
       `You are invited to visit the memorial page, light a virtual candle and participate in remembrance.\n\n` +
-      `🔗 ${shortUrl}`;
+      `${shortUrl}`;
   }
 }
 
