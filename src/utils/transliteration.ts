@@ -410,8 +410,10 @@ function transliterateCyrillicToHebrew(word: string): string {
     else if (c === 'э') res += 'א';
     else if (c === 'ю') res += 'יו';
     else if (c === 'я') res += 'יא';
+    else if (c === 'ь' || c === 'ъ') continue;
+    else if (c === 'ы') res += 'י';
     else if (c >= '\u0590' && c <= '\u05FF') res += c;
-    else res += c;
+    else continue;
   }
   return res || word;
 }
@@ -929,13 +931,59 @@ export function enrichDeceasedTranslations(item: Deceased): Deceased {
   result.motherNameEn = result.motherNameEn || result.motherName || '-';
   result.motherNameRu = result.motherNameRu || result.motherName || '-';
 
-  // 6. Image & imageUrl & photoUrl fields
+  // 6. Enforce strict language script separation
+  result.nameHe = sanitizeHebrewScript(result.nameHe);
+  result.fatherNameHe = sanitizeHebrewScript(result.fatherNameHe);
+  result.motherNameHe = sanitizeHebrewScript(result.motherNameHe);
+  result.notesHe = sanitizeHebrewScript(result.notesHe);
+
+  result.nameRu = sanitizeRussianScript(result.nameRu);
+  result.fatherNameRu = sanitizeRussianScript(result.fatherNameRu);
+  result.motherNameRu = sanitizeRussianScript(result.motherNameRu);
+  result.notesRu = sanitizeRussianScript(result.notesRu);
+
+  result.nameEn = sanitizeEnglishScript(result.nameEn);
+  result.fatherNameEn = sanitizeEnglishScript(result.fatherNameEn);
+  result.motherNameEn = sanitizeEnglishScript(result.motherNameEn);
+  result.notesEn = sanitizeEnglishScript(result.notesEn);
+
+  // 7. Image & imageUrl & photoUrl fields
   const imgStr = result.imageUrl || result.photoUrl || result.image || '';
   result.imageUrl = imgStr;
   result.photoUrl = imgStr;
   result.image = imgStr;
 
   return result;
+}
+
+export function sanitizeHebrewScript(text: string): string {
+  if (!text || text === '-') return text || '-';
+  const res = text
+    .replace(/[\u0400-\u04FF]/g, '')
+    .replace(/[a-zA-Z]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return res || '-';
+}
+
+export function sanitizeRussianScript(text: string): string {
+  if (!text || text === '-') return text || '-';
+  const res = text
+    .replace(/[\u0590-\u05FF]/g, '')
+    .replace(/[a-zA-Z]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return res || '-';
+}
+
+export function sanitizeEnglishScript(text: string): string {
+  if (!text || text === '-') return text || '-';
+  const res = text
+    .replace(/[\u0590-\u05FF]/g, '')
+    .replace(/[\u0400-\u04FF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return res || '-';
 }
 
 /**
