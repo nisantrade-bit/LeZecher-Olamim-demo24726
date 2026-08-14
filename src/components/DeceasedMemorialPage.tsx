@@ -559,38 +559,38 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
   };
 
   return (
-    <div className="min-h-screen bg-[#e4ebf3] text-slate-800 py-6 sm:py-10 px-3 sm:px-6 lg:px-8 relative overflow-x-hidden font-sans selection:bg-slate-200 selection:text-slate-900">
-      {/* Subtle overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.6)_0%,transparent_70%)] pointer-events-none z-0"></div>
+    <div className="min-h-screen bg-[#E7E0D2] text-[#3B2F2F] py-6 sm:py-10 px-3 sm:px-6 lg:px-8 relative overflow-x-hidden font-sans selection:bg-[#F8F2E4] selection:text-[#3B2F2F]">
+      {/* Subtle background texture effect */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,253,248,0.5)_0%,transparent_75%)] pointer-events-none z-0"></div>
 
       {/* Floating Header Navigation */}
       <div className="max-w-4xl mx-auto flex items-center justify-between mb-6 relative z-10">
         <button
           onClick={onExit}
-          className="flex items-center gap-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 py-2 px-4 rounded-xl transition-all cursor-pointer shadow-sm"
+          className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[#3B2F2F] bg-[#FFFDF8] border border-[#D8CFC0] hover:bg-[#F8F2E4] py-2 px-4 rounded-xl transition-all cursor-pointer shadow-xs"
         >
-          <ArrowLeft className="w-4 h-4 shrink-0 text-[#9A7B38]" />
+          <ArrowLeft className="w-4 h-4 shrink-0 text-[#5D6D53]" />
           <span>{mt.backToSystem}</span>
         </button>
 
         {/* Header center title */}
         <div className="flex items-center gap-2">
-          <Flame className="w-4.5 h-4.5 text-[#9A7B38] animate-pulse" />
-          <span className="text-sm sm:text-base font-serif font-bold tracking-wide text-slate-900 uppercase hidden sm:inline">
+          <Flame className="w-4.5 h-4.5 text-[#D4AF37] animate-pulse" />
+          <span className="text-sm sm:text-base font-serif font-bold tracking-wide text-[#3B2F2F] uppercase hidden sm:inline">
             לזכר עולמים — ספר הזיכרון
           </span>
         </div>
 
         {/* Global Language Selector */}
-        <div className="flex items-center bg-white rounded-xl p-1 border border-slate-300 shadow-sm">
+        <div className="flex items-center bg-[#FFFDF8] rounded-xl p-1 border border-[#D8CFC0] shadow-xs">
           {(['he', 'en', 'ru'] as Language[]).map((l) => (
             <button
               key={l}
               onClick={() => onSetLang(l)}
               className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 lang === l
-                  ? 'bg-[#9A7B38] text-white shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#5D6D53] text-white shadow-xs font-bold'
+                  : 'text-[#6B5E53] hover:text-[#3B2F2F]'
               }`}
             >
               {l === 'he' ? 'עב' : l === 'en' ? 'EN' : 'РУ'}
@@ -602,18 +602,18 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
       <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8 relative z-10">
         
         {/* HERO SECTION - The Core Memorial Card ("ספר זיכרון דיגיטלי") */}
-        <div className="bg-white border border-slate-300 rounded-3xl p-6 sm:p-10 shadow-lg shadow-slate-300/50 relative overflow-hidden text-center flex flex-col items-center">
+        <div className="bg-[#FFFDF8] border border-[#D8CFC0] rounded-3xl p-6 sm:p-10 shadow-md shadow-stone-400/20 relative overflow-hidden text-center flex flex-col items-center">
           
           {/* Corner borders */}
-          <div className="absolute top-0 left-0 w-10 h-10 border-t border-l border-[#9A7B38]/30 rounded-tl-2xl pointer-events-none"></div>
-          <div className="absolute top-0 right-0 w-10 h-10 border-t border-r border-[#9A7B38]/30 rounded-tr-2xl pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-10 h-10 border-b border-l border-[#9A7B38]/30 rounded-bl-2xl pointer-events-none"></div>
-          <div className="absolute bottom-0 right-0 w-10 h-10 border-b border-r border-[#9A7B38]/30 rounded-br-2xl pointer-events-none"></div>
+          <div className="absolute top-0 left-0 w-10 h-10 border-t border-l border-[#5D6D53]/30 rounded-tl-2xl pointer-events-none"></div>
+          <div className="absolute top-0 right-0 w-10 h-10 border-t border-r border-[#5D6D53]/30 rounded-tr-2xl pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-10 h-10 border-b border-l border-[#5D6D53]/30 rounded-bl-2xl pointer-events-none"></div>
+          <div className="absolute bottom-0 right-0 w-10 h-10 border-b border-r border-[#5D6D53]/30 rounded-br-2xl pointer-events-none"></div>
 
           {/* Hero Display: Framed Photo with Memorial Candle Beside It */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 mb-6 relative z-10">
             {/* Deceased Portrait in Clean Memorial Paper Frame */}
-            <DeceasedPhotoFrame deceased={deceased} size="hero" lang={lang} className="shadow-md border-stone-300" />
+            <DeceasedPhotoFrame deceased={deceased} size="hero" lang={lang} className="shadow-md border-[#D8CFC0]" />
 
             {/* Quiet Candle Burning Beside Portrait */}
             <div className="flex flex-col items-center justify-center shrink-0">
@@ -640,36 +640,36 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                 
                 <div className="w-10 h-2 bg-gradient-to-r from-amber-800 via-amber-700 to-amber-800 rounded-full shadow-xs mt-1 border border-amber-600/30"></div>
               </div>
-              <span className="text-xs font-serif font-bold text-[#9A7B38] mt-1 block">
+              <span className="text-xs font-serif font-bold text-[#5D6D53] mt-1 block">
                 {lang === 'he' ? '🔥 נר נשמה דולק' : lang === 'ru' ? '🔥 Свеча памяти горит' : '🔥 Memorial Candle Lit'}
               </span>
             </div>
           </div>
 
           {/* Deceased Name in Dignified Display Serif Typography */}
-          <h1 className="text-3xl sm:text-5xl font-serif font-bold text-stone-900 mb-2 leading-tight tracking-tight">
+          <h1 className="text-3xl sm:text-5xl font-serif font-bold text-[#3B2F2F] mb-2 leading-tight tracking-tight">
             {getLocalizedName(deceased, lang)}
           </h1>
 
-          <div className="text-stone-700 font-sans text-sm sm:text-base space-y-2 mb-6 flex flex-col items-center">
-            <span className="text-xl sm:text-2xl font-serif font-bold italic text-[#9A7B38] bg-[#F3EFE6] px-5 py-1.5 rounded-full border border-stone-200">
+          <div className="text-[#6B5E53] font-sans text-sm sm:text-base space-y-2 mb-6 flex flex-col items-center">
+            <span className="text-xl sm:text-2xl font-serif font-bold italic text-[#5D6D53] bg-[#F8F2E4] px-5 py-1.5 rounded-full border border-[#E8E2D5]">
               {formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang, deceased)}
             </span>
             
-            <div className="pt-2 text-stone-800 text-sm sm:text-base flex items-center justify-center gap-1.5 font-medium">
-              <Calendar className="w-4 h-4 text-[#9A7B38]" />
+            <div className="pt-2 text-[#3B2F2F] text-sm sm:text-base flex items-center justify-center gap-1.5 font-medium">
+              <Calendar className="w-4 h-4 text-[#5D6D53]" />
               <span>
-                {mt.passedAway} <strong className="text-stone-900 font-serif font-bold text-base sm:text-lg">{lang === 'he' ? `${getLocalizedDay()} ב${getLocalizedMonth()}` : `${getLocalizedDay()} ${getLocalizedMonth()}`}</strong>
+                {mt.passedAway} <strong className="text-[#3B2F2F] font-serif font-bold text-base sm:text-lg">{lang === 'he' ? `${getLocalizedDay()} ב${getLocalizedMonth()}` : `${getLocalizedDay()} ${getLocalizedMonth()}`}</strong>
               </span>
             </div>
 
             {/* Custom attributes: Gender, Birth Date, Age at Death, Age Today */}
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5 max-w-lg">
-              <div className="bg-[#F3EFE6] px-3 py-1.5 rounded-xl border border-stone-200 text-xs text-center">
-                <span className="text-[#9A7B38] block text-[9px] font-bold uppercase mb-0.5">
+              <div className="bg-[#F8F2E4] px-3 py-1.5 rounded-xl border border-[#E8E2D5] text-xs text-center">
+                <span className="text-[#5D6D53] block text-[9px] font-bold uppercase mb-0.5">
                   {lang === 'he' ? 'מין' : lang === 'ru' ? 'Пол' : 'Gender'}
                 </span>
-                <span className="text-stone-900 font-bold">
+                <span className="text-[#3B2F2F] font-bold">
                   {deceased.gender === 'male' 
                     ? (lang === 'he' ? 'זכר' : lang === 'ru' ? 'Мужчина' : 'Male')
                     : (lang === 'he' ? 'נקבה' : lang === 'ru' ? 'Женщина' : 'Female')}
@@ -677,22 +677,22 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
               </div>
 
               {deceased.ageAtDeath !== undefined && deceased.ageAtDeath !== null && (
-                <div className="bg-[#F3EFE6] px-3 py-1.5 rounded-xl border border-stone-200 text-xs text-center">
-                  <span className="text-[#9A7B38] block text-[9px] font-bold uppercase mb-0.5">
+                <div className="bg-[#F8F2E4] px-3 py-1.5 rounded-xl border border-[#E8E2D5] text-xs text-center">
+                  <span className="text-[#5D6D53] block text-[9px] font-bold uppercase mb-0.5">
                     {lang === 'he' ? 'גיל פטירה' : lang === 'ru' ? 'Возраст смерти' : 'Age at Death'}
                   </span>
-                  <span className="text-stone-900 font-bold">
+                  <span className="text-[#3B2F2F] font-bold">
                     {deceased.ageAtDeath}
                   </span>
                 </div>
               )}
 
               {deceased.birthDate && (
-                <div className="bg-[#F3EFE6] px-3 py-1.5 rounded-xl border border-stone-200 text-xs text-center">
-                  <span className="text-[#9A7B38] block text-[9px] font-bold uppercase mb-0.5">
+                <div className="bg-[#F8F2E4] px-3 py-1.5 rounded-xl border border-[#E8E2D5] text-xs text-center">
+                  <span className="text-[#5D6D53] block text-[9px] font-bold uppercase mb-0.5">
                     {lang === 'he' ? 'תאריך לידה' : lang === 'ru' ? 'Дата рождения' : 'Date of Birth'}
                   </span>
-                  <span className="text-stone-900 font-bold">
+                  <span className="text-[#3B2F2F] font-bold">
                     {deceased.birthDate}
                   </span>
                 </div>
@@ -702,11 +702,11 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                 const ageToday = getAgeIfAliveToday(deceased.birthDate);
                 if (ageToday !== null) {
                   return (
-                    <div className="bg-[#F3EFE6] px-3 py-1.5 rounded-xl border border-[#9A7B38]/40 text-xs text-center">
-                      <span className="text-[#9A7B38] block text-[9px] font-bold uppercase mb-0.5">
+                    <div className="bg-[#F8F2E4] px-3 py-1.5 rounded-xl border border-[#5D6D53]/30 text-xs text-center">
+                      <span className="text-[#5D6D53] block text-[9px] font-bold uppercase mb-0.5">
                         {lang === 'he' ? 'גיל נוכחי לו היה בחיים' : lang === 'ru' ? 'Был бы жив сегодня' : 'Age if Alive Today'}
                       </span>
-                      <span className="text-stone-900 font-extrabold">
+                      <span className="text-[#3B2F2F] font-extrabold">
                         {ageToday} {lang === 'he' ? 'שנים' : lang === 'ru' ? 'лет' : 'years'}
                       </span>
                     </div>
@@ -730,41 +730,41 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
               : '';
 
             return (
-              <div className="w-full max-w-md bg-[#FAF8F3] border border-stone-300 p-4 sm:p-5 rounded-2xl flex flex-col items-center space-y-3 shadow-xs text-center">
-                <span className="text-xs font-serif font-bold text-[#9A7B38] uppercase tracking-wider">{mt.yahrzeitTitle}</span>
+              <div className="w-full max-w-md bg-[#F8F2E4] border border-[#E8E2D5] p-4 sm:p-5 rounded-2xl flex flex-col items-center space-y-3 shadow-xs text-center">
+                <span className="text-xs font-serif font-bold text-[#5D6D53] uppercase tracking-wider">{mt.yahrzeitTitle}</span>
                 
                 {eveDate && (
-                  <div className="w-full bg-[#F3EFE6] border border-stone-200 p-2.5 rounded-xl text-right" dir={lang === 'he' ? 'rtl' : 'ltr'}>
-                    <span className="block text-[11px] text-[#9A7B38] font-bold">
+                  <div className="w-full bg-[#FAF5EC] border border-[#E8E2D5] p-2.5 rounded-xl text-right" dir={lang === 'he' ? 'rtl' : 'ltr'}>
+                    <span className="block text-[11px] text-[#5D6D53] font-bold">
                       {lang === 'he' ? '🕯️ תחילת האזכרה והדלקת נר נשמה (ערב האזכרה):' : lang === 'ru' ? '🕯️ Начало поминания и зажигание свечи (накануне):' : '🕯️ Memorial & Candle Lighting Begins (Eve):'}
                     </span>
-                    <span className="text-xs font-bold text-stone-900 block mt-0.5">
+                    <span className="text-xs font-bold text-[#3B2F2F] block mt-0.5">
                       {eveFormatted}
                     </span>
                   </div>
                 )}
 
-                <div className="w-full bg-[#F3EFE6] border border-stone-200 p-2.5 rounded-xl text-right" dir="rtl">
-                  <span className="block text-[11px] text-stone-600 font-bold">
+                <div className="w-full bg-[#FAF5EC] border border-[#E8E2D5] p-2.5 rounded-xl text-right" dir="rtl">
+                  <span className="block text-[11px] text-[#6B5E53] font-bold">
                     {lang === 'he' ? '📅 יום האזכרה בלועזי (במהלך היום):' : '📅 Gregorian Anniversary Day:'}
                   </span>
-                  <span className="text-xs font-bold text-stone-900 block mt-0.5">
+                  <span className="text-xs font-bold text-[#3B2F2F] block mt-0.5">
                     {formatGregorianDate(targetDate)}
                   </span>
                 </div>
 
                 {countdown.isToday ? (
-                  <span className="text-xs bg-amber-100 border border-amber-300 text-amber-900 py-1.5 px-5 rounded-full font-bold animate-pulse">
+                  <span className="text-xs bg-[#5D6D53] text-white py-1.5 px-5 rounded-full font-bold animate-pulse">
                     {mt.todayYahrzeit}
                   </span>
                 ) : (
-                  <div className="flex items-center gap-1.5 text-[#9A7B38] font-serif text-lg font-bold pt-1">
-                    <span className="text-2xl text-stone-900 font-mono">{countdown.days}</span>
+                  <div className="flex items-center gap-1.5 text-[#5D6D53] font-serif text-lg font-bold pt-1">
+                    <span className="text-2xl text-[#3B2F2F] font-mono">{countdown.days}</span>
                     <span>{mt.daysRemaining}</span>
                   </div>
                 )}
 
-                <p className="text-[10.5px] text-stone-600 leading-relaxed pt-1" dir="rtl">
+                <p className="text-[10.5px] text-[#6B5E53] leading-relaxed pt-1" dir="rtl">
                   {lang === 'he'
                     ? '💡 היות והיום העברי מתחיל בשקיעת החמה, נר הנשמה מודלק והאזכרה מתחילה בערב שלפני.'
                     : '💡 As the Hebrew day begins at sunset, the memorial candle is lit on the preceding evening.'}
@@ -774,10 +774,10 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
           })()}
 
           {/* Total candles indicator */}
-          <div className="mt-4 text-stone-600 text-xs flex items-center justify-center gap-2 font-medium">
-            <Heart className="w-4 h-4 text-rose-500 fill-rose-500 animate-pulse" />
+          <div className="mt-4 text-[#6B5E53] text-xs flex items-center justify-center gap-2 font-medium">
+            <Heart className="w-4 h-4 text-rose-600 fill-rose-600 animate-pulse" />
             <span>
-              {mt.candleCount}: <strong className="text-stone-900 text-sm font-bold">{memories.length + 5}</strong>
+              {mt.candleCount}: <strong className="text-[#3B2F2F] text-sm font-bold">{memories.length + 5}</strong>
             </span>
           </div>
 
@@ -786,7 +786,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
             <button
               type="button"
               onClick={shareMemorialPage}
-              className="inline-flex items-center gap-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm py-2.5 px-6 rounded-xl shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-2.5 bg-[#5D6D53] hover:bg-[#4F5D46] text-white font-bold text-xs sm:text-sm py-2.5 px-6 rounded-xl shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
             >
               <MessageCircle className="w-4.5 h-4.5 shrink-0" />
               <span>{mt.sharePage}</span>
@@ -798,13 +798,13 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           
           {/* Left Column: Torah Portion preceding Yahrzeit (עליה לתורה) */}
-          <div className="bg-white border border-slate-300 p-6 rounded-2xl space-y-4 shadow-md shadow-slate-300/40">
-            <h2 className="text-lg font-serif font-bold text-stone-900 border-b border-stone-200 pb-2.5 flex items-center gap-2 justify-between">
+          <div className="bg-[#FFFDF8] border border-[#D8CFC0] p-6 rounded-3xl space-y-4 shadow-sm">
+            <h2 className="text-lg font-serif font-bold text-[#3B2F2F] border-b border-[#E8E2D5] pb-2.5 flex items-center gap-2 justify-between">
               <span className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-[#9A7B38]" />
+                <Calendar className="w-5 h-5 text-[#5D6D53]" />
                 {mt.title}
               </span>
-              <span className="text-[10px] bg-[#F3EFE6] text-[#9A7B38] px-2 py-0.5 rounded font-serif font-bold border border-stone-200">
+              <span className="text-[10px] bg-[#F8F2E4] text-[#5D6D53] px-2 py-0.5 rounded font-serif font-bold border border-[#E8E2D5]">
                 {lang === 'he' ? 'עליה לתורה' : lang === 'ru' ? 'Вызов к Торе' : 'Torah Aliyah'}
               </span>
             </h2>
@@ -813,14 +813,14 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
             <div className="grid grid-cols-2 gap-3">
               {/* Year Selector */}
               <div className="space-y-1">
-                <label className="text-stone-600 block text-[10px] font-semibold">{mt.selectYear}</label>
+                <label className="text-[#6B5E53] block text-[10px] font-semibold">{mt.selectYear}</label>
                 <select
                   value={selectedYahrzeitYear}
                   onChange={(e) => setSelectedYahrzeitYear(Number(e.target.value))}
-                  className="w-full py-1.5 px-2 bg-[#F3EFE6] text-stone-900 font-sans font-semibold border border-stone-300 rounded-lg outline-none cursor-pointer focus:border-[#9A7B38]"
+                  className="w-full py-1.5 px-2 bg-[#F8F2E4] text-[#3B2F2F] font-sans font-semibold border border-[#E8E2D5] rounded-lg outline-none cursor-pointer focus:border-[#5D6D53]"
                 >
                   {Array.from({ length: 200 }, (_, i) => currentYear + i).map((yr) => (
-                    <option key={yr} value={yr} className="bg-[#FAF8F5] text-stone-900">
+                    <option key={yr} value={yr} className="bg-[#FFFDF8] text-[#3B2F2F]">
                       {yr}
                     </option>
                   ))}
@@ -829,14 +829,14 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
 
               {/* Custom Selector */}
               <div className="space-y-1">
-                <label className="text-stone-600 block text-[10px] font-semibold">{mt.readingCustom}</label>
+                <label className="text-[#6B5E53] block text-[10px] font-semibold">{mt.readingCustom}</label>
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => setIsIsraelCustom(true)}
                     className={`flex-1 py-1 px-2 rounded-lg text-[10px] font-semibold border text-center transition-all cursor-pointer ${
                       isIsraelCustom
-                        ? 'bg-[#9A7B38] text-white border-[#9A7B38]'
-                        : 'bg-[#F3EFE6] text-stone-700 border-stone-300 hover:text-stone-900'
+                        ? 'bg-[#5D6D53] text-white border-[#5D6D53]'
+                        : 'bg-[#F8F2E4] text-[#6B5E53] border-[#E8E2D5] hover:text-[#3B2F2F]'
                     }`}
                   >
                     {lang === 'he' ? 'ארץ ישראל 🇮🇱' : lang === 'ru' ? 'Израиль 🇮🇱' : 'Israel 🇮🇱'}
@@ -845,8 +845,8 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                     onClick={() => setIsIsraelCustom(false)}
                     className={`flex-1 py-1 px-2 rounded-lg text-[10px] font-semibold border text-center transition-all cursor-pointer ${
                       !isIsraelCustom
-                        ? 'bg-[#9A7B38] text-white border-[#9A7B38]'
-                        : 'bg-[#F3EFE6] text-stone-700 border-stone-300 hover:text-stone-900'
+                        ? 'bg-[#5D6D53] text-white border-[#5D6D53]'
+                        : 'bg-[#F8F2E4] text-[#6B5E53] border-[#E8E2D5] hover:text-[#3B2F2F]'
                     }`}
                   >
                     {lang === 'he' ? 'חו"ל 🌐' : lang === 'ru' ? 'Диаспора 🌐' : 'Diaspora 🌐'}
@@ -856,46 +856,46 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
             </div>
 
             {/* Parasha content / loader */}
-            <div className="bg-[#FAF8F3] p-4 rounded-xl border border-stone-200">
+            <div className="bg-[#F8F2E4] p-4 rounded-2xl border border-[#E8E2D5]">
               {loadingParsha ? (
-                <div className="flex items-center justify-center gap-2 py-6 text-xs text-stone-600">
-                  <div className="w-4 h-4 border-2 border-[#9A7B38] border-t-transparent rounded-full animate-spin"></div>
+                <div className="flex items-center justify-center gap-2 py-6 text-xs text-[#6B5E53]">
+                  <div className="w-4 h-4 border-2 border-[#5D6D53] border-t-transparent rounded-full animate-spin"></div>
                   <span>{mt.loading}</span>
                 </div>
               ) : parshaInfo ? (
                 <div className={`space-y-3.5 text-xs ${lang === 'he' ? 'text-right' : 'text-left'}`}>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-stone-600">{mt.fallsOn}</span>
-                    <span className="text-stone-900 font-semibold">
+                    <span className="text-[#6B5E53]">{mt.fallsOn}</span>
+                    <span className="text-[#3B2F2F] font-semibold">
                       {formatGregorianDate(parshaInfo.date)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center bg-[#F3EFE6] p-3 rounded-xl border border-stone-300">
-                    <span className="text-[#9A7B38] font-bold flex items-center gap-1.5 font-serif">
+                  <div className="flex justify-between items-center bg-[#FAF5EC] p-3 rounded-xl border border-[#E8E2D5]">
+                    <span className="text-[#5D6D53] font-bold flex items-center gap-1.5 font-serif">
                       <BookOpen className="w-4 h-4" />
                       {mt.weeklyParsha}
                     </span>
-                    <span className="text-stone-900 font-serif font-bold text-sm sm:text-base">
+                    <span className="text-[#3B2F2F] font-serif font-bold text-sm sm:text-base">
                       {lang === 'he' ? parshaInfo.hebrewName : `${parshaInfo.hebrewName} (${parshaInfo.name})`}
                     </span>
                   </div>
 
                   {/* Torah Aliyot Details */}
                   {portionDetails && (
-                    <div className="mt-3 pt-3 border-t border-stone-200 space-y-2 text-xs">
-                      <div className={`bg-[#FCFBF9] p-2.5 rounded-lg border border-stone-200 space-y-1 ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-                        <span className="text-amber-800 font-bold block text-[10px]">{mt.aliyotIsrael}</span>
-                        <p className="text-stone-800 font-medium">{portionDetails.aliyotIsrael[lang]}</p>
+                    <div className="mt-3 pt-3 border-t border-[#E8E2D5] space-y-2 text-xs">
+                      <div className={`bg-[#FAF5EC] p-2.5 rounded-lg border border-[#E8E2D5] space-y-1 ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+                        <span className="text-[#5D6D53] font-bold block text-[10px]">{mt.aliyotIsrael}</span>
+                        <p className="text-[#3B2F2F] font-medium">{portionDetails.aliyotIsrael[lang]}</p>
                       </div>
 
-                      <div className={`bg-[#FCFBF9] p-2.5 rounded-lg border border-stone-200 space-y-1 ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-                        <span className="text-slate-700 font-bold block text-[10px]">{mt.aliyotDiaspora}</span>
-                        <p className="text-stone-800 font-medium">{portionDetails.aliyotDiaspora[lang]}</p>
+                      <div className={`bg-[#FAF5EC] p-2.5 rounded-lg border border-[#E8E2D5] space-y-1 ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+                        <span className="text-[#6B5E53] font-bold block text-[10px]">{mt.aliyotDiaspora}</span>
+                        <p className="text-[#3B2F2F] font-medium">{portionDetails.aliyotDiaspora[lang]}</p>
                       </div>
 
                       <div className={`space-y-1 mt-2 ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-                        <span className="text-[#9A7B38] font-serif font-bold text-[10px] block">{mt.differencesTitle}</span>
-                        <p className="text-stone-700 leading-relaxed text-[11px] bg-[#FCFBF9] p-2.5 rounded-lg border border-stone-200">
+                        <span className="text-[#5D6D53] font-serif font-bold text-[10px] block">{mt.differencesTitle}</span>
+                        <p className="text-[#6B5E53] leading-relaxed text-[11px] bg-[#FAF5EC] p-2.5 rounded-lg border border-[#E8E2D5]">
                           {portionDetails.differences[lang]}
                         </p>
                       </div>
@@ -903,14 +903,14 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                   )}
                 </div>
               ) : (
-                <div className="text-center text-xs text-stone-500 py-4">
+                <div className="text-center text-xs text-[#6B5E53] py-4">
                   {mt.noData}
                 </div>
               )}
             </div>
 
             {/* Explanation Note */}
-            <p className={`text-[10.5px] text-stone-600 leading-normal bg-[#F3EFE6] p-2.5 rounded-xl border border-stone-200 flex items-start gap-1.5 ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+            <p className={`text-[10.5px] text-[#6B5E53] leading-normal bg-[#F8F2E4] p-2.5 rounded-xl border border-[#E8E2D5] flex items-start gap-1.5 ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
               <span className="inline-block mt-0.5">💡</span>
               <span>{mt.explanation}</span>
             </p>
@@ -921,24 +921,24 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
           </div>
 
           {/* Right Column: Spiritual Corner (Mishnah & Psalms) */}
-          <div className={`bg-white border border-slate-300 p-6 rounded-2xl space-y-5 shadow-md shadow-slate-300/40 font-sans ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-            <h2 className="text-lg font-serif font-bold text-stone-900 border-b border-stone-200 pb-2.5 flex items-center justify-between">
+          <div className={`bg-[#FFFDF8] border border-[#D8CFC0] p-6 rounded-3xl space-y-5 shadow-sm font-sans ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+            <h2 className="text-lg font-serif font-bold text-[#3B2F2F] border-b border-[#E8E2D5] pb-2.5 flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <Star className="w-5 h-5 text-[#9A7B38]" />
+                <Star className="w-5 h-5 text-[#5D6D53]" />
                 {mt.studyHeader}
               </span>
-              <span className="text-[10px] bg-[#F3EFE6] text-[#9A7B38] px-2.5 py-0.5 rounded-full font-serif font-bold border border-stone-200">
+              <span className="text-[10px] bg-[#F8F2E4] text-[#5D6D53] px-2.5 py-0.5 rounded-full font-serif font-bold border border-[#E8E2D5]">
                 {lang === 'he' ? 'לעילוי נשמה' : lang === 'ru' ? 'За душу' : 'For the Soul'}
               </span>
             </h2>
 
             {/* Mishnah Study Block */}
-            <div className="space-y-2 bg-[#FAF8F3] p-4 rounded-xl border border-stone-200 relative overflow-hidden">
-              <div className="flex justify-between items-center border-b border-stone-200 pb-2">
-                <span className="text-stone-900 font-serif font-bold text-xs flex items-center gap-1.5">
+            <div className="space-y-2 bg-[#F8F2E4] p-4 rounded-2xl border border-[#E8E2D5] relative overflow-hidden">
+              <div className="flex justify-between items-center border-b border-[#E8E2D5] pb-2">
+                <span className="text-[#3B2F2F] font-serif font-bold text-xs flex items-center gap-1.5">
                   📚 {mt.mishnahTitle}
                 </span>
-                <span className="text-[10px] text-stone-500 font-medium">
+                <span className="text-[10px] text-[#6B5E53] font-medium">
                   {activeMishnah.reference[lang]}
                 </span>
               </div>
@@ -955,30 +955,30 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                         setReadingSefariaRef(ref);
                         setReadingTitle(activeMishnah.reference[lang]);
                       }}
-                      className="text-sm font-serif font-medium text-stone-900 text-center leading-relaxed py-3 bg-[#FCFBF9] px-3 rounded-xl border border-stone-200 cursor-pointer hover:border-[#9A7B38] hover:bg-[#F3EFE6] transition-all flex flex-col items-center gap-2"
+                      className="text-sm font-serif font-medium text-[#3B2F2F] text-center leading-relaxed py-3 bg-[#FAF5EC] px-3 rounded-xl border border-[#E8E2D5] cursor-pointer hover:border-[#5D6D53] hover:bg-[#F8F2E4] transition-all flex flex-col items-center gap-2"
                       dir={lang === 'he' ? 'rtl' : 'ltr'}
                       title={lang === 'he' ? 'לחץ לקריאת המשנה המלאה' : lang === 'ru' ? 'Нажмите для чтения всей Мишны' : 'Click to read full Mishnah'}
                     >
                       <span>{snippetMainDisplay}</span>
-                      <span className="text-[11px] text-[#9A7B38] font-sans font-bold bg-[#F3EFE6] px-3 py-1 rounded-full border border-stone-300 shadow-2xs hover:bg-[#EAE4D6] transition-all">
+                      <span className="text-[11px] text-[#5D6D53] font-sans font-bold bg-[#F8F2E4] px-3 py-1 rounded-full border border-[#E8E2D5] shadow-2xs hover:bg-[#E8E2D5] transition-all">
                         {lang === 'he' ? 'לחץ להמשך לקריאת המשנה המלאה ➔' : lang === 'ru' ? 'Нажмите для продолжения ➔' : 'Click to continue reading ➔'}
                       </span>
                     </p>
 
                     {lang !== 'he' && (
-                      <div className="pt-1.5 border-t border-stone-200 text-right" dir="rtl">
-                        <span className="text-[9px] text-[#9A7B38] font-bold block mb-0.5">מקור בעברית:</span>
-                        <p className="font-serif text-stone-800 text-xs leading-relaxed">{snippetHeDisplay}</p>
+                      <div className="pt-1.5 border-t border-[#E8E2D5] text-right" dir="rtl">
+                        <span className="text-[9px] text-[#5D6D53] font-bold block mb-0.5">מקור בעברית:</span>
+                        <p className="font-serif text-[#3B2F2F] text-xs leading-relaxed">{snippetHeDisplay}</p>
                       </div>
                     )}
                   </>
                 );
               })()}
 
-              <div className="text-xs text-stone-700 space-y-1 leading-relaxed">
-                <div className="pt-2 border-t border-stone-200">
-                  <span className="text-[#9A7B38] font-bold text-[10px] block mb-0.5">{mt.explanationLabel}</span>
-                  <p className="text-stone-700 text-[11px]">{activeMishnah.explanation[lang]}</p>
+              <div className="text-xs text-[#6B5E53] space-y-1 leading-relaxed">
+                <div className="pt-2 border-t border-[#E8E2D5]">
+                  <span className="text-[#5D6D53] font-bold text-[10px] block mb-0.5">{mt.explanationLabel}</span>
+                  <p className="text-[#6B5E53] text-[11px]">{activeMishnah.explanation[lang]}</p>
                 </div>
               </div>
               
@@ -989,28 +989,28 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                     setReadingSefariaRef(ref);
                     setReadingTitle(activeMishnah.reference[lang]);
                   }}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-[#9A7B38] hover:bg-[#85682C] text-white text-[10px] font-bold py-2 px-2.5 rounded-lg transition-all cursor-pointer shadow-xs"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-[#5D6D53] hover:bg-[#4F5D46] text-white text-[10px] font-bold py-2 px-2.5 rounded-lg transition-all cursor-pointer shadow-xs"
                 >
                   <BookOpen className="w-3.5 h-3.5" />
                   <span>{lang === 'he' ? 'קריאת המשנה המלאה' : lang === 'ru' ? 'Читать Мишну полностью' : 'Read Full Mishnah'}</span>
                 </button>
                 <button
                   onClick={() => setActiveMishnah(getRandomMishnah())}
-                  className="bg-[#F3EFE6] hover:bg-[#EAE4D6] border border-stone-300 text-stone-800 text-[10px] font-bold py-2 px-2.5 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+                  className="bg-[#FAF5EC] hover:bg-[#E8E2D5] border border-[#E8E2D5] text-[#3B2F2F] text-[10px] font-bold py-2 px-2.5 rounded-lg transition-all cursor-pointer flex items-center justify-center"
                   title={mt.nextMishnah}
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-[#9A7B38]" />
+                  <RefreshCw className="w-3.5 h-3.5 text-[#5D6D53]" />
                 </button>
               </div>
             </div>
 
             {/* Tehillim (Psalms) Block */}
-            <div className="space-y-2 bg-[#FAF8F3] p-4 rounded-xl border border-stone-200 relative overflow-hidden">
-              <div className="flex justify-between items-center border-b border-stone-200 pb-2">
-                <span className="text-stone-900 font-serif font-bold text-xs flex items-center gap-1.5">
+            <div className="space-y-2 bg-[#F8F2E4] p-4 rounded-2xl border border-[#E8E2D5] relative overflow-hidden">
+              <div className="flex justify-between items-center border-b border-[#E8E2D5] pb-2">
+                <span className="text-[#3B2F2F] font-serif font-bold text-xs flex items-center gap-1.5">
                   📖 {mt.psalmTitle}
                 </span>
-                <span className="text-[10px] text-stone-500 font-medium">
+                <span className="text-[10px] text-[#6B5E53] font-medium">
                   {activePsalm.title[lang]}
                 </span>
               </div>
@@ -1025,27 +1025,27 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                         setReadingSefariaRef(`Psalms ${activePsalm.chapter}`);
                         setReadingTitle(activePsalm.title[lang]);
                       }}
-                      className="text-sm font-serif font-medium text-stone-900 text-center leading-relaxed py-3 bg-[#FCFBF9] px-3 rounded-xl border border-stone-200 cursor-pointer hover:border-[#9A7B38] hover:bg-[#F3EFE6] transition-all flex flex-col items-center gap-2"
+                      className="text-sm font-serif font-medium text-[#3B2F2F] text-center leading-relaxed py-3 bg-[#FAF5EC] px-3 rounded-xl border border-[#E8E2D5] cursor-pointer hover:border-[#5D6D53] hover:bg-[#F8F2E4] transition-all flex flex-col items-center gap-2"
                       dir={lang === 'he' ? 'rtl' : 'ltr'}
                       title={lang === 'he' ? 'לחץ לקריאת הפרק המלא' : lang === 'ru' ? 'Нажмите для чтения всей главы' : 'Click to read full chapter'}
                     >
                       <span>{snippetMainDisplay}</span>
-                      <span className="text-[11px] text-[#9A7B38] font-sans font-bold bg-[#F3EFE6] px-3 py-1 rounded-full border border-stone-300 shadow-2xs hover:bg-[#EAE4D6] transition-all">
+                      <span className="text-[11px] text-[#5D6D53] font-sans font-bold bg-[#F8F2E4] px-3 py-1 rounded-full border border-[#E8E2D5] shadow-2xs hover:bg-[#E8E2D5] transition-all">
                         {lang === 'he' ? 'לחץ להמשך לקריאת הפרק המלא ➔' : lang === 'ru' ? 'Нажмите для продолжения ➔' : 'Click to continue reading ➔'}
                       </span>
                     </p>
 
                     {lang !== 'he' && (
-                      <div className="pt-1.5 border-t border-stone-200 text-right" dir="rtl">
-                        <span className="text-[9px] text-[#9A7B38] font-bold block mb-0.5">מקור בעברית:</span>
-                        <p className="font-serif text-stone-800 text-xs leading-relaxed">{snippetHeDisplay}</p>
+                      <div className="pt-1.5 border-t border-[#E8E2D5] text-right" dir="rtl">
+                        <span className="text-[9px] text-[#5D6D53] font-bold block mb-0.5">מקור בעברית:</span>
+                        <p className="font-serif text-[#3B2F2F] text-xs leading-relaxed">{snippetHeDisplay}</p>
                       </div>
                     )}
 
-                    <div className="text-xs text-stone-700 space-y-1 leading-relaxed">
-                      <div className="pt-2 border-t border-stone-200">
-                        <span className="text-[#9A7B38] font-bold text-[10px] block mb-0.5">{mt.significanceLabel}</span>
-                        <p className="text-stone-700 text-[11px]">{activePsalm.significance[lang]}</p>
+                    <div className="text-xs text-[#6B5E53] space-y-1 leading-relaxed">
+                      <div className="pt-2 border-t border-[#E8E2D5]">
+                        <span className="text-[#5D6D53] font-bold text-[10px] block mb-0.5">{mt.significanceLabel}</span>
+                        <p className="text-[#6B5E53] text-[11px]">{activePsalm.significance[lang]}</p>
                       </div>
                     </div>
                   </>
@@ -1058,49 +1058,49 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                     setReadingSefariaRef(`Psalms ${activePsalm.chapter}`);
                     setReadingTitle(activePsalm.title[lang]);
                   }}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-[#9A7B38] hover:bg-[#85682C] text-white text-[10px] font-bold py-2 px-2.5 rounded-lg transition-all cursor-pointer shadow-xs"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-[#5D6D53] hover:bg-[#4F5D46] text-white text-[10px] font-bold py-2 px-2.5 rounded-lg transition-all cursor-pointer shadow-xs"
                 >
                   <BookOpen className="w-3.5 h-3.5" />
                   <span>{lang === 'he' ? 'קריאת הפרק המלא' : lang === 'ru' ? 'Читать главу полностью' : 'Read Full Chapter'}</span>
                 </button>
                 <button
                   onClick={() => setActivePsalm(getRandomPsalm())}
-                  className="bg-[#F3EFE6] hover:bg-[#EAE4D6] border border-stone-300 text-stone-800 text-[10px] font-bold py-2 px-2.5 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+                  className="bg-[#FAF5EC] hover:bg-[#E8E2D5] border border-[#E8E2D5] text-[#3B2F2F] text-[10px] font-bold py-2 px-2.5 rounded-lg transition-all cursor-pointer flex items-center justify-center"
                   title={mt.nextPsalm}
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-[#9A7B38]" />
+                  <RefreshCw className="w-3.5 h-3.5 text-[#5D6D53]" />
                 </button>
               </div>
             </div>
 
             {/* Halakha Study Block */}
-            <div className="space-y-2 bg-[#FAF8F3] p-4 rounded-xl border border-stone-200 relative overflow-hidden">
-              <div className="flex justify-between items-center border-b border-stone-200 pb-2">
-                <span className="text-stone-900 font-serif font-bold text-xs flex items-center gap-1.5">
+            <div className="space-y-2 bg-[#F8F2E4] p-4 rounded-2xl border border-[#E8E2D5] relative overflow-hidden">
+              <div className="flex justify-between items-center border-b border-[#E8E2D5] pb-2">
+                <span className="text-[#3B2F2F] font-serif font-bold text-xs flex items-center gap-1.5">
                   ⚖️ {mt.halakhaTitle}
                 </span>
-                <span className="text-[10px] text-stone-500 font-medium">
+                <span className="text-[10px] text-[#6B5E53] font-medium">
                   {activeHalakha.reference[lang]}
                 </span>
               </div>
               <p 
-                className="text-sm font-sans font-bold text-stone-900 text-center leading-relaxed py-2.5 bg-[#FCFBF9] px-3 rounded-xl border border-stone-200" 
+                className="text-sm font-sans font-bold text-[#3B2F2F] text-center leading-relaxed py-2.5 bg-[#FAF5EC] px-3 rounded-xl border border-[#E8E2D5]" 
                 dir={lang === 'he' ? 'rtl' : 'ltr'}
               >
                 {activeHalakha.text[lang] || activeHalakha.text.he}
               </p>
 
               {lang !== 'he' && (
-                <div className="pt-1.5 border-t border-stone-200 text-right" dir="rtl">
-                  <span className="text-[9px] text-[#9A7B38] font-bold block mb-0.5">מקור בעברית:</span>
-                  <p className="font-serif text-stone-800 text-xs leading-relaxed">{activeHalakha.text.he}</p>
+                <div className="pt-1.5 border-t border-[#E8E2D5] text-right" dir="rtl">
+                  <span className="text-[9px] text-[#5D6D53] font-bold block mb-0.5">מקור בעברית:</span>
+                  <p className="font-serif text-[#3B2F2F] text-xs leading-relaxed">{activeHalakha.text.he}</p>
                 </div>
               )}
 
-              <div className="text-xs text-stone-700 space-y-1 leading-relaxed">
-                <div className="pt-2 border-t border-stone-200">
-                  <span className="text-[#9A7B38] font-bold text-[10px] block mb-0.5">{mt.explanationLabel}</span>
-                  <p className="text-stone-700 text-[11px]">{activeHalakha.explanation[lang]}</p>
+              <div className="text-xs text-[#6B5E53] space-y-1 leading-relaxed">
+                <div className="pt-2 border-t border-[#E8E2D5]">
+                  <span className="text-[#5D6D53] font-bold text-[10px] block mb-0.5">{mt.explanationLabel}</span>
+                  <p className="text-[#6B5E53] text-[11px]">{activeHalakha.explanation[lang]}</p>
                 </div>
               </div>
               
@@ -1108,16 +1108,16 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                 <button
                   type="button"
                   onClick={() => setActiveHalakha(getRandomHalakha())}
-                  className="flex-1 bg-[#F3EFE6] hover:bg-[#EAE4D6] border border-stone-300 text-stone-900 text-[10px] font-bold py-2 px-2.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  className="flex-1 bg-[#FAF5EC] hover:bg-[#E8E2D5] border border-[#E8E2D5] text-[#3B2F2F] text-[10px] font-bold py-2 px-2.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   title={mt.nextHalakha}
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-[#9A7B38]" />
+                  <RefreshCw className="w-3.5 h-3.5 text-[#5D6D53]" />
                   <span>{mt.nextHalakha}</span>
                 </button>
               </div>
             </div>
 
-            <p className="text-[10px] text-center text-stone-600 italic bg-[#F3EFE6] p-2.5 rounded-xl leading-normal">
+            <p className="text-[10px] text-center text-[#6B5E53] italic bg-[#F8F2E4] p-2.5 rounded-xl leading-normal">
               {mt.readSoul}
             </p>
           </div>
@@ -1126,34 +1126,34 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
         {/* Life story and Contact Details */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Notes / Life Story */}
-          <div className={`lg:col-span-2 bg-white border border-slate-300 p-6 rounded-2xl space-y-3 shadow-md shadow-slate-300/40 ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-            <h3 className="text-sm font-serif font-bold text-stone-900 border-b border-stone-200 pb-2 flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-[#9A7B38]" />
+          <div className={`lg:col-span-2 bg-[#FFFDF8] border border-[#D8CFC0] p-6 rounded-3xl space-y-3 shadow-sm ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+            <h3 className="text-sm font-serif font-bold text-[#3B2F2F] border-b border-[#E8E2D5] pb-2 flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-[#5D6D53]" />
               {mt.memorialStory}
             </h3>
-            <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
+            <p className="text-sm text-[#3B2F2F] leading-relaxed whitespace-pre-wrap">
               {getLocalizedNotes(deceased, lang) || (lang === 'he' ? "לא נכתבו פרטים נוספים במאגר." : "No additional biography details provided.")}
             </p>
           </div>
 
           {/* Contact relative */}
-          <div className="bg-white border border-slate-300 p-6 rounded-2xl space-y-3 shadow-md shadow-slate-300/40">
-            <h3 className="text-sm font-serif font-bold text-stone-900 border-b border-stone-200 pb-2 flex items-center gap-1.5 justify-start text-left">
-              <Phone className="w-4 h-4 text-[#9A7B38]" />
+          <div className="bg-[#FFFDF8] border border-[#D8CFC0] p-6 rounded-3xl space-y-3 shadow-sm">
+            <h3 className="text-sm font-serif font-bold text-[#3B2F2F] border-b border-[#E8E2D5] pb-2 flex items-center gap-1.5 justify-start text-left">
+              <Phone className="w-4 h-4 text-[#5D6D53]" />
               <span>{lang === 'he' ? 'פרטי קשר למשפחה' : 'Family Contact'}</span>
             </h3>
             {deceased.contactPhone ? (
               <div className="space-y-3 text-left">
-                <span className="block text-sm text-stone-900 font-mono font-bold">{deceased.contactPhone}</span>
+                <span className="block text-sm text-[#3B2F2F] font-mono font-bold">{deceased.contactPhone}</span>
                 <a
                   href={`tel:${deceased.contactPhone}`}
-                  className="w-full text-center bg-[#9A7B38] hover:bg-[#85682C] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all block cursor-pointer shadow-xs"
+                  className="w-full text-center bg-[#5D6D53] hover:bg-[#4F5D46] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all block cursor-pointer shadow-xs"
                 >
                   {mt.callRelative}
                 </a>
               </div>
             ) : (
-              <p className="text-xs text-stone-500 italic text-left">
+              <p className="text-xs text-[#6B5E53] italic text-left">
                 {lang === 'he' ? 'לא נמסר מספר טלפון לתיאום.' : 'No contact phone provided.'}
               </p>
             )}
@@ -1161,11 +1161,11 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
         </div>
 
         {/* VIRTUAL WALL OF CANDLES & REMEMBRANCES (The Personal Condolence Board) */}
-        <div id="wall-of-memories" className="bg-white border border-slate-300 rounded-3xl p-6 sm:p-8 space-y-6 shadow-md shadow-slate-300/40">
-          <div className="flex items-center justify-between border-b border-stone-200 pb-4">
+        <div id="wall-of-memories" className="bg-[#FFFDF8] border border-[#D8CFC0] rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+          <div className="flex items-center justify-between border-b border-[#E8E2D5] pb-4">
             <div className="flex items-center gap-2.5">
-              <MessageCircle className="w-5 h-5 text-[#9A7B38]" />
-              <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900 tracking-wide">
+              <MessageCircle className="w-5 h-5 text-[#5D6D53]" />
+              <h2 className="text-lg sm:text-xl font-serif font-bold text-[#3B2F2F] tracking-wide">
                 {mt.candleBoardTitle}
               </h2>
             </div>
@@ -1174,7 +1174,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
             {!showForm && (
               <button
                 onClick={() => setShowForm(true)}
-                className="bg-[#9A7B38] hover:bg-[#85682C] text-white font-bold text-xs py-2 px-4 rounded-xl shadow-xs transition-all hover:scale-105 cursor-pointer"
+                className="bg-[#5D6D53] hover:bg-[#4F5D46] text-white font-bold text-xs py-2 px-4 rounded-xl shadow-xs transition-all hover:scale-105 cursor-pointer"
               >
                 + {lang === 'he' ? 'הדלקת נר והוספת מכתב' : 'Light Candle'}
               </button>
@@ -1194,31 +1194,31 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
               initial={{ opacity: 0, y: -10 }} 
               animate={{ opacity: 1, y: 0 }} 
               onSubmit={handlePostMemory}
-              className="bg-[#FAF8F3] border border-stone-300 p-5 rounded-2xl space-y-4"
+              className="bg-[#F8F2E4] border border-[#E8E2D5] p-5 rounded-2xl space-y-4"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className={`space-y-1 ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-                  <label className="text-[10px] text-stone-600 uppercase tracking-wider font-bold block">{mt.yourName}</label>
+                  <label className="text-[10px] text-[#6B5E53] uppercase tracking-wider font-bold block">{mt.yourName}</label>
                   <input
                     type="text"
                     required
                     value={visitorName}
                     onChange={(e) => setVisitorName(e.target.value)}
                     placeholder={lang === 'he' ? 'הקלד את שמך...' : lang === 'ru' ? 'Введите ваше имя...' : 'Enter your name...'}
-                    className="w-full bg-[#FCFBF9] border border-stone-300 rounded-xl px-4 py-2.5 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#9A7B38] transition-all font-sans"
+                    className="w-full bg-[#FAF5EC] border border-[#E8E2D5] rounded-xl px-4 py-2.5 text-xs text-[#3B2F2F] placeholder-[#6B5E53]/60 focus:outline-none focus:border-[#5D6D53] transition-all font-sans"
                   />
                 </div>
               </div>
 
               <div className={`space-y-1 ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-                <label className="text-[10px] text-stone-600 uppercase tracking-wider font-bold block">{mt.yourMessage}</label>
+                <label className="text-[10px] text-[#6B5E53] uppercase tracking-wider font-bold block">{mt.yourMessage}</label>
                 <textarea
                   required
                   rows={3}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder={mt.writeSomething}
-                  className="w-full bg-[#FCFBF9] border border-stone-300 rounded-xl px-4 py-2.5 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#9A7B38] transition-all font-sans"
+                  className="w-full bg-[#FAF5EC] border border-[#E8E2D5] rounded-xl px-4 py-2.5 text-xs text-[#3B2F2F] placeholder-[#6B5E53]/60 focus:outline-none focus:border-[#5D6D53] transition-all font-sans"
                 />
               </div>
 
@@ -1226,19 +1226,19 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs py-2 px-4 rounded-xl font-semibold transition-all cursor-pointer"
+                  className="bg-[#E8E2D5] hover:bg-[#D8CFC0] text-[#3B2F2F] text-xs py-2 px-4 rounded-xl font-semibold transition-all cursor-pointer"
                 >
                   {lang === 'he' ? 'ביטול' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-[#9A7B38] hover:bg-[#85682C] text-white font-bold text-xs py-2 px-5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                  className="bg-[#5D6D53] hover:bg-[#4F5D46] text-white font-bold text-xs py-2 px-5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   {isSubmitting ? (
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <Flame className="w-3.5 h-3.5 text-amber-200" />
+                    <Flame className="w-3.5 h-3.5 text-[#D4AF37]" />
                   )}
                   <span>{mt.submitMessage}</span>
                 </button>
@@ -1248,12 +1248,12 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
 
           {/* Messages Feed */}
           {loadingMemories ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-2 text-stone-500 text-xs font-sans">
-              <div className="w-6 h-6 border-2 border-[#9A7B38] border-t-transparent rounded-full animate-spin"></div>
+            <div className="flex flex-col items-center justify-center py-10 gap-2 text-[#6B5E53] text-xs font-sans">
+              <div className="w-6 h-6 border-2 border-[#5D6D53] border-t-transparent rounded-full animate-spin"></div>
               <span>{mt.loadingMemories}</span>
             </div>
           ) : memories.length === 0 ? (
-            <div className="text-center py-10 text-stone-500 text-xs max-w-md mx-auto space-y-2">
+            <div className="text-center py-10 text-[#6B5E53] text-xs max-w-md mx-auto space-y-2">
               <span className="text-3xl block">🕯️</span>
               <p className="font-sans leading-relaxed">{mt.noMemoriesYet}</p>
             </div>
@@ -1262,28 +1262,28 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
               {memories.map((m) => (
                 <div 
                   key={m.id} 
-                  className={`bg-[#FAF8F3] border border-stone-200 p-4 rounded-2xl space-y-2 relative hover:border-stone-300 transition-all ${lang === 'he' ? 'text-right' : 'text-left'}`} 
+                  className={`bg-[#F8F2E4] border border-[#E8E2D5] p-4 rounded-2xl space-y-2 relative hover:border-[#D8CFC0] transition-all ${lang === 'he' ? 'text-right' : 'text-left'}`} 
                   dir={lang === 'he' ? 'rtl' : 'ltr'}
                 >
                   {/* Glowing small candle decoration */}
-                  <div className={`absolute top-3 ${lang === 'he' ? 'left-4' : 'right-4'} flex items-center gap-1 text-[10px] text-[#9A7B38] font-serif font-bold`}>
-                    <Flame className="w-3.5 h-3.5 text-[#9A7B38] animate-pulse" />
+                  <div className={`absolute top-3 ${lang === 'he' ? 'left-4' : 'right-4'} flex items-center gap-1 text-[10px] text-[#5D6D53] font-serif font-bold`}>
+                    <Flame className="w-3.5 h-3.5 text-[#D4AF37] animate-pulse" />
                     <span>{lang === 'he' ? 'נר דולק' : lang === 'ru' ? 'Свеча горит' : 'Candle lit'}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-[#F3EFE6] border border-stone-300 flex items-center justify-center text-stone-700">
+                    <div className="w-8 h-8 rounded-full bg-[#FAF5EC] border border-[#E8E2D5] flex items-center justify-center text-[#5D6D53]">
                       <User className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-stone-900 leading-tight">{m.visitorName}</h4>
-                      <span className="text-[9px] text-stone-500 font-mono block">
+                      <h4 className="text-sm font-bold text-[#3B2F2F] leading-tight">{m.visitorName}</h4>
+                      <span className="text-[9px] text-[#6B5E53] font-mono block">
                         {new Date(m.timestamp).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US')}
                       </span>
                     </div>
                   </div>
 
-                  <p className="text-xs text-stone-800 leading-relaxed font-sans pt-1 italic">
+                  <p className="text-xs text-[#3B2F2F] leading-relaxed font-sans pt-1 italic">
                     "{m.message}"
                   </p>
                 </div>

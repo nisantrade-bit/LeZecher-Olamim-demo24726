@@ -210,24 +210,24 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
   }, [sefariaRef, lang]);
 
   return (
-    <div className="fixed inset-0 bg-stone-950/70 backdrop-blur-sm z-[100] flex items-center justify-center p-3 sm:p-6 font-sans animate-fade-in">
-      <div className="bg-[#FAF8F5] border border-stone-300 rounded-2xl w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden shadow-2xl relative text-stone-900">
+    <div className="fixed inset-0 bg-[#3B2F2F]/60 backdrop-blur-sm z-[100] flex items-center justify-center p-3 sm:p-6 font-sans animate-fade-in">
+      <div className="bg-[#FFFDF8] border border-[#D8CFC0] rounded-3xl w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden shadow-xl relative text-[#3B2F2F]">
         
         {/* Digital Book Header */}
-        <div className="p-4 sm:p-5 border-b border-stone-200 bg-[#F3EFE6] flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-[#E8E2D5] bg-[#F8F2E4] flex items-center justify-between">
           <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-            <span className="text-[10px] tracking-widest text-[#9A7B38] font-serif font-bold uppercase block mb-0.5">
+            <span className="text-[10px] tracking-widest text-[#5D6D53] font-serif font-bold uppercase block mb-0.5">
               {lang === 'he' ? 'ספר הלימוד והתפילה הדיגיטלי' : lang === 'ru' ? 'Священный книга и молитвенник' : 'Digital Sacred Text Reader'}
             </span>
-            <h3 className="text-base sm:text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-[#9A7B38]" />
+            <h3 className="text-base sm:text-xl font-serif font-bold text-[#3B2F2F] flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-[#5D6D53]" />
               {title}
             </h3>
           </div>
           
           <button
             onClick={onClose}
-            className="text-stone-600 hover:text-stone-900 bg-stone-200/80 hover:bg-stone-300/80 p-2 rounded-xl cursor-pointer transition-colors"
+            className="text-[#6B5E53] hover:text-[#3B2F2F] bg-[#FAF5EC] hover:bg-[#E8E2D5] p-2 rounded-xl cursor-pointer transition-colors border border-[#D8CFC0]"
           >
             <X className="w-5 h-5" />
           </button>
@@ -235,13 +235,13 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
 
         {/* View mode toggle */}
         {!loading && !error && (
-          <div className="px-4 py-2 bg-[#F8F5EE] border-b border-stone-200 flex flex-wrap justify-center sm:justify-end gap-1.5 text-xs">
+          <div className="px-4 py-2 bg-[#F8F2E4] border-b border-[#E8E2D5] flex flex-wrap justify-center sm:justify-end gap-1.5 text-xs">
             <button
               onClick={() => setViewMode('translated')}
               className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
                 viewMode === 'translated'
-                  ? 'bg-[#9A7B38] text-white font-bold shadow-sm'
-                  : 'bg-stone-200/60 hover:bg-stone-200 text-stone-700'
+                  ? 'bg-[#5D6D53] text-white font-bold shadow-xs'
+                  : 'bg-[#FFFDF8] hover:bg-[#FAF5EC] text-[#6B5E53] border border-[#D8CFC0]'
               }`}
             >
               {lang === 'he' ? 'מתורגם בלבד' : lang === 'ru' ? 'Перевод (Русский)' : 'Full Translation'}
@@ -252,8 +252,8 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
                 onClick={() => setViewMode('transliterated')}
                 className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                   viewMode === 'transliterated'
-                    ? 'bg-[#9A7B38] text-white font-bold shadow-sm'
-                    : 'bg-stone-200/60 hover:bg-stone-200 text-stone-700'
+                    ? 'bg-[#5D6D53] text-white font-bold shadow-xs'
+                    : 'bg-[#FFFDF8] hover:bg-[#FAF5EC] text-[#6B5E53] border border-[#D8CFC0]'
                 }`}
                 title={lang === 'ru' ? 'Чтение иврита русскими буквами' : 'Read Hebrew sounds in English letters'}
               >
@@ -266,8 +266,8 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
               onClick={() => setViewMode('bilingual')}
               className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
                 viewMode === 'bilingual'
-                  ? 'bg-[#9A7B38] text-white font-bold shadow-sm'
-                  : 'bg-stone-200/60 hover:bg-stone-200 text-stone-700'
+                  ? 'bg-[#5D6D53] text-white font-bold shadow-xs'
+                  : 'bg-[#FFFDF8] hover:bg-[#FAF5EC] text-[#6B5E53] border border-[#D8CFC0]'
               }`}
             >
               {lang === 'he' ? 'דו-לשוני (עברית + תרגום)' : lang === 'ru' ? 'Иврит + Перевод' : 'Hebrew + Translation'}
@@ -277,8 +277,8 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
               onClick={() => setViewMode('hebrew')}
               className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
                 viewMode === 'hebrew'
-                  ? 'bg-[#9A7B38] text-white font-bold shadow-sm'
-                  : 'bg-stone-200/60 hover:bg-stone-200 text-stone-700'
+                  ? 'bg-[#5D6D53] text-white font-bold shadow-xs'
+                  : 'bg-[#FFFDF8] hover:bg-[#FAF5EC] text-[#6B5E53] border border-[#D8CFC0]'
               }`}
             >
               {lang === 'he' ? 'עברית מקורית' : lang === 'ru' ? 'Только иврит' : 'Hebrew Original'}
@@ -287,11 +287,11 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
         )}
 
         {/* Content Area - Warm Paper Reading Experience */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-5 bg-[#FAF8F5]">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-5 bg-[#FFFDF8]">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <div className="w-9 h-9 border-3 border-[#9A7B38] border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-xs text-stone-600 font-serif">
+              <div className="w-9 h-9 border-3 border-[#5D6D53] border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs text-[#6B5E53] font-serif">
                 {lang === 'he' ? 'טוען את הפרק המלא...' : lang === 'ru' ? 'Загрузка полного священного текста...' : 'Loading full sacred text...'}
               </p>
             </div>
@@ -310,13 +310,13 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
                 const translitText = transliteratedVerses[idx] || phoneticTransliterateHebrewVerse(verse, lang === 'ru' ? 'ru' : 'en');
 
                 return (
-                  <div key={idx} className="border-b border-stone-200/80 pb-5 last:border-0 space-y-2">
+                  <div key={idx} className="border-b border-[#E8E2D5] pb-5 last:border-0 space-y-2">
                     
                     {/* ViewMode: Translated */}
                     {viewMode === 'translated' && (
                       <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-                        <p className="text-base sm:text-lg leading-relaxed text-stone-800 font-sans font-medium">
-                          <span className="text-xs text-[#9A7B38] font-serif font-bold mr-2">
+                        <p className="text-base sm:text-lg leading-relaxed text-[#3B2F2F] font-sans font-medium">
+                          <span className="text-xs text-[#5D6D53] font-serif font-bold mr-2">
                             [{verseNum}]
                           </span>
                           {lang === 'he' ? verse : mainTranslated}
@@ -327,22 +327,22 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
                     {/* ViewMode: Transliterated */}
                     {viewMode === 'transliterated' && (
                       <div className="text-left space-y-2" dir="ltr">
-                        <div className="bg-[#F3EFE6] p-3 rounded-xl border border-stone-200">
-                          <span className="text-[10px] text-[#9A7B38] font-serif font-bold uppercase tracking-wider block mb-0.5">
+                        <div className="bg-[#FAF5EC] p-3 rounded-xl border border-[#E8E2D5]">
+                          <span className="text-[10px] text-[#5D6D53] font-serif font-bold uppercase tracking-wider block mb-0.5">
                             {lang === 'ru' ? 'Фонетическое чтение на иврите:' : 'Phonetic Hebrew Reading:'}
                           </span>
-                          <p className="text-base leading-relaxed text-stone-900 font-sans font-semibold">
-                            <span className="text-xs text-[#9A7B38] font-serif font-bold mr-2">
+                          <p className="text-base leading-relaxed text-[#3B2F2F] font-sans font-semibold">
+                            <span className="text-xs text-[#5D6D53] font-serif font-bold mr-2">
                               [{verseNum}]
                             </span>
                             {translitText}
                           </p>
                         </div>
                         <div className="pl-2 pt-1">
-                          <span className="text-[10px] text-stone-500 font-bold block mb-0.5">
+                          <span className="text-[10px] text-[#6B5E53] font-bold block mb-0.5">
                             {lang === 'ru' ? 'Перевод:' : 'Translation:'}
                           </span>
-                          <p className="text-sm leading-relaxed text-stone-700 italic font-sans">
+                          <p className="text-sm leading-relaxed text-[#3B2F2F] italic font-sans">
                             {mainTranslated}
                           </p>
                         </div>
@@ -352,9 +352,9 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
                     {/* ViewMode: Bilingual */}
                     {viewMode === 'bilingual' && (
                       <div className="space-y-3">
-                        <div className="text-right bg-[#F5F1E8] p-3.5 rounded-xl border border-stone-200" dir="rtl">
-                          <p className="text-lg sm:text-xl leading-loose text-stone-900 font-serif">
-                            <span className="text-xs text-[#9A7B38] font-serif font-bold ml-2">
+                        <div className="text-right bg-[#FAF5EC] p-3.5 rounded-xl border border-[#E8E2D5]" dir="rtl">
+                          <p className="text-lg sm:text-xl leading-loose text-[#3B2F2F] font-serif">
+                            <span className="text-xs text-[#5D6D53] font-serif font-bold ml-2">
                               ({verseNum})
                             </span>
                             {verse}
@@ -362,8 +362,8 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
                         </div>
                         {lang !== 'he' && (
                           <div className="text-left px-2" dir="ltr">
-                            <p className="text-sm sm:text-base leading-relaxed text-stone-700 font-sans font-medium">
-                              <span className="text-xs text-[#9A7B38] font-serif font-bold mr-2">
+                            <p className="text-sm sm:text-base leading-relaxed text-[#3B2F2F] font-sans font-medium">
+                              <span className="text-xs text-[#5D6D53] font-serif font-bold mr-2">
                                 [{verseNum}]
                               </span>
                               {mainTranslated}
@@ -376,8 +376,8 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
                     {/* ViewMode: Hebrew Original */}
                     {viewMode === 'hebrew' && (
                       <div className="text-right" dir="rtl">
-                        <p className="text-xl sm:text-2xl leading-loose text-stone-900 font-serif">
-                          <span className="text-xs text-[#9A7B38] font-serif font-bold ml-2">
+                        <p className="text-xl sm:text-2xl leading-loose text-[#3B2F2F] font-serif">
+                          <span className="text-xs text-[#5D6D53] font-serif font-bold ml-2">
                             {verseNum}.
                           </span>
                           {verse}
@@ -393,10 +393,10 @@ export const FullReadingModal: React.FC<FullReadingModalProps> = ({ sefariaRef, 
         </div>
 
         {/* Footer */}
-        <div className="p-3.5 border-t border-stone-200 bg-[#F3EFE6] flex justify-end">
+        <div className="p-3.5 border-t border-[#E8E2D5] bg-[#F8F2E4] flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-stone-800 hover:bg-stone-900 text-white font-medium rounded-xl text-xs transition-all cursor-pointer shadow-sm"
+            className="px-5 py-2 bg-[#5D6D53] hover:bg-[#4F5D46] text-white font-medium rounded-xl text-xs transition-all cursor-pointer shadow-xs"
           >
             {lang === 'he' ? 'סגור קריאה' : lang === 'ru' ? 'Закрыть' : 'Close'}
           </button>
