@@ -64,14 +64,15 @@ export const MemorialBook: React.FC<MemorialBookProps> = ({ deceasedList, lang, 
   );
 
   return (
-    <div id="memorial-book-panel" className="bg-[#131a26] border border-[#c8a96e]/20 rounded-xl p-6 text-[#f0f4f8] shadow-lg">
+    <div id="memorial-book-panel" className="bg-[#FCFBF9] border border-stone-300 rounded-2xl p-6 text-stone-900 shadow-sm">
       {/* Title & Search */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#c8a96e]/10 pb-4 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200 pb-4 mb-6">
         <div>
-          <h3 className="text-xl font-serif font-bold text-[#c8a96e] tracking-wide mb-1">
+          <h3 className="text-xl font-serif font-bold text-stone-900 tracking-wide mb-1 flex items-center gap-2">
+            <Flame className="w-5 h-5 text-[#9A7B38]" />
             {t.memorialBook}
           </h3>
-          <p className="text-xs text-gray-400 font-sans">
+          <p className="text-xs text-stone-600 font-sans">
             {lang === 'he' ? 'דפדף באנציקלופדיית הזיכרון המשפחתית לפי חודשי השנה' : 'Browse the family memorial book by month'}
           </p>
         </div>
@@ -83,9 +84,9 @@ export const MemorialBook: React.FC<MemorialBookProps> = ({ deceasedList, lang, 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t.search}
-            className="w-full bg-[#0d0d0d] border border-[#c8a96e]/30 focus:border-[#c8a96e] rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 outline-none transition-all"
+            className="w-full bg-[#FAF8F5] border border-stone-300 focus:border-[#9A7B38] rounded-xl pl-9 pr-3 py-2 text-xs text-stone-900 placeholder-stone-400 outline-none transition-all"
           />
-          <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-2.5 w-4 h-4 text-stone-400" />
         </div>
       </div>
 
@@ -100,34 +101,34 @@ export const MemorialBook: React.FC<MemorialBookProps> = ({ deceasedList, lang, 
           return (
             <div 
               key={monthKey}
-              className="border border-[#c8a96e]/15 hover:border-[#c8a96e]/40 rounded-lg overflow-hidden transition-all bg-[#0d0d0d]/40"
+              className="border border-stone-200 hover:border-stone-300 rounded-xl overflow-hidden transition-all bg-[#FAF8F5]"
             >
               {/* Accordion Trigger */}
               <button
                 type="button"
                 onClick={() => toggleMonth(monthKey)}
-                className="w-full px-5 py-4 flex items-center justify-between bg-[#131a26]/40 hover:bg-[#131a26]/80 transition-colors text-right outline-none group"
+                className="w-full px-5 py-3.5 flex items-center justify-between bg-[#F3EFE6] hover:bg-[#EAE4D6] transition-colors text-right outline-none group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg font-serif font-semibold text-[#c8a96e] group-hover:text-white transition-colors">
+                  <span className="text-lg font-serif font-bold text-stone-900 group-hover:text-[#9A7B38] transition-colors">
                     {monthLabel}
                   </span>
-                  <span className="text-xs bg-[#c8a96e]/10 group-hover:bg-[#c8a96e]/20 text-[#c8a96e] px-2.5 py-0.5 rounded-full border border-[#c8a96e]/15 transition-all">
+                  <span className="text-xs bg-stone-200 text-stone-800 font-bold px-2.5 py-0.5 rounded-full border border-stone-300 transition-all">
                     {monthDeceased.length}
                   </span>
                 </div>
                 {isExpanded ? (
-                  <ChevronUp className="w-5 h-5 text-[#c8a96e]" />
+                  <ChevronUp className="w-5 h-5 text-[#9A7B38]" />
                 ) : (
-                  <ChevronDown className="w-5 h-5 text-gray-500 group-hover:text-[#c8a96e]" />
+                  <ChevronDown className="w-5 h-5 text-stone-500 group-hover:text-[#9A7B38]" />
                 )}
               </button>
 
               {/* Accordion Content */}
               {isExpanded && (
-                <div className="p-4 bg-[#0d0d0d]/60 border-t border-[#c8a96e]/10 divide-y divide-[#c8a96e]/10">
+                <div className="p-4 bg-[#FAF8F5] border-t border-stone-200 divide-y divide-stone-200/80">
                   {monthDeceased.length === 0 ? (
-                    <div className="py-4 text-center text-gray-500 text-xs">
+                    <div className="py-4 text-center text-stone-500 text-xs italic">
                       {lang === 'he' ? 'אין רשומות לחודש זה' : lang === 'ru' ? 'Нет записей на этот месяц' : 'No records for this month'}
                     </div>
                   ) : (
@@ -161,30 +162,30 @@ export const MemorialBook: React.FC<MemorialBookProps> = ({ deceasedList, lang, 
                         }
 
                         const borderClass = isToday 
-                          ? 'border border-orange-500/60 bg-orange-950/20 animate-yahrzeit-fire shadow-orange-500/10' 
+                          ? 'border border-amber-500 bg-amber-50' 
                           : isUpcoming 
-                            ? 'border border-cyan-500/40 bg-purple-950/10 animate-yahrzeit-upcoming shadow-purple-500/5' 
-                            : 'border border-transparent hover:bg-[#c8a96e]/5';
+                            ? 'border border-amber-300 bg-amber-50/50' 
+                            : 'border border-transparent hover:bg-[#F3EFE6]';
 
                         return (
                           <div 
                             key={deceased.id}
                             onClick={() => onSelectDeceased(deceased)}
-                            className={`py-3 px-3 my-1 flex items-center justify-between cursor-pointer transition-all duration-300 group rounded-lg ${borderClass}`}
+                            className={`py-3 px-3 my-1 flex items-center justify-between cursor-pointer transition-all duration-200 group rounded-xl ${borderClass}`}
                           >
                             <div className="flex items-center gap-4">
-                              {/* Thumbnail Image or Animated Yahrzeit Candle Placeholder */}
+                              {/* Thumbnail Image */}
                               <DeceasedPhotoFrame deceased={deceased} size="thumb" lang={lang} />
                               
                               <div>
-                                <h4 className="text-sm font-semibold text-white group-hover:text-[#c8a96e] transition-colors">
+                                <h4 className="text-sm font-serif font-bold text-stone-900 group-hover:text-[#9A7B38] transition-colors">
                                   {getLocalizedName(deceased, lang)}
                                 </h4>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-stone-600 font-serif italic">
                                   {formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang, deceased)}
                                 </p>
                                 {/* Additional details before click */}
-                                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-500 font-sans">
+                                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-stone-500 font-sans">
                                   {deceased.ageAtDeath !== undefined && deceased.ageAtDeath !== null && (
                                     <span>
                                       {lang === 'he' ? `גיל פטירה: ${deceased.ageAtDeath}` : lang === 'ru' ? `Возраст: ${deceased.ageAtDeath}` : `Age of death: ${deceased.ageAtDeath}`}
@@ -202,7 +203,7 @@ export const MemorialBook: React.FC<MemorialBookProps> = ({ deceasedList, lang, 
                                       const dayName = getDayOfWeekName(yahrDate, lang);
                                       const dateStr = formatDateGregorian(yahrDate, lang);
                                       return (
-                                        <span className="text-[#c8a96e]/70">
+                                        <span className="text-[#9A7B38] font-medium">
                                           {lang === 'he' 
                                             ? `האזכרה השנה: ${dayName}, ${dateStr}` 
                                             : lang === 'ru' 
@@ -218,12 +219,12 @@ export const MemorialBook: React.FC<MemorialBookProps> = ({ deceasedList, lang, 
                             </div>
 
                             <div className="flex items-center gap-3">
-                              <span className="text-xs text-[#c8a96e] bg-[#c8a96e]/10 px-2 py-0.5 rounded border border-[#c8a96e]/15 font-mono">
+                              <span className="text-xs text-[#9A7B38] bg-[#F3EFE6] px-2.5 py-1 rounded-lg border border-stone-300 font-serif font-bold">
                                 {localizedHebDay}
                               </span>
                               <button
                                 type="button"
-                                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full bg-[#c8a96e]/10 hover:bg-[#c8a96e]/25 text-[#c8a96e] transition-all"
+                                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full bg-[#9A7B38] text-white transition-all shadow-xs"
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
