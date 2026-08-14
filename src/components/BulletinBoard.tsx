@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Deceased, Language } from '../types';
 import { translations, formatParentRelation } from '../utils/translations';
-import { translateText } from '../utils/transliteration';
+import { translateText, getLocalizedName } from '../utils/transliteration';
 import { getHebrewDate, isYahrzeitMatch, HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, normalizeMonthName, getYahrzeitEveDate } from '../utils/hebrewDate';
 import { Bell, Heart, Share2, BookOpen, Calendar, MessageCircle, Info, MapPin, Flame, Sparkles, Clock } from 'lucide-react';
 import { getTorahPortionDetails, getLocalizedEventName, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
@@ -340,8 +340,8 @@ export const BulletinBoard: React.FC<BulletinBoardProps> = ({ deceasedList, lang
 
   // Formulates the halachic text based on language and gender
   const formatHalachicAlert = (deceased: Deceased, day: string, month: string) => {
-    const parentRel = formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang);
-    const translatedName = lang === 'he' ? deceased.name : translateText(deceased.name, lang as 'en' | 'ru');
+    const parentRel = formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang, deceased);
+    const translatedName = getLocalizedName(deceased, lang);
 
     if (lang === 'he') {
       return `אזכרה של ${translatedName} ${parentRel} בתאריך ${day} ב${month}`;

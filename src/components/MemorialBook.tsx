@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { Deceased, Language } from '../types';
 import { translations, formatParentRelation } from '../utils/translations';
-import { translateText } from '../utils/transliteration';
+import { translateText, getLocalizedName } from '../utils/transliteration';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, normalizeMonthName, findYahrzeitGregorianDate } from '../utils/hebrewDate';
 import { ChevronDown, ChevronUp, Search, Eye, Flame } from 'lucide-react';
 import { DeceasedPhotoFrame } from './YahrzeitCandle';
@@ -178,10 +178,10 @@ export const MemorialBook: React.FC<MemorialBookProps> = ({ deceasedList, lang, 
                               
                               <div>
                                 <h4 className="text-sm font-semibold text-white group-hover:text-[#c8a96e] transition-colors">
-                                  {lang === 'he' ? deceased.name : translateText(deceased.name, lang as 'en' | 'ru')}
+                                  {getLocalizedName(deceased, lang)}
                                 </h4>
                                 <p className="text-xs text-gray-400">
-                                  {formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang)}
+                                  {formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang, deceased)}
                                 </p>
                                 {/* Additional details before click */}
                                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-500 font-sans">

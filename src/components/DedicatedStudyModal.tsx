@@ -17,6 +17,7 @@ import {
 } from '../utils/memorialStudy';
 import { FullReadingModal } from './FullReadingModal';
 import { formatParentRelation } from '../utils/translations';
+import { getLocalizedName } from '../utils/transliteration';
 import { DeceasedPhotoFrame } from './YahrzeitCandle';
 
 interface DedicatedStudyModalProps {
@@ -56,7 +57,7 @@ export const DedicatedStudyModal: React.FC<DedicatedStudyModalProps> = ({ deceas
                 <span>{lang === 'he' ? 'חלון לימוד ייעודי לעילוי נשמה' : lang === 'ru' ? 'Изучение Торы в память' : 'Dedicated Soul Study'}</span>
               </div>
               <h2 className="text-xl md:text-2xl font-serif font-black text-amber-100 truncate">
-                {lang === 'he' ? `לימוד לעילוי נשמת ${deceased.name}` : lang === 'ru' ? `Изучение в память: ${deceased.name}` : `Torah Study for ${deceased.name}`}
+                {lang === 'he' ? `לימוד לעילוי נשמת ${getLocalizedName(deceased, lang)}` : lang === 'ru' ? `Изучение в память: ${getLocalizedName(deceased, lang)}` : `Torah Study for ${getLocalizedName(deceased, lang)}`}
               </h2>
               {parentRelation && (
                 <p className="text-xs text-[#c8a96e] font-medium truncate">
@@ -83,8 +84,8 @@ export const DedicatedStudyModal: React.FC<DedicatedStudyModalProps> = ({ deceas
           <div className="bg-amber-950/40 border border-amber-500/30 rounded-xl p-3.5 text-center space-y-1">
             <p className="text-xs md:text-sm font-semibold text-amber-200">
               {lang === 'he' 
-                ? `מצוה רבה ללמוד משנה, תהלים ופרקי אבות לעילוי נשמת המנוח/ה ${deceased.name} תנצ"בה`
-                : `Reciting Mishnah, Psalms and Pirkei Avot elevates the soul of ${deceased.name}`}
+                ? `מצוה רבה ללמוד משנה, תהלים ופרקי אבות לעילוי נשמת המנוח/ה ${getLocalizedName(deceased, lang)} תנצ"בה`
+                : `Reciting Mishnah, Psalms and Pirkei Avot elevates the soul of ${getLocalizedName(deceased, lang)}`}
             </p>
             <p className="text-[11px] text-amber-300/80">
               {lang === 'he' ? 'חכמים אמרו: "משנ"ה אותיות נשמ"ה" - הלימוד מאיר את נשמת הנפטר בגנזי מרומים' : 'Our sages teach that "Mishnah" contains the same letters as "Neshama" (Soul).'}
@@ -310,7 +311,7 @@ export const DedicatedStudyModal: React.FC<DedicatedStudyModalProps> = ({ deceas
         <div className="bg-gradient-to-r from-amber-950/80 via-[#2a1c0d] to-amber-950/80 border-t border-[#c8a96e]/30 p-4 flex justify-between items-center">
           <span className="text-xs text-amber-300/90 font-medium flex items-center gap-1.5">
             <Flame className="w-4 h-4 text-amber-400 fill-amber-400" />
-            <span>{lang === 'he' ? `תנצ"בָה - תהא נשמת ${deceased.name} צרורה בצרור החיים` : 'May their memory be a blessing'}</span>
+            <span>{lang === 'he' ? `תנצ"בָה - תהא נשמת ${getLocalizedName(deceased, lang)} צרורה בצרור החיים` : 'May their memory be a blessing'}</span>
           </span>
 
           <button

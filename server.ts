@@ -10,7 +10,7 @@ import { execSync } from 'child_process';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
-import { translateDeceasedListClientSide } from './src/utils/transliteration';
+import { translateDeceasedListClientSide, getLocalizedName } from './src/utils/transliteration';
 
 // Load environment variables
 dotenv.config();
@@ -706,7 +706,8 @@ Return a JSON object with a single string property "refinedNotes".`;
         }
 
         if (deceased) {
-          const name = deceased.name || 'נפטר/ת';
+          const reqLang = ((req.query.lang as string) || 'he') as 'he' | 'en' | 'ru';
+          const name = getLocalizedName(deceased, reqLang) || deceased.name || 'נפטר/ת';
           const title = `🕯️ לזכר עולמים - ${name} ז״ל`;
           const description = `דף הנצחה וזיכרון לעילוי נשמת ${name}. נפטר/ה ב-${deceased.day} ב${deceased.month}. לחצו לצפייה בלוח המודעה, הדלקת נר נשמה ולימוד תהילים.`;
           const currentUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;

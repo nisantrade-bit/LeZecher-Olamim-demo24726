@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Deceased, Language } from '../types';
 import { translations, formatParentRelation } from '../utils/translations';
-import { translateText } from '../utils/transliteration';
+import { translateText, getLocalizedName, getLocalizedNotes } from '../utils/transliteration';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, findYahrzeitGregorianDate, getYahrzeitEveDate, formatYahrzeitDatesWithEve, normalizeMonthName } from '../utils/hebrewDate';
 import { getTorahPortionDetails, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
 import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
@@ -230,17 +230,18 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
     setActiveHalakha(getRandomHalakha());
 
     try {
-      const title = `לזכר עולמים - עמוד זיכרון לעילוי נשמת ${deceased.name}`;
+      const localizedName = getLocalizedName(deceased, lang);
+      const title = lang === 'he' ? `לזכר עולמים - עמוד זיכרון לעילוי נשמת ${localizedName}` : `In Memory - ${localizedName}`;
       document.title = title;
       const ogTitle = document.querySelector('meta[property="og:title"]');
       if (ogTitle) ogTitle.setAttribute('content', title);
       const ogDesc = document.querySelector('meta[property="og:description"]');
-      if (ogDesc) ogDesc.setAttribute('content', `נר נשמה דולק לעילוי נשמת ${deceased.name} ז״ל | השתתפות בהנצחה, תהילים ומשנה`);
+      if (ogDesc) ogDesc.setAttribute('content', `נר נשמה דולק לעילוי נשמת ${localizedName} ז״ל | השתתפות בהנצחה, תהילים ומשנה`);
       const ogImg = document.querySelector('meta[property="og:image"]');
       const photo = getDeceasedPhoto(deceased);
       if (ogImg && photo) ogImg.setAttribute('content', photo);
     } catch (e) {}
-  }, [deceased.id, deceased.day, deceased.month, deceased.name, deceased.image, deceased.imageUrl, deceased.photoUrl]);
+  }, [deceased.id, deceased.day, deceased.month, deceased.name, deceased.image, deceased.imageUrl, deceased.photoUrl, lang]);
 
   // Spiritual Study States
   const [activeMishnah, setActiveMishnah] = useState<MishnahRecord>(() => getRandomMishnah());
@@ -654,12 +655,12 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
 
           {/* Deceased name in Display typography */}
           <h1 className="text-3xl sm:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#f0d19e] via-[#c8a96e] to-[#f0d19e] mb-3 leading-tight tracking-wide">
-            {lang === 'he' ? deceased.name : translateText(deceased.name, lang as 'en' | 'ru')}
+            {getLocalizedName(deceased, lang)}
           </h1>
 
           <div className="text-gray-300 font-sans text-sm sm:text-base space-y-1 mb-6 flex flex-col items-center">
             <span className="text-xl sm:text-2xl font-serif font-bold italic text-amber-100 bg-amber-500/5 px-5 py-2 rounded-full border border-amber-500/10 shadow-inner">
-              {formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang)}
+              {formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang, deceased)}
             </span>
             <div className="pt-2 text-gray-300 text-sm sm:text-base flex items-center justify-center gap-1.5">
               <Calendar className="w-4.5 h-4.5 text-[#c8a96e]" />
@@ -1137,7 +1138,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
               {mt.memorialStory}
             </h3>
             <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-              {deceased.notes || (lang === 'he' ? "לא נכתבו פרטים נוספים במאגר." : "No additional biography details provided.")}
+              {getLocalizedNotes(deceased, lang) || (lang === 'he' ? "לא נכתבו פרטים נוספים במאגר." : "No additional biography details provided.")}
             </p>
           </div>
 

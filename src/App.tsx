@@ -336,10 +336,8 @@ function MainAppContent() {
   useEffect(() => {
     const loadDatabase = async () => {
       try {
-        // 1. Run automatic database cleanup/deduplication on startup
-        if (isSupabaseConfigured()) {
-          await cleanAndDeduplicateSupabase();
-        }
+        // 1. Automatic database cleanup/deduplication on startup DISABLED for data safety
+        // (cleanAndDeduplicateSupabase is now only called via explicit user actions)
 
         let localRecords: Deceased[] = [];
         try {
@@ -388,10 +386,15 @@ function MainAppContent() {
           }
         }
 
-        // Merge clean records directly from Supabase (top priority) & local storage
-        let combined = smartMergeDeceasedLists([], supabaseRecords);
-        combined = smartMergeDeceasedLists(combined, localRecords);
-        combined = mergeWithUrlPayload(combined);
+        // Supabase is Source of Truth when available
+        let combined: Deceased[] = [];
+        if (supabaseRecords.length > 0) {
+          // Use Supabase records as master list, plus any URL shared payload
+          combined = mergeWithUrlPayload(supabaseRecords);
+        } else if (localRecords.length > 0) {
+          // Offline fallback: use local storage records
+          combined = mergeWithUrlPayload(localRecords);
+        }
 
         const finalMaster = filterOutMockRecords(deduplicateSingleList(combined));
         setMasterList(finalMaster);

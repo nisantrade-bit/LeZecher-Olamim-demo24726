@@ -209,7 +209,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
 
       if (!rawName) continue; // skip empty names
 
-      // Parse ID integer
+      // Parse ID integer (only if explicitly provided in source)
       let parsedId: number | undefined = undefined;
       if (rawIdStr) {
         const clean = String(rawIdStr).replace(/\D/g, '');
@@ -218,7 +218,6 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
           if (!isNaN(p) && p > 0) parsedId = p;
         }
       }
-      const finalId = parsedId || (Date.now() + Math.floor(Math.random() * 1000000) + index);
 
       let parsedCandles = 0;
       if (rawCandles) {
@@ -274,7 +273,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       const imgVal = rawImageUrl || rawPhotoUrl || rawImage || '-';
 
       const newItem: Deceased = {
-        id: Number(finalId),
+        id: parsedId !== undefined ? Number(parsedId) : (undefined as any),
         name: rawName,
         gender,
         fatherName: sanitizeParentName(rawFather) || '-',
@@ -333,7 +332,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
           const passDateVal = item.passDate || item.pass_date || hebDate;
 
           return {
-            id: Number(item.id || Date.now() + idx),
+            id: item.id !== undefined && item.id !== null && String(item.id).trim() !== '' ? Number(item.id) : (undefined as any),
             name: String(item.name || item.nameHe || item.nameEn || item.nameRu || '').trim(),
             gender: (String(item.gender || '').toLowerCase().includes('f') || String(item.gender || '').includes('נקבה') ? 'female' : 'male') as Gender,
             fatherName: sanitizeParentName(item.fatherName || item.father_name || item.fatherNameHe || ''),

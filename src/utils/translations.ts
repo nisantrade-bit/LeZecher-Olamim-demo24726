@@ -368,8 +368,8 @@ export function formatParentRelation(
 
   if (deceased) {
     if (lang === 'he') {
-      father = deceased.fatherNameHe || father;
-      mother = deceased.motherNameHe || mother;
+      father = deceased.fatherNameHe || (father && /[\u0400-\u04FF]/.test(father) ? translateText(father, 'he') : father);
+      mother = deceased.motherNameHe || (mother && /[\u0400-\u04FF]/.test(mother) ? translateText(mother, 'he') : mother);
     } else if (lang === 'en') {
       father = deceased.fatherNameEn || father;
       mother = deceased.motherNameEn || mother;
@@ -377,6 +377,9 @@ export function formatParentRelation(
       father = deceased.fatherNameRu || father;
       mother = deceased.motherNameRu || mother;
     }
+  } else if (lang === 'he') {
+    if (father && /[\u0400-\u04FF]/.test(father)) father = translateText(father, 'he');
+    if (mother && /[\u0400-\u04FF]/.test(mother)) mother = translateText(mother, 'he');
   }
 
   const hasFather = father !== '' && father !== '???' && father !== '-';

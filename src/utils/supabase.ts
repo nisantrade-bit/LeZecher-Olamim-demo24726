@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { parseAndNormalizeDateFields } from './hebrewDate';
-import { isSameDeceasedRecord, mergeDeceasedRecords } from './deduplication';
+import { isSameDeceasedRecord, mergeDeceasedRecords, buildDeduplicationPlan, DeduplicationPlan } from './deduplication';
 
 const FALLBACK_SUPABASE_URL = "https://aoendfkvzsywrykmcloy.supabase.co";
 const FALLBACK_SUPABASE_ANON_KEY = "sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj";
@@ -106,11 +106,14 @@ export async function uploadMemorialImage(file?: File | null, deceasedId?: numbe
 }
 
 /**
- * Scans Supabase 'deceased' table for duplicate records using unified cross-lingual matching,
- * merges missing language fields/information into the retained row,
- * permanently deletes duplicate rows from Supabase, and returns the clean unique count.
+ * Scans Supabase 'deceased' table for duplicate records using unified cross-lingual matching.
+ * READ-ONLY BY DEFAULT: Generates a deduplication audit plan without modifying Supabase.
+ * No records are updated or deleted unless executeDelete and safetyGateConfirmed are explicitly true.
  */
-export async function cleanAndDeduplicateSupabase(): Promise<{ count: number; deleted: number }> {
+export async function cleanAndDeduplicateSupabase(options?: {
+  executeDelete?: boolean;
+  safetyGateConfirmed?: boolean;
+}): Promise<{ count: number; deleted: number; plan?: DeduplicationPlan }> {
   if (!isSupabaseConfigured()) return { count: 0, deleted: 0 };
   try {
     const { data, error } = await supabase.from('deceased').select('*');
@@ -118,51 +121,29 @@ export async function cleanAndDeduplicateSupabase(): Promise<{ count: number; de
       return { count: Array.isArray(data) ? data.length : 0, deleted: 0 };
     }
 
-    const uniqueList: any[] = [];
-    const duplicateIdsToDelete: (number | string)[] = [];
-    const mergedToUpdate: any[] = [];
+    const normalizedRecords = data.map(normalizeFetchedRecord).filter(Boolean);
+    const plan = buildDeduplicationPlan(normalizedRecords);
 
-    for (const rawRecord of data) {
-      if (!rawRecord) continue;
-      const record = normalizeFetchedRecord(rawRecord);
-      if (!record || (!record.name && !record.nameHe && !record.nameRu && !record.nameEn)) continue;
+    // SAFETY GATE: Absolutely NO deletion unless explicitly requested with double confirmation
+    if (options?.executeDelete && options?.safetyGateConfirmed) {
+      const duplicateIdsToDelete = plan.items
+        .filter(item => item.decision === 'SAFE MATCH') // STRICT: ONLY SAFE MATCH!
+        .map(item => item.timestampId)
+        .filter(id => id !== 'UNKNOWN');
 
-      const existingIndex = uniqueList.findIndex(u => isSameDeceasedRecord(u, record));
-
-      if (existingIndex === -1) {
-        uniqueList.push(record);
-      } else {
-        const existing = uniqueList[existingIndex];
-        const merged = mergeDeceasedRecords(existing, record);
-        uniqueList[existingIndex] = merged;
-        mergedToUpdate.push(merged);
-
-        if (record.id !== undefined && record.id !== null && String(record.id) !== String(existing.id)) {
-          duplicateIdsToDelete.push(record.id);
+      if (duplicateIdsToDelete.length > 0) {
+        console.log(`[Supabase Cleanup Executed with Safety Gate] Deleting ${duplicateIdsToDelete.length} rows:`, duplicateIdsToDelete);
+        const { error: delErr } = await supabase.from('deceased').delete().in('id', duplicateIdsToDelete);
+        if (delErr) {
+          console.warn("[Supabase Cleanup Error]", delErr);
         }
+        return { count: plan.canonicalCount, deleted: duplicateIdsToDelete.length, plan };
       }
     }
 
-    if (mergedToUpdate.length > 0) {
-      for (const rec of mergedToUpdate) {
-        const sanitized = sanitizeRecord(rec);
-        try {
-          await supabase.from('deceased').upsert(sanitized, { onConflict: 'id' });
-        } catch (e) {
-          console.warn("[Supabase Cleanup Upsert Notice]", e);
-        }
-      }
-    }
-
-    if (duplicateIdsToDelete.length > 0) {
-      console.log(`[Supabase Cleanup] Deleting ${duplicateIdsToDelete.length} duplicate rows:`, duplicateIdsToDelete);
-      const { error: delErr } = await supabase.from('deceased').delete().in('id', duplicateIdsToDelete);
-      if (delErr) {
-        console.warn("[Supabase Cleanup Error]", delErr);
-      }
-    }
-
-    return { count: uniqueList.length, deleted: duplicateIdsToDelete.length };
+    // READ-ONLY / DRY-RUN BY DEFAULT
+    console.log(`[Supabase Cleanup Audit - Read-Only] Found ${plan.safeMatchCount} SAFE MATCH pairs across ${plan.totalRecords} total records.`);
+    return { count: plan.canonicalCount, deleted: 0, plan };
   } catch (err) {
     console.warn("[Supabase Cleanup Exception]", err);
     return { count: 0, deleted: 0 };
@@ -762,11 +743,18 @@ export async function safeDelete(
 
 /**
  * Safe delete all wrapper for Supabase reset.
+ * STRICTLY PROTECTED: Bulk deletion / reset all is disabled by default to prevent table loss.
  */
 export async function safeDeleteAll(
-  tableName: string = 'deceased'
+  tableName: string = 'deceased',
+  safetyGateConfirmed: boolean = false
 ): Promise<{ data: any; error: any }> {
   if (!isSupabaseConfigured()) return { data: [], error: null };
+  if (!safetyGateConfirmed) {
+    const msg = `[SAFETY GATE BLOCKED] Bulk deletion / reset all on table "${tableName}" is disabled by default to protect database records.`;
+    console.warn(msg);
+    return { data: null, error: { message: msg, code: 'SAFETY_GATE_BLOCKED' } };
+  }
   try {
     const { data, error } = await (supabase.from(tableName as any) as any)
       .delete()

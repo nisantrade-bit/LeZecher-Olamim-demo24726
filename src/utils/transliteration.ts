@@ -175,6 +175,35 @@ Object.entries(NAME_DICTIONARY).forEach(([he, trans]) => {
   if (trans.ru) RU_DICTIONARY[trans.ru.toLowerCase()] = item;
 });
 
+// Additional English and Russian name variant mappings for cross-language lookup
+const ADDITIONAL_NAME_ALIASES: Array<{ he: string; en: string; ru: string; aliases: string[] }> = [
+  { he: "יוסף", en: "Joseph", ru: "Иосиф", aliases: ["yosef", "yosif", "yusef", "юсуф", "יוסוף"] },
+  { he: "אברהם", en: "Avraham", ru: "Авраам", aliases: ["abraham", "ibrahim", "иброхим", "אברם"] },
+  { he: "יצחק", en: "Yitzhak", ru: "Ицхак", aliases: ["itzhak", "isaac", "исаак", "исок"] },
+  { he: "יעקב", en: "Yaakov", ru: "Яков", aliases: ["jacob", "yakov", "иаков", "якуб"] },
+  { he: "משה", en: "Moshe", ru: "Моше", aliases: ["moses", "mushe", "моисей", "муше"] },
+  { he: "שלמה", en: "Shlomo", ru: "Шломо", aliases: ["solomon", "suleiman", "соломон", "сулейман"] },
+  { he: "פנחס", en: "Pinchas", ru: "Пинхас", aliases: ["phinehas", "pinkhas"] },
+  { he: "אליהו", en: "Eliyahu", ru: "Илья", aliases: ["elijah", "ilyusha", "илюша", "איליה"] },
+  { he: "מיכאל", en: "Michael", ru: "Михаил", aliases: ["mishael", "mishoel", "mushel", "мушел", "мишоэль", "מישואל", "מושל"] },
+  { he: "ראובן", en: "Reuven", ru: "Реувен", aliases: ["ruben", "ruvin", "reuben", "рубен", "рувин", "רובין", "רובן"] },
+  { he: "ניסים", en: "Nissim", ru: "Нисим", aliases: ["nisim", "metri", "метри", "נסים"] },
+  { he: "שרה", en: "Sarah", ru: "Сара", aliases: ["sara", "сарра"] }
+];
+
+ADDITIONAL_NAME_ALIASES.forEach(({ he, en, ru, aliases }) => {
+  const item = { he, en, ru };
+  HE_DICTIONARY[he] = item;
+  EN_DICTIONARY[en.toLowerCase()] = item;
+  RU_DICTIONARY[ru.toLowerCase()] = item;
+  aliases.forEach(a => {
+    const clean = a.toLowerCase();
+    EN_DICTIONARY[clean] = item;
+    RU_DICTIONARY[clean] = item;
+    HE_DICTIONARY[clean] = item;
+  });
+});
+
 /**
  * Transliterates Latin/English text to Cyrillic/Russian
  */

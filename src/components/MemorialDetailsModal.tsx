@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Deceased, Language } from '../types';
 import { translations, formatParentRelation } from '../utils/translations';
-import { translateText } from '../utils/transliteration';
+import { translateText, getLocalizedName, getLocalizedNotes } from '../utils/transliteration';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, findYahrzeitGregorianDate, getYahrzeitEveDate, formatYahrzeitDatesWithEve, normalizeMonthName } from '../utils/hebrewDate';
 import { X, Phone, CalendarRange, MapPin, Edit, Trash2, Heart, Clock, BookOpen, Globe, MessageCircle, RefreshCw, Star, Loader2, Copy } from 'lucide-react';
 import { getTorahPortionDetails, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
@@ -397,10 +397,10 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
             {/* Title & Parentage below photo & candle */}
             <div className="text-center z-10 mt-3">
               <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#f0d19e] tracking-wide mb-1.5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
-                {lang === 'he' ? deceased.name : translateText(deceased.name, lang as 'en' | 'ru')}
+                {getLocalizedName(deceased, lang)}
               </h2>
               <p className="text-xs sm:text-sm font-serif font-medium text-amber-100 bg-black/65 backdrop-blur-md px-3.5 py-1 rounded-full border border-amber-500/30 inline-block shadow-lg">
-                {formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang)}
+                {formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang, deceased)}
               </p>
             </div>
           </div>
