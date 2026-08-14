@@ -64,7 +64,7 @@ export const MemorialBook: React.FC<MemorialBookProps> = ({ deceasedList, lang, 
   );
 
   return (
-    <div id="memorial-book-panel" className="bg-[#FCFBF9] border border-stone-300 rounded-2xl p-6 text-stone-900 shadow-sm">
+    <div id="memorial-book-panel" className="bg-white border border-slate-300 rounded-2xl p-6 text-slate-900 shadow-md shadow-slate-300/40">
       {/* Title & Search */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200 pb-4 mb-6">
         <div>

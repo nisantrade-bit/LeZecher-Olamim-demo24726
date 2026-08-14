@@ -559,15 +559,15 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
   };
 
   return (
-    <div className="min-h-screen bg-[#F9F7F2] text-stone-800 py-6 sm:py-10 px-3 sm:px-6 lg:px-8 relative overflow-x-hidden font-sans selection:bg-[#E8DFD1] selection:text-stone-900">
-      {/* Subtle paper texture overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#FFF_0%,transparent_70%)] pointer-events-none z-0"></div>
+    <div className="min-h-screen bg-[#e4ebf3] text-slate-800 py-6 sm:py-10 px-3 sm:px-6 lg:px-8 relative overflow-x-hidden font-sans selection:bg-slate-200 selection:text-slate-900">
+      {/* Subtle overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.6)_0%,transparent_70%)] pointer-events-none z-0"></div>
 
       {/* Floating Header Navigation */}
       <div className="max-w-4xl mx-auto flex items-center justify-between mb-6 relative z-10">
         <button
           onClick={onExit}
-          className="flex items-center gap-2 text-xs sm:text-sm font-medium text-stone-700 bg-[#FAF8F5] border border-stone-300 hover:border-stone-400 hover:bg-[#F3EFE6] py-2 px-4 rounded-xl transition-all cursor-pointer shadow-xs"
+          className="flex items-center gap-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 py-2 px-4 rounded-xl transition-all cursor-pointer shadow-sm"
         >
           <ArrowLeft className="w-4 h-4 shrink-0 text-[#9A7B38]" />
           <span>{mt.backToSystem}</span>
@@ -576,13 +576,13 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
         {/* Header center title */}
         <div className="flex items-center gap-2">
           <Flame className="w-4.5 h-4.5 text-[#9A7B38] animate-pulse" />
-          <span className="text-sm sm:text-base font-serif font-bold tracking-wide text-stone-900 uppercase hidden sm:inline">
+          <span className="text-sm sm:text-base font-serif font-bold tracking-wide text-slate-900 uppercase hidden sm:inline">
             לזכר עולמים — ספר הזיכרון
           </span>
         </div>
 
         {/* Global Language Selector */}
-        <div className="flex items-center bg-[#F3EFE6] rounded-xl p-1 border border-stone-300 shadow-xs">
+        <div className="flex items-center bg-white rounded-xl p-1 border border-slate-300 shadow-sm">
           {(['he', 'en', 'ru'] as Language[]).map((l) => (
             <button
               key={l}
@@ -590,7 +590,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
               className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 lang === l
                   ? 'bg-[#9A7B38] text-white shadow-xs font-bold'
-                  : 'text-stone-600 hover:text-stone-900'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               {l === 'he' ? 'עב' : l === 'en' ? 'EN' : 'РУ'}
@@ -601,10 +601,10 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
 
       <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8 relative z-10">
         
-        {/* HERO SECTION - The Core Memorial Page ("ספר זיכרון דיגיטלי") */}
-        <div className="bg-[#FCFBF9] border border-stone-300/90 rounded-3xl p-6 sm:p-10 shadow-md relative overflow-hidden text-center flex flex-col items-center">
+        {/* HERO SECTION - The Core Memorial Card ("ספר זיכרון דיגיטלי") */}
+        <div className="bg-white border border-slate-300 rounded-3xl p-6 sm:p-10 shadow-lg shadow-slate-300/50 relative overflow-hidden text-center flex flex-col items-center">
           
-          {/* Subtle paper watermark border */}
+          {/* Corner borders */}
           <div className="absolute top-0 left-0 w-10 h-10 border-t border-l border-[#9A7B38]/30 rounded-tl-2xl pointer-events-none"></div>
           <div className="absolute top-0 right-0 w-10 h-10 border-t border-r border-[#9A7B38]/30 rounded-tr-2xl pointer-events-none"></div>
           <div className="absolute bottom-0 left-0 w-10 h-10 border-b border-l border-[#9A7B38]/30 rounded-bl-2xl pointer-events-none"></div>
@@ -798,7 +798,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           
           {/* Left Column: Torah Portion preceding Yahrzeit (עליה לתורה) */}
-          <div className="bg-[#FCFBF9] border border-stone-300 p-6 rounded-2xl space-y-4 shadow-xs">
+          <div className="bg-white border border-slate-300 p-6 rounded-2xl space-y-4 shadow-md shadow-slate-300/40">
             <h2 className="text-lg font-serif font-bold text-stone-900 border-b border-stone-200 pb-2.5 flex items-center gap-2 justify-between">
               <span className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-[#9A7B38]" />
@@ -921,7 +921,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
           </div>
 
           {/* Right Column: Spiritual Corner (Mishnah & Psalms) */}
-          <div className={`bg-[#FCFBF9] border border-stone-300 p-6 rounded-2xl space-y-5 shadow-xs font-sans ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+          <div className={`bg-white border border-slate-300 p-6 rounded-2xl space-y-5 shadow-md shadow-slate-300/40 font-sans ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
             <h2 className="text-lg font-serif font-bold text-stone-900 border-b border-stone-200 pb-2.5 flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <Star className="w-5 h-5 text-[#9A7B38]" />
@@ -1126,7 +1126,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
         {/* Life story and Contact Details */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Notes / Life Story */}
-          <div className={`lg:col-span-2 bg-[#FCFBF9] border border-stone-300 p-6 rounded-2xl space-y-3 shadow-xs ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+          <div className={`lg:col-span-2 bg-white border border-slate-300 p-6 rounded-2xl space-y-3 shadow-md shadow-slate-300/40 ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
             <h3 className="text-sm font-serif font-bold text-stone-900 border-b border-stone-200 pb-2 flex items-center gap-1.5">
               <MapPin className="w-4 h-4 text-[#9A7B38]" />
               {mt.memorialStory}
@@ -1137,7 +1137,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
           </div>
 
           {/* Contact relative */}
-          <div className="bg-[#FCFBF9] border border-stone-300 p-6 rounded-2xl space-y-3 shadow-xs">
+          <div className="bg-white border border-slate-300 p-6 rounded-2xl space-y-3 shadow-md shadow-slate-300/40">
             <h3 className="text-sm font-serif font-bold text-stone-900 border-b border-stone-200 pb-2 flex items-center gap-1.5 justify-start text-left">
               <Phone className="w-4 h-4 text-[#9A7B38]" />
               <span>{lang === 'he' ? 'פרטי קשר למשפחה' : 'Family Contact'}</span>
@@ -1161,7 +1161,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
         </div>
 
         {/* VIRTUAL WALL OF CANDLES & REMEMBRANCES (The Personal Condolence Board) */}
-        <div id="wall-of-memories" className="bg-[#FCFBF9] border border-stone-300 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xs">
+        <div id="wall-of-memories" className="bg-white border border-slate-300 rounded-3xl p-6 sm:p-8 space-y-6 shadow-md shadow-slate-300/40">
           <div className="flex items-center justify-between border-b border-stone-200 pb-4">
             <div className="flex items-center gap-2.5">
               <MessageCircle className="w-5 h-5 text-[#9A7B38]" />
