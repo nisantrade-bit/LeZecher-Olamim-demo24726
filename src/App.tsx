@@ -102,15 +102,63 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
+export function getLangFromUrl(): Language | null {
+  try {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlLang = searchParams.get('lang')?.toLowerCase();
+      if (urlLang === 'he' || urlLang === 'en' || urlLang === 'ru') {
+        return urlLang as Language;
+      }
+
+      if (window.location.hash) {
+        const hashStr = window.location.hash;
+        const hashMatch = hashStr.match(/[?&]lang=(he|ru|en)/i);
+        if (hashMatch && hashMatch[1]) {
+          return hashMatch[1].toLowerCase() as Language;
+        }
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+export function getInitialLang(): Language {
+  const urlLang = getLangFromUrl();
+  if (urlLang) {
+    try {
+      localStorage.setItem('user_lang', urlLang);
+    } catch (e) {}
+    return urlLang;
+  }
+  try {
+    const saved = localStorage.getItem('user_lang') as Language;
+    if (saved === 'he' || saved === 'en' || saved === 'ru') {
+      return saved;
+    }
+  } catch (e) {}
+  return 'he';
+}
+
 function MainAppContent() {
   const [lang, setLang] = useState<Language>(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlLang = params.get('lang');
-    if (urlLang === 'en' || urlLang === 'ru' || urlLang === 'he') {
-      return urlLang as Language;
-    }
-    return 'he'; // Default to Hebrew
+    return getInitialLang();
   });
+
+  useEffect(() => {
+    const syncLangFromUrl = () => {
+      const urlLang = getLangFromUrl();
+      if (urlLang && urlLang !== lang) {
+        setLang(urlLang);
+        try {
+          localStorage.setItem('user_lang', urlLang);
+        } catch (e) {}
+      }
+    };
+    syncLangFromUrl();
+    window.addEventListener('popstate', syncLangFromUrl);
+    return () => window.removeEventListener('popstate', syncLangFromUrl);
+  }, [lang]);
 
   const [activeTab, setActiveTab] = useState<'calendar' | 'book' | 'grid' | 'import'>('calendar');
   const [masterList, setMasterList] = useState<Deceased[]>([]);
@@ -416,6 +464,12 @@ function MainAppContent() {
   const handleLanguageChange = (targetLang: Language) => {
     setLang(targetLang);
     setTranslationError(null);
+    if (typeof window !== 'undefined' && window.history) {
+      const params = new URLSearchParams(window.location.search);
+      params.set('lang', targetLang);
+      const newUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+      window.history.replaceState({}, document.title, newUrl);
+    }
   };
 
   // Helper to verify if list items match expected language script
@@ -853,7 +907,7 @@ function MainAppContent() {
     setUrlDeceasedFromPayload(null);
     setSelectedDeceased(null);
     if (typeof window !== 'undefined' && window.history) {
-      const targetUrl = lang !== 'he' ? `/?lang=${lang}` : '/';
+      const targetUrl = `/?lang=${lang}`;
       window.history.pushState({}, document.title, targetUrl);
     }
   };
@@ -886,20 +940,20 @@ function MainAppContent() {
     }
 
     if (urlDeceased && urlDeceased.name && urlDeceased.name !== 'undefined' && urlDeceased.name.trim() !== '') {
-      // Auto-sync address bar URL to clean ID-only link (?m=12345)
-      const targetUrl = `/?m=${urlDeceased.id}${lang !== 'he' ? `&lang=${lang}` : ''}`;
+      // Auto-sync address bar URL to clean ID-only link (?m=12345&lang=ru)
+      const targetUrl = `/?m=${urlDeceased.id}&lang=${lang}`;
       if (typeof window !== 'undefined' && (window.location.pathname + window.location.search) !== targetUrl) {
         window.history.replaceState({}, document.title, targetUrl);
       }
 
+      const localizedDeceased = translateDeceasedListClientSide([urlDeceased], lang)[0] || urlDeceased;
+
       return (
         <DeceasedMemorialPage 
-          deceased={urlDeceased} 
+          deceased={localizedDeceased} 
           lang={lang} 
           onSetLang={(newLang) => {
-            setLang(newLang);
-            const newUrl = `/?m=${urlDeceased!.id}${newLang !== 'he' ? `&lang=${newLang}` : ''}`;
-            window.history.replaceState({}, document.title, newUrl);
+            handleLanguageChange(newLang);
           }} 
           onExit={handleExitMemorialPage} 
         />
@@ -948,17 +1002,17 @@ function MainAppContent() {
 
   return (
     <div 
-      className="min-h-screen bg-[#0d0d0d] text-[#f0f4f8] selection:bg-[#c8a96e] selection:text-black pb-28 lg:pb-12 transition-all duration-300"
+      className="min-h-screen bg-[#E3DDD2] text-[#3B2F2F] selection:bg-[#5D6D53] selection:text-white pb-28 lg:pb-12 transition-all duration-300"
       dir={isRtl ? 'rtl' : 'ltr'}
     >
       {/* Dynamic Background Grain overlay */}
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(20,30,48,0.5),rgba(13,13,13,1))] pointer-events-none z-0"></div>
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,253,248,0.6)_0%,rgba(227,221,210,1)_100%)] pointer-events-none z-0"></div>
 
       {/* Main Content Area */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         
         {/* Navigation & Language Header */}
-        <header className="flex flex-col items-center justify-center border-b border-[#c8a96e]/20 pb-6 mb-8 gap-6 w-full text-center">
+        <header className="flex flex-col items-center justify-center border-b border-[#D8CFC0] pb-6 mb-8 gap-6 w-full text-center">
           
           {/* Centered Logo / Title with Large Live Burning Candle */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 group">
@@ -967,7 +1021,7 @@ function MainAppContent() {
             <div className="relative w-16 h-28 flex flex-col items-center justify-end shrink-0 select-none">
               {/* Flame */}
               <motion.div 
-                className="absolute top-1 w-4 h-7 bg-amber-400 rounded-full blur-[0.5px] shadow-[0_0_15px_#f59e0b,0_0_25px_#f59e0b] origin-bottom animate-pulse"
+                className="absolute top-1 w-4 h-7 bg-amber-400 rounded-full blur-[0.5px] shadow-[0_0_15px_#f59e0b] origin-bottom animate-pulse"
                 animate={{
                   scaleY: [1, 1.15, 0.95, 1.1, 1],
                   scaleX: [1, 0.9, 1.1, 0.95, 1],
@@ -980,7 +1034,7 @@ function MainAppContent() {
                   ease: "easeInOut"
                 }}
               >
-                <div className="absolute bottom-1 left-1 w-2 h-3 bg-yellow-100 rounded-full opacity-95 shadow-[0_0_6px_#fff]"></div>
+                <div className="absolute bottom-1 left-1 w-2 h-3 bg-yellow-100 rounded-full opacity-95 shadow-xs"></div>
                 <div className="absolute bottom-0 left-1.5 w-1 h-1.5 bg-blue-500 rounded-full opacity-70"></div>
               </motion.div>
               
@@ -995,15 +1049,15 @@ function MainAppContent() {
               </div>
               
               {/* Pedestal */}
-              <div className="w-14 h-1.5 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 rounded-full shadow-lg"></div>
+              <div className="w-14 h-1.5 bg-gradient-to-r from-gray-400 via-gray-300 to-gray-400 rounded-full shadow-xs"></div>
             </div>
 
             {/* Title text */}
             <div className="flex flex-col items-center sm:items-start text-center sm:text-right">
-              <h1 className="text-3xl sm:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#f0d19e] via-[#c8a96e] to-[#f0d19e] tracking-wide leading-tight">
+              <h1 className="text-3xl sm:text-5xl font-serif font-bold text-[#3B2F2F] tracking-wide leading-tight">
                 {t.title}
               </h1>
-              <p className="text-xs sm:text-sm text-[#c8a96e]/80 font-sans mt-2">
+              <p className="text-xs sm:text-sm text-[#5D6D53] font-sans font-medium mt-2">
                 {t.subtitle}
               </p>
             </div>
@@ -1012,23 +1066,23 @@ function MainAppContent() {
           {/* Language Selector & Standalone Download Container */}
           <div className="flex flex-col sm:flex-row items-center gap-3 mx-auto">
             {/* Language Selector Buttons */}
-            <div className="flex items-center gap-1.5 bg-[#131a26]/90 border border-[#c8a96e]/20 p-1.5 rounded-xl shadow-inner font-sans">
-              <Globe className="w-3.5 h-3.5 text-gray-500 mx-2" />
+            <div className="flex items-center gap-1.5 bg-[#FFFDF8] border border-[#D8CFC0] p-1.5 rounded-xl shadow-xs font-sans">
+              <Globe className="w-3.5 h-3.5 text-[#5D6D53] mx-2" />
               <button
                 onClick={() => handleLanguageChange('he')}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${lang === 'he' ? 'bg-[#c8a96e] text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${lang === 'he' ? 'bg-[#5D6D53] text-white font-bold' : 'text-[#6B5E53] hover:text-[#3B2F2F]'}`}
               >
                 עברית
               </button>
               <button
                 onClick={() => handleLanguageChange('en')}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${lang === 'en' ? 'bg-[#c8a96e] text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${lang === 'en' ? 'bg-[#5D6D53] text-white font-bold' : 'text-[#6B5E53] hover:text-[#3B2F2F]'}`}
               >
                 English
               </button>
               <button
                 onClick={() => handleLanguageChange('ru')}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${lang === 'ru' ? 'bg-[#c8a96e] text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${lang === 'ru' ? 'bg-[#5D6D53] text-white font-bold' : 'text-[#6B5E53] hover:text-[#3B2F2F]'}`}
               >
                 Русский
               </button>
@@ -1064,10 +1118,10 @@ function MainAppContent() {
 
         {/* Duplicate Entries Alert Banner */}
         {getDuplicateGroups().length > 0 && (
-          <div className="mb-6 bg-yellow-950/20 border border-yellow-500/30 px-5 py-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-yellow-200 font-sans shadow-lg relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-2 h-full bg-yellow-500"></div>
+          <div className="mb-6 bg-[#FAF5EC] border border-amber-300 px-5 py-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-[#3B2F2F] font-sans shadow-xs relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-2 h-full bg-[#5D6D53]"></div>
             <div className="flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 animate-pulse" />
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 animate-pulse" />
               <div>
                 <span className="font-semibold block sm:inline">
                   {lang === 'he' 
@@ -1076,7 +1130,7 @@ function MainAppContent() {
                       ? `Найдены дубликаты в базе данных (${getDuplicateGroups().length} групп)!`
                       : `Duplicate records found in the database (${getDuplicateGroups().length} duplicate groups)!`}
                 </span>
-                <span className="text-xs text-gray-400 block sm:inline sm:ms-2">
+                <span className="text-xs text-[#6B5E53] block sm:inline sm:ms-2">
                   {lang === 'he'
                     ? 'מומלץ לנקות כפילויות על מנת לשמור על סדר ושלמות הנתונים.'
                     : lang === 'ru'
@@ -1087,25 +1141,23 @@ function MainAppContent() {
             </div>
             <button
               onClick={() => setShowDuplicatesManager(true)}
-              className="px-4 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-xs rounded-lg transition-all shadow cursor-pointer font-sans"
+              className="px-4 py-1.5 bg-[#5D6D53] hover:bg-[#4F5D46] text-white font-semibold text-xs rounded-lg transition-all shadow-xs cursor-pointer font-sans"
             >
               {lang === 'he' ? 'נהל כפילויות' : lang === 'ru' ? 'Управление дубликатами' : 'Manage Duplicates'}
             </button>
           </div>
         )}
-
-        {/* Notification Permission Banner */}
         {!notifBannerDismissed && (
-          <div className="mb-6 w-full bg-[#131a26]/90 border border-[#c8a96e]/30 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-200 font-sans shadow-lg">
+          <div className="mb-6 w-full bg-[#FFFDF8] border border-[#D8CFC0] rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#3B2F2F] font-sans shadow-xs">
             <div className="flex items-center gap-2.5">
-              <Bell className="w-5 h-5 text-amber-400 animate-bounce shrink-0" />
+              <Bell className="w-5 h-5 text-[#5D6D53] animate-bounce shrink-0" />
               <div>
-                <p className="font-semibold text-white text-xs sm:text-sm">
+                <p className="font-semibold text-[#3B2F2F] text-xs sm:text-sm">
                   {notifPermission === 'granted'
                     ? (lang === 'he' ? `התראות יארצייט פעילות בנייד (${upcomingNotices.length} אזכרות קרובות ב-3 הימים הקרובים)` : lang === 'ru' ? `Уведомления о Йארцайтах активны (${upcomingNotices.length} ближайших)` : `Mobile Yahrzeit Notifications Active (${upcomingNotices.length} upcoming)`)
                     : (lang === 'he' ? 'קבל התראות לנייד על אזכרות קרובות ב-3 הימים הקרובים' : lang === 'ru' ? 'Получать уведомления о приближающихся Йארцайтах' : 'Get mobile push notifications for upcoming Yahrzeits')}
                 </p>
-                <p className="text-[11px] text-gray-400 mt-0.5">
+                <p className="text-[11px] text-[#6B5E53] mt-0.5">
                   {lang === 'he' ? 'המערכת תשלח תזכורת אוטומטית למכשירך לקראת יום האזכרה' : lang === 'ru' ? 'Система автоматически отправит напоминание на ваше устройство' : 'Automatic push notifications directly on your phone or computer'}
                 </p>
               </div>
@@ -1114,19 +1166,19 @@ function MainAppContent() {
               {notifPermission !== 'granted' ? (
                 <button
                   onClick={handleEnableNotifications}
-                  className="px-3.5 py-1.5 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-bold text-xs rounded-lg transition-all shadow cursor-pointer whitespace-nowrap"
+                  className="px-3.5 py-1.5 bg-[#5D6D53] hover:bg-[#4F5D46] text-white font-bold text-xs rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap"
                 >
                   {lang === 'he' ? 'הפעל התראות כעת' : lang === 'ru' ? 'Включить уведомления' : 'Enable Notifications'}
                 </button>
               ) : (
-                <span className="px-2.5 py-1 bg-green-500/20 text-green-300 border border-green-500/30 font-bold text-[11px] rounded-lg flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                <span className="px-2.5 py-1 bg-[#5D6D53]/15 text-[#5D6D53] border border-[#5D6D53]/30 font-bold text-[11px] rounded-lg flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5D6D53]" />
                   {lang === 'he' ? 'פעיל' : lang === 'ru' ? 'Активно' : 'Active'}
                 </span>
               )}
               <button
                 onClick={() => setNotifBannerDismissed(true)}
-                className="p-1 text-gray-400 hover:text-white cursor-pointer"
+                className="p-1 text-[#6B5E53] hover:text-[#3B2F2F] cursor-pointer"
                 title={lang === 'he' ? 'סגור' : 'Close'}
               >
                 <X className="w-4 h-4" />
@@ -1149,13 +1201,13 @@ function MainAppContent() {
           <div className="lg:col-span-2 space-y-6">
             
             {/* View/Tab Switcher */}
-            <div className="grid grid-cols-2 sm:flex sm:flex-nowrap w-full bg-[#131a26]/80 p-1.5 rounded-xl border border-[#c8a96e]/15 font-sans gap-1.5 sm:gap-2 shadow-lg">
+            <div className="grid grid-cols-2 sm:flex sm:flex-nowrap w-full bg-[#FFFDF8] p-1.5 rounded-xl border border-[#D8CFC0] font-sans gap-1.5 sm:gap-2 shadow-xs">
               <button
                 onClick={() => setActiveTab('calendar')}
                 className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-lg text-xs sm:text-xs md:text-sm font-semibold transition-all cursor-pointer flex-1 whitespace-nowrap ${
                   activeTab === 'calendar' 
-                    ? 'bg-gradient-to-r from-[#c8a96e] to-[#b8952e] text-black shadow font-bold' 
-                    : 'text-gray-400 hover:text-white hover:bg-[#c8a96e]/5'
+                    ? 'bg-[#5D6D53] text-white shadow-xs font-bold' 
+                    : 'text-[#6B5E53] hover:text-[#3B2F2F] hover:bg-[#FAF5EC]'
                 }`}
                 title={t.calendar}
               >
@@ -1167,8 +1219,8 @@ function MainAppContent() {
                 onClick={() => setActiveTab('book')}
                 className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-lg text-xs sm:text-xs md:text-sm font-semibold transition-all cursor-pointer flex-1 whitespace-nowrap ${
                   activeTab === 'book' 
-                    ? 'bg-gradient-to-r from-[#c8a96e] to-[#b8952e] text-black shadow font-bold' 
-                    : 'text-gray-400 hover:text-white hover:bg-[#c8a96e]/5'
+                    ? 'bg-[#5D6D53] text-white shadow-xs font-bold' 
+                    : 'text-[#6B5E53] hover:text-[#3B2F2F] hover:bg-[#FAF5EC]'
                 }`}
                 title={t.memorialBook}
               >
@@ -1180,8 +1232,8 @@ function MainAppContent() {
                 onClick={() => setActiveTab('grid')}
                 className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-lg text-xs sm:text-xs md:text-sm font-semibold transition-all cursor-pointer flex-1 whitespace-nowrap ${
                   activeTab === 'grid' 
-                    ? 'bg-gradient-to-r from-[#c8a96e] to-[#b8952e] text-black shadow font-bold' 
-                    : 'text-gray-400 hover:text-white hover:bg-[#c8a96e]/5'
+                    ? 'bg-[#5D6D53] text-white shadow-xs font-bold' 
+                    : 'text-[#6B5E53] hover:text-[#3B2F2F] hover:bg-[#FAF5EC]'
                 }`}
                 title={t.quick30Grid}
               >
@@ -1193,8 +1245,8 @@ function MainAppContent() {
                 onClick={() => setActiveTab('import')}
                 className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-lg text-xs sm:text-xs md:text-sm font-semibold transition-all cursor-pointer flex-1 whitespace-nowrap ${
                   activeTab === 'import' 
-                    ? 'bg-gradient-to-r from-[#c8a96e] to-[#b8952e] text-black shadow font-bold' 
-                    : 'text-gray-400 hover:text-white hover:bg-[#c8a96e]/5'
+                    ? 'bg-[#5D6D53] text-white shadow-xs font-bold' 
+                    : 'text-[#6B5E53] hover:text-[#3B2F2F] hover:bg-[#FAF5EC]'
                 }`}
                 title={t.importBulk}
               >
@@ -1250,12 +1302,11 @@ function MainAppContent() {
                 onCancel={editingDeceased ? () => setEditingDeceased(null) : undefined}
               />
             ) : (
-              <div className="bg-[#131a26]/40 border border-[#c8a96e]/20 p-6 rounded-xl text-center space-y-3 shadow relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 blur-xl rounded-full pointer-events-none"></div>
-                <h4 className="text-xs uppercase text-[#c8a96e] tracking-widest font-semibold font-sans">
+              <div className="bg-[#F8F4EC] border border-[#D8CFC0] p-6 rounded-2xl text-center space-y-3 shadow-xs relative overflow-hidden text-[#3B2F2F]">
+                <h4 className="text-xs uppercase text-[#5D6D53] tracking-widest font-bold font-sans">
                   {lang === 'he' ? 'מצב עריכה פעיל' : lang === 'ru' ? 'Режим редактирования' : 'Edit Mode Active'}
                 </h4>
-                <p className="text-sm text-gray-300">
+                <p className="text-sm text-[#6B5E53]">
                   {lang === 'he' 
                     ? 'אנא השלם את עריכת פרטי הנפטר בחלון הפופאפ המרכזי' 
                     : lang === 'ru'
@@ -1265,7 +1316,7 @@ function MainAppContent() {
                 <button
                   type="button"
                   onClick={() => setEditingDeceased(null)}
-                  className="bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs px-3 py-1.5 rounded-lg transition-all cursor-pointer font-sans"
+                  className="bg-[#EFE8DC] hover:bg-[#E8E2D5] text-[#3B2F2F] border border-[#D8CFC0] text-xs px-3 py-1.5 rounded-lg transition-all cursor-pointer font-sans font-semibold"
                 >
                   {lang === 'he' ? 'ביטול עריכה' : lang === 'ru' ? 'Отмена' : 'Cancel Edit'}
                 </button>
@@ -1274,22 +1325,21 @@ function MainAppContent() {
 
             {/* Quick stats panel if not editing */}
             {!editingDeceased && (
-              <div className="bg-[#131a26]/40 border border-[#c8a96e]/10 p-5 rounded-xl text-center space-y-2 relative overflow-hidden shadow">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-[#c8a96e]/5 blur-xl rounded-full pointer-events-none"></div>
-                <h4 className="text-xs uppercase text-[#c8a96e] tracking-widest font-semibold font-sans">
+              <div className="bg-[#F8F4EC] border border-[#D8CFC0] p-5 rounded-2xl text-center space-y-2 relative overflow-hidden shadow-xs text-[#3B2F2F]">
+                <h4 className="text-xs uppercase text-[#5D6D53] tracking-widest font-bold font-sans">
                   {lang === 'he' ? 'סה"כ נפטרים במאגר' : lang === 'ru' ? 'Всего записей' : 'Total Memorials'}
                 </h4>
-                <p className="text-3xl font-serif font-bold text-white leading-none">
+                <p className="text-3xl font-serif font-bold text-[#3B2F2F] leading-none">
                   {displayedList.length}
                 </p>
-                <div className="text-[10px] text-gray-500 font-sans flex items-center justify-center gap-1">
-                  <Sparkles className="w-3 h-3 text-[#c8a96e]" />
+                <div className="text-[10px] text-[#6B5E53] font-sans flex items-center justify-center gap-1">
+                  <Sparkles className="w-3 h-3 text-[#D4AF37]" />
                   <span>{lang === 'he' ? 'יהי זכרם ברוך' : lang === 'ru' ? 'Пусть их память будет благословением' : 'May their memory be a blessing'}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowResetConfirm(true)}
-                  className="mt-4 w-full bg-red-950/20 hover:bg-red-900/30 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 text-xs font-semibold py-2 px-3 rounded-lg transition-all cursor-pointer font-sans"
+                  className="mt-4 w-full bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-semibold py-2 px-3 rounded-lg transition-all cursor-pointer font-sans"
                 >
                   {lang === 'he' ? 'איפוס המערכת ומחיקת כל השמות' : lang === 'ru' ? 'Сбросить систему и удалить все имена' : 'Reset System & Delete All Names'}
                 </button>
@@ -1314,8 +1364,8 @@ function MainAppContent() {
 
         {/* Dedicated Editing Modal Overlay */}
         {editingDeceased && (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-[#131a26] border-2 border-[#c8a96e] rounded-2xl w-full max-w-xl shadow-2xl relative">
+          <div className="fixed inset-0 bg-[#3B2F2F]/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-[#F8F4EC] border border-[#D8CFC0] rounded-3xl w-full max-w-xl shadow-xl relative">
               <MemorialForm 
                 lang={lang} 
                 onSave={(updated) => {
@@ -1331,16 +1381,16 @@ function MainAppContent() {
 
         {/* Custom Reset Confirmation Modal */}
         {showResetConfirm && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 font-sans">
-            <div className="bg-[#131a26] border border-red-500/40 max-w-md w-full rounded-2xl p-6 shadow-2xl relative space-y-4">
-              <div className="flex items-center gap-3 text-red-500">
+          <div className="fixed inset-0 bg-[#3B2F2F]/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 font-sans">
+            <div className="bg-[#FFFDF8] border border-red-300 max-w-md w-full rounded-3xl p-6 shadow-xl relative space-y-4 text-[#3B2F2F]">
+              <div className="flex items-center gap-3 text-red-600">
                 <AlertTriangle className="w-8 h-8 shrink-0 animate-bounce" />
                 <h3 className="text-xl font-serif font-bold">
                   {lang === 'he' ? 'אזהרת מחיקה חמורה!' : lang === 'ru' ? 'Предупреждение об удалении!' : 'Severe Deletion Warning!'}
                 </h3>
               </div>
               
-              <p className="text-sm text-gray-300 leading-relaxed">
+              <p className="text-sm text-[#6B5E53] leading-relaxed">
                 {lang === 'he' 
                   ? 'האם אתה בטוח לחלוטין שברצונך למחוק את כל מאגר שמות הנפטרים ולאפס את המערכת? פעולה זו תמחוק את כל השמות ואת כל הדפים האישיים לתמיד ללא יכולת שחזור!' 
                   : lang === 'ru'
@@ -1352,14 +1402,14 @@ function MainAppContent() {
                 <button
                   type="button"
                   onClick={handleResetDatabase}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl transition-all cursor-pointer text-sm"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl transition-all cursor-pointer text-sm shadow-xs"
                 >
                   {lang === 'he' ? 'כן, מחק הכל ואפס מערכת' : lang === 'ru' ? 'Да, удалить всё' : 'Yes, delete everything'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowResetConfirm(false)}
-                  className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-2.5 rounded-xl transition-all cursor-pointer text-sm"
+                  className="flex-1 bg-[#EFE8DC] hover:bg-[#E8E2D5] text-[#3B2F2F] font-semibold py-2.5 rounded-xl transition-all cursor-pointer text-sm border border-[#D8CFC0]"
                 >
                   {lang === 'he' ? 'ביטול וחזרה' : lang === 'ru' ? 'Отмена' : 'Cancel'}
                 </button>
@@ -1370,21 +1420,21 @@ function MainAppContent() {
 
         {/* Duplicates Manager Modal */}
         {showDuplicatesManager && (
-          <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 font-sans">
-            <div className="bg-[#131a26] border border-[#c8a96e]/30 max-w-2xl w-full rounded-2xl p-6 shadow-2xl relative space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-[#3B2F2F]/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 font-sans">
+            <div className="bg-[#FFFDF8] border border-[#D8CFC0] max-w-2xl w-full rounded-3xl p-6 shadow-xl relative space-y-4 max-h-[85vh] overflow-y-auto text-[#3B2F2F]">
               <button
                 type="button"
                 onClick={() => setShowDuplicatesManager(false)}
-                className="absolute top-4 left-4 text-gray-400 hover:text-white text-xl font-bold leading-none"
+                className="absolute top-4 left-4 text-[#6B5E53] hover:text-[#3B2F2F] text-xl font-bold leading-none"
               >
                 ×
               </button>
 
               <div>
-                <h3 className="text-xl font-serif font-bold text-[#c8a96e]">
+                <h3 className="text-xl font-serif font-bold text-[#5D6D53]">
                   {lang === 'he' ? 'ניהול ומיזוג כרטיסים כפולים' : lang === 'ru' ? 'Управление дубликатами' : 'Manage & Clean Duplicate Records'}
                 </h3>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-[#6B5E53] mt-1">
                   {lang === 'he' 
                     ? 'השמות הבאים מופיעים מספר פעמים באותו התאריך. באפשרותך למזג אותם ולהשאיר כרטיס אחד בלבד מכל קבוצה.' 
                     : lang === 'ru'
@@ -1393,21 +1443,21 @@ function MainAppContent() {
                 </p>
               </div>
 
-              <div className="space-y-4 divide-y divide-[#c8a96e]/10 pt-2">
+              <div className="space-y-4 divide-y divide-[#E8E2D5] pt-2">
                 {getDuplicateGroups().map((group, gIdx) => (
                   <div key={gIdx} className="pt-4 first:pt-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="space-y-1 text-right">
-                      <h4 className="text-base font-semibold text-white">
+                      <h4 className="text-base font-semibold text-[#3B2F2F]">
                         {group.name}
                       </h4>
-                      <p className="text-xs text-[#c8a96e]">
+                      <p className="text-xs text-[#5D6D53]">
                         {group.day} ב{group.month} • {group.items.length} כרטיסים כפולים
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleResolveDuplicateGroup(group.items)}
-                      className="px-4 py-2 bg-[#c8a96e] hover:bg-[#b8952e] text-black font-semibold text-xs rounded-xl transition-all shadow cursor-pointer self-end md:self-auto"
+                      className="px-4 py-2 bg-[#5D6D53] hover:bg-[#4F5D46] text-white font-semibold text-xs rounded-xl transition-all shadow-xs cursor-pointer self-end md:self-auto"
                     >
                       {lang === 'he' ? 'מזג והשאר כרטיס יחיד' : lang === 'ru' ? 'Объединить записи' : 'Merge & Keep Single Record'}
                     </button>
@@ -1415,11 +1465,11 @@ function MainAppContent() {
                 ))}
               </div>
 
-              <div className="pt-4 border-t border-[#c8a96e]/20 flex justify-end">
+              <div className="pt-4 border-t border-[#E8E2D5] flex justify-end">
                 <button
                   type="button"
                   onClick={() => setShowDuplicatesManager(false)}
-                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+                  className="px-4 py-2 bg-[#EFE8DC] hover:bg-[#E8E2D5] text-[#3B2F2F] text-xs font-semibold rounded-xl transition-all cursor-pointer border border-[#D8CFC0]"
                 >
                   {lang === 'he' ? 'סגור' : lang === 'ru' ? 'Закрыть' : 'Close'}
                 </button>
@@ -1428,12 +1478,10 @@ function MainAppContent() {
           </div>
         )}
 
-
-
         {/* Mobile Floating Action Button (FAB) */}
         <button
           onClick={() => setIsMobileFormOpen(true)}
-          className="lg:hidden fixed bottom-18 right-4 z-40 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold p-3.5 rounded-full shadow-[0_0_20px_rgba(200,169,110,0.5)] flex items-center gap-2 border border-[#c8a96e] cursor-pointer transition-transform active:scale-95"
+          className="lg:hidden fixed bottom-18 right-4 z-40 bg-[#5D6D53] hover:bg-[#4F5D46] text-white font-bold p-3.5 rounded-full shadow-lg flex items-center gap-2 border border-[#5D6D53] cursor-pointer transition-transform active:scale-95"
           title={lang === 'he' ? 'הוסף נפטר' : 'Add Memorial'}
         >
           <Plus className="w-6 h-6 stroke-[2.5]" />
@@ -1442,16 +1490,16 @@ function MainAppContent() {
 
         {/* Mobile Form Bottom Sheet / Modal */}
         {isMobileFormOpen && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end justify-center sm:items-center p-0 sm:p-4">
-            <div className="bg-[#131a26] border-t-2 sm:border-2 border-[#c8a96e] rounded-t-2xl sm:rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-4 relative shadow-2xl animate-in slide-in-from-bottom duration-300">
-              <div className="flex items-center justify-between pb-3 border-b border-[#c8a96e]/20 mb-3">
-                <h3 className="text-base font-serif font-bold text-[#c8a96e] flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-[#c8a96e]" />
+          <div className="fixed inset-0 bg-[#3B2F2F]/60 backdrop-blur-sm z-50 flex items-end justify-center sm:items-center p-0 sm:p-4">
+            <div className="bg-[#F8F4EC] border-t-2 sm:border-2 border-[#D8CFC0] rounded-t-3xl sm:rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-4 relative shadow-xl animate-in slide-in-from-bottom duration-300">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E8E2D5] mb-3">
+                <h3 className="text-base font-serif font-bold text-[#5D6D53] flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-[#5D6D53]" />
                   <span>{lang === 'he' ? 'הוספת נפטר חדש לספר הזיכרון' : 'Add New Deceased'}</span>
                 </h3>
                 <button
                   onClick={() => setIsMobileFormOpen(false)}
-                  className="p-1.5 text-gray-400 hover:text-white rounded-lg bg-gray-800/50 cursor-pointer"
+                  className="p-1.5 text-[#6B5E53] hover:text-[#3B2F2F] rounded-lg bg-[#EFE8DC] cursor-pointer border border-[#D8CFC0]"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1468,11 +1516,11 @@ function MainAppContent() {
         )}
 
         {/* Fixed Mobile Bottom Navigation Bar */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0d0d0d]/95 border-t border-[#c8a96e]/30 backdrop-blur-lg flex items-center justify-around py-2 px-1 shadow-2xl">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#F8F4EC]/95 border-t border-[#D8CFC0] backdrop-blur-lg flex items-center justify-around py-2 px-1 shadow-md">
           <button
             onClick={() => setActiveTab('calendar')}
             className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'calendar' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
+              activeTab === 'calendar' ? 'text-[#5D6D53] font-bold scale-105' : 'text-[#6B5E53] hover:text-[#3B2F2F]'
             }`}
           >
             <Calendar className="w-5 h-5" />
@@ -1482,7 +1530,7 @@ function MainAppContent() {
           <button
             onClick={() => setActiveTab('book')}
             className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'book' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
+              activeTab === 'book' ? 'text-[#5D6D53] font-bold scale-105' : 'text-[#6B5E53] hover:text-[#3B2F2F]'
             }`}
           >
             <BookOpen className="w-5 h-5" />
@@ -1492,7 +1540,7 @@ function MainAppContent() {
           <button
             onClick={() => setActiveTab('grid')}
             className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'grid' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
+              activeTab === 'grid' ? 'text-[#5D6D53] font-bold scale-105' : 'text-[#6B5E53] hover:text-[#3B2F2F]'
             }`}
           >
             <LayoutGrid className="w-5 h-5" />
@@ -1502,7 +1550,7 @@ function MainAppContent() {
           <button
             onClick={() => setActiveTab('import')}
             className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'import' ? 'text-[#c8a96e] font-bold scale-105' : 'text-gray-400 hover:text-white'
+              activeTab === 'import' ? 'text-[#5D6D53] font-bold scale-105' : 'text-[#6B5E53] hover:text-[#3B2F2F]'
             }`}
           >
             <FileDown className="w-5 h-5" />

@@ -231,12 +231,23 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
 
     try {
       const localizedName = getLocalizedName(deceased, lang);
-      const title = lang === 'he' ? `לזכר עולמים - עמוד זיכרון לעילוי נשמת ${localizedName}` : `In Memory - ${localizedName}`;
+      const title = lang === 'he' 
+        ? `לזכר עולמים - עמוד זיכרון לעילוי נשמת ${localizedName}` 
+        : lang === 'ru' 
+        ? `Ле-Зехер Оламим - Страница памяти ${localizedName}` 
+        : `L'Zecher Olamim - Memorial Page for ${localizedName}`;
       document.title = title;
       const ogTitle = document.querySelector('meta[property="og:title"]');
       if (ogTitle) ogTitle.setAttribute('content', title);
       const ogDesc = document.querySelector('meta[property="og:description"]');
-      if (ogDesc) ogDesc.setAttribute('content', `נר נשמה דולק לעילוי נשמת ${localizedName} ז״ל | השתתפות בהנצחה, תהילים ומשנה`);
+      if (ogDesc) {
+        const desc = lang === 'he'
+          ? `נר נשמה דולק לעילוי נשמת ${localizedName} ז״ל | השתתפות בהנצחה, תהילים ומשנה`
+          : lang === 'ru'
+          ? `Свеча памяти горит в честь ${localizedName} | Память, Псалмы и Мишна`
+          : `Memorial candle lit in memory of ${localizedName} | Remembrance, Psalms and Mishnah`;
+        ogDesc.setAttribute('content', desc);
+      }
       const ogImg = document.querySelector('meta[property="og:image"]');
       const photo = getDeceasedPhoto(deceased);
       if (ogImg && photo) ogImg.setAttribute('content', photo);
@@ -577,7 +588,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
         <div className="flex items-center gap-2">
           <Flame className="w-4.5 h-4.5 text-[#D4AF37] animate-pulse" />
           <span className="text-sm sm:text-base font-serif font-bold tracking-wide text-[#3B2F2F] uppercase hidden sm:inline">
-            לזכר עולמים — ספר הזיכרון
+            {lang === 'he' ? 'לזכר עולמים — ספר הזיכרון' : lang === 'ru' ? 'Ле-Зехер Оламим — Книга Памяти' : 'L\'Zecher Olamim — Memorial Book'}
           </span>
         </div>
 
@@ -744,9 +755,9 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                   </div>
                 )}
 
-                <div className="w-full bg-[#FAF5EC] border border-[#E8E2D5] p-2.5 rounded-xl text-right" dir="rtl">
+                <div className={`w-full bg-[#FAF5EC] border border-[#E8E2D5] p-2.5 rounded-xl ${lang === 'he' ? 'text-right' : 'text-left'}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
                   <span className="block text-[11px] text-[#6B5E53] font-bold">
-                    {lang === 'he' ? '📅 יום האזכרה בלועזי (במהלך היום):' : '📅 Gregorian Anniversary Day:'}
+                    {lang === 'he' ? '📅 יום האזכרה בלועזי (במהלך היום):' : lang === 'ru' ? '📅 День поминания по григорианскому календарю:' : '📅 Gregorian Anniversary Day:'}
                   </span>
                   <span className="text-xs font-bold text-[#3B2F2F] block mt-0.5">
                     {formatGregorianDate(targetDate)}
@@ -764,9 +775,11 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
                   </div>
                 )}
 
-                <p className="text-[10.5px] text-[#6B5E53] leading-relaxed pt-1" dir="rtl">
+                <p className="text-[10.5px] text-[#6B5E53] leading-relaxed pt-1" dir={lang === 'he' ? 'rtl' : 'ltr'}>
                   {lang === 'he'
                     ? '💡 היות והיום העברי מתחיל בשקיעת החמה, נר הנשמה מודלק והאזכרה מתחילה בערב שלפני.'
+                    : lang === 'ru'
+                    ? '💡 Поскольку еврейский день начинается на закате, свеча памяти зажигается накануне вечером.'
                     : '💡 As the Hebrew day begins at sunset, the memorial candle is lit on the preceding evening.'}
                 </p>
               </div>
@@ -967,7 +980,9 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
 
                     {lang !== 'he' && (
                       <div className="pt-1.5 border-t border-[#E8E2D5] text-right" dir="rtl">
-                        <span className="text-[9px] text-[#5D6D53] font-bold block mb-0.5">מקור בעברית:</span>
+                        <span className="text-[9px] text-[#5D6D53] font-bold block mb-0.5">
+                          {lang === 'ru' ? 'Оригинал на иврите:' : 'Hebrew Original:'}
+                        </span>
                         <p className="font-serif text-[#3B2F2F] text-xs leading-relaxed">{snippetHeDisplay}</p>
                       </div>
                     )}
@@ -1037,7 +1052,9 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
 
                     {lang !== 'he' && (
                       <div className="pt-1.5 border-t border-[#E8E2D5] text-right" dir="rtl">
-                        <span className="text-[9px] text-[#5D6D53] font-bold block mb-0.5">מקור בעברית:</span>
+                        <span className="text-[9px] text-[#5D6D53] font-bold block mb-0.5">
+                          {lang === 'ru' ? 'Оригинал на иврите:' : 'Hebrew Original:'}
+                        </span>
                         <p className="font-serif text-[#3B2F2F] text-xs leading-relaxed">{snippetHeDisplay}</p>
                       </div>
                     )}
@@ -1092,7 +1109,9 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
 
               {lang !== 'he' && (
                 <div className="pt-1.5 border-t border-[#E8E2D5] text-right" dir="rtl">
-                  <span className="text-[9px] text-[#5D6D53] font-bold block mb-0.5">מקור בעברית:</span>
+                  <span className="text-[9px] text-[#5D6D53] font-bold block mb-0.5">
+                    {lang === 'ru' ? 'Оригинал на иврите:' : 'Hebrew Original:'}
+                  </span>
                   <p className="font-serif text-[#3B2F2F] text-xs leading-relaxed">{activeHalakha.text.he}</p>
                 </div>
               )}

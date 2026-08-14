@@ -182,7 +182,8 @@ export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: stri
     baseOrigin = PUBLIC_PRODUCTION_URL;
   }
 
-  const langQuery = (lang && lang !== 'he') ? `?lang=${lang}` : '';
+  const validLang = (lang && ['he', 'en', 'ru'].includes(lang)) ? lang : null;
+  const langQuery = validLang ? `?lang=${validLang}` : '';
 
   if (idVal !== null && idVal !== undefined && String(idVal).trim() !== '') {
     return `${baseOrigin}/share/${idVal}${langQuery}`;

@@ -643,7 +643,7 @@ Return a JSON object with a single string property "refinedNotes".`;
     });
   }
 
-  app.get(['/', '/index.html', '/m/:id', '/p/:id', '/deceased/:id', '/memorial/:id', '/card/:id', '/yahrzeit/:id', '/m/:id.html', '/p/:id.html', '/deceased/:id.html', '/memorial/:id.html'], async (req, res, next) => {
+  app.get(['/', '/index.html', '/share/:id', '/share/:id.html', '/m/:id', '/p/:id', '/deceased/:id', '/memorial/:id', '/card/:id', '/yahrzeit/:id', '/m/:id.html', '/p/:id.html', '/deceased/:id.html', '/memorial/:id.html'], async (req, res, next) => {
     try {
       let rawId = req.params.id ? req.params.id.replace(/\.html$/i, '') : null;
       if (!rawId) {
@@ -706,10 +706,19 @@ Return a JSON object with a single string property "refinedNotes".`;
         }
 
         if (deceased) {
-          const reqLang = ((req.query.lang as string) || 'he') as 'he' | 'en' | 'ru';
+          const reqLang = (['he', 'en', 'ru'].includes(req.query.lang as string) ? req.query.lang : 'he') as 'he' | 'en' | 'ru';
           const name = getLocalizedName(deceased, reqLang) || deceased.name || 'נפטר/ת';
-          const title = `🕯️ לזכר עולמים - ${name} ז״ל`;
-          const description = `דף הנצחה וזיכרון לעילוי נשמת ${name}. נפטר/ה ב-${deceased.day} ב${deceased.month}. לחצו לצפייה בלוח המודעה, הדלקת נר נשמה ולימוד תהילים.`;
+          let title = `🕯️ לזכר עולמים - ${name} ז״ל`;
+          let description = `דף הנצחה וזיכרון לעילוי נשמת ${name}. נפטר/ה ב-${deceased.day} ב${deceased.month}. לחצו לצפייה בלוח המודעה, הדלקת נר נשמה ולימוד תהילים.`;
+
+          if (reqLang === 'ru') {
+            title = `🕯️ Ле-Зехер Оламим - ${name}`;
+            description = `Страница памяти в честь ${name}. Нажмите, чтобы зажечь свечу памяти, прочесть Псалмы и оставить слова соболезнования.`;
+          } else if (reqLang === 'en') {
+            title = `🕯️ L'Zecher Olamim - ${name}`;
+            description = `Memorial page in memory of ${name}. Click to view memorial card, light a candle, and read Psalms.`;
+          }
+
           const currentUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
           const ogTags = `
