@@ -16,6 +16,32 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
+async function findDeceasedRecord(supabase: any, rawId: string): Promise<any | null> {
+  if (!rawId) return null;
+  const cleanId = rawId.trim();
+  if (!cleanId) return null;
+
+  const numId = Number(cleanId);
+  const isNumeric = !isNaN(numId) && String(numId) === cleanId;
+
+  const tables = ['deceased', 'memorials'];
+
+  for (const table of tables) {
+    try {
+      if (isNumeric) {
+        const { data } = await supabase.from(table).select('*').eq('id', numId).maybeSingle();
+        if (data && data.id) return data;
+      }
+      const { data } = await supabase.from(table).select('*').eq('id', cleanId).maybeSingle();
+      if (data && data.id) return data;
+    } catch (e) {
+      console.error(`[findDeceasedRecord error on ${table}]`, e);
+    }
+  }
+
+  return null;
+}
+
 export default async function handler(req: any, res: any) {
   let rawId = req.query?.id || req.query?.m;
   if (Array.isArray(rawId)) {
@@ -51,15 +77,9 @@ export default async function handler(req: any, res: any) {
   if (cleanId) {
     try {
       const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const data = await findDeceasedRecord(supabase, cleanId);
 
-      // Query deceased table directly by string id
-      const { data, error } = await supabase
-        .from('deceased')
-        .select('*')
-        .eq('id', cleanId)
-        .maybeSingle();
-
-      if (!error && data) {
+      if (data) {
         let name = '';
         if (reqLang === 'ru') {
           name = data.nameRu || data.name || data.nameHe || '';
@@ -86,12 +106,13 @@ export default async function handler(req: any, res: any) {
           }
         }
 
-        // Determine image strictly by priority: photoUrl -> imageUrl -> image_url -> image -> default og-banner.png
+        // Determine image strictly by priority: photoUrl -> imageUrl -> image_url -> image -> photo
         const rawCandidate = [
           data.photoUrl,
           data.imageUrl,
           data.image_url,
-          data.image
+          data.image,
+          data.photo
         ].find(img => img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-');
 
         if (rawCandidate) {
@@ -101,7 +122,7 @@ export default async function handler(req: any, res: any) {
           } else if (trimmedImg.startsWith('/')) {
             imageUrl = `${BASE_URL}${trimmedImg}`;
           } else if (trimmedImg.startsWith('data:') || trimmedImg.length > 100) {
-            imageUrl = `${BASE_URL}/api/og-image?id=${cleanId}`;
+            imageUrl = `${BASE_URL}/api/og-image?id=${encodeURIComponent(cleanId)}`;
           }
         }
       }

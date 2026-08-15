@@ -6,6 +6,32 @@ const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPA
 const BASE_URL = "https://le-zecher-olamim-demo24726.vercel.app";
 const DEFAULT_IMAGE_URL = `${BASE_URL}/og-banner.png`;
 
+async function findDeceasedRecord(supabase: any, rawId: string): Promise<any | null> {
+  if (!rawId) return null;
+  const cleanId = rawId.trim();
+  if (!cleanId) return null;
+
+  const numId = Number(cleanId);
+  const isNumeric = !isNaN(numId) && String(numId) === cleanId;
+
+  const tables = ['deceased', 'memorials'];
+
+  for (const table of tables) {
+    try {
+      if (isNumeric) {
+        const { data } = await supabase.from(table).select('*').eq('id', numId).maybeSingle();
+        if (data && data.id) return data;
+      }
+      const { data } = await supabase.from(table).select('*').eq('id', cleanId).maybeSingle();
+      if (data && data.id) return data;
+    } catch (e) {
+      console.error(`[findDeceasedRecord error on ${table}]`, e);
+    }
+  }
+
+  return null;
+}
+
 export default async function handler(req: any, res: any) {
   let rawId = req.query?.id || req.query?.m;
   if (Array.isArray(rawId)) {
@@ -20,14 +46,9 @@ export default async function handler(req: any, res: any) {
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const data = await findDeceasedRecord(supabase, cleanId);
 
-    const { data, error } = await supabase
-      .from('deceased')
-      .select('*')
-      .eq('id', cleanId)
-      .maybeSingle();
-
-    if (error || !data) {
+    if (!data) {
       return res.redirect(302, DEFAULT_IMAGE_URL);
     }
 
@@ -35,7 +56,8 @@ export default async function handler(req: any, res: any) {
       data.photoUrl,
       data.imageUrl,
       data.image_url,
-      data.image
+      data.image,
+      data.photo
     ].find(img => img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-');
 
     if (!rawCandidate) {

@@ -10,10 +10,41 @@ import { execSync } from 'child_process';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
 import { translateDeceasedListClientSide, getLocalizedName } from './src/utils/transliteration';
 
 // Load environment variables
 dotenv.config();
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://aoendfkvzsywrykmcloy.supabase.co";
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj";
+
+async function findDeceasedInSupabaseServer(rawId: string): Promise<any | null> {
+  if (!rawId) return null;
+  const cleanId = rawId.trim();
+  if (!cleanId) return null;
+
+  const numId = Number(cleanId);
+  const isNumeric = !isNaN(numId) && String(numId) === cleanId;
+
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const tables = ['deceased', 'memorials'];
+
+    for (const table of tables) {
+      if (isNumeric) {
+        const { data } = await supabase.from(table).select('*').eq('id', numId).maybeSingle();
+        if (data && data.id) return data;
+      }
+      const { data } = await supabase.from(table).select('*').eq('id', cleanId).maybeSingle();
+      if (data && data.id) return data;
+    }
+  } catch (e) {
+    console.error('[findDeceasedInSupabaseServer error]', e);
+  }
+
+  return null;
+}
 
 const PORT = 3000;
 
@@ -662,6 +693,10 @@ Return a JSON object with a single string property "refinedNotes".`;
 
       let deceased = !isNaN(id) ? db.find((item: any) => Number(item.id) === id) : null;
 
+      if (!deceased && rawId) {
+        deceased = await findDeceasedInSupabaseServer(rawId);
+      }
+
       const dataParamStr = (req.query.data || req.query.payload || req.query.p || req.query.card || req.query.d) as string;
       if (!deceased && dataParamStr) {
         try {
@@ -720,6 +755,27 @@ Return a JSON object with a single string property "refinedNotes".`;
           }
 
           const currentUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+          const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+          let imageUrl = `${baseUrl}/og-banner.png`;
+          const rawCandidate = [
+            deceased.photoUrl,
+            deceased.imageUrl,
+            deceased.image_url,
+            deceased.image,
+            deceased.photo
+          ].find((img: any) => img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-');
+
+          if (rawCandidate) {
+            const trimmedImg = rawCandidate.trim();
+            if (trimmedImg.startsWith('http://') || trimmedImg.startsWith('https://')) {
+              imageUrl = trimmedImg;
+            } else if (trimmedImg.startsWith('/')) {
+              imageUrl = `${baseUrl}${trimmedImg}`;
+            } else if (trimmedImg.startsWith('data:') || trimmedImg.length > 100) {
+              imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(deceased.id)}`;
+            }
+          }
 
           const ogTags = `
     <title>${title}</title>
@@ -728,9 +784,12 @@ Return a JSON object with a single string property "refinedNotes".`;
     <meta property="og:description" content="${description}" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="${currentUrl}" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="${imageUrl}" />
+    <meta property="og:image:secure_url" content="${imageUrl}" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${title}" />
     <meta name="twitter:description" content="${description}" />
+    <meta name="twitter:image" content="${imageUrl}" />
           `;
 
           // Replace existing title and inject metadata into head
