@@ -13,7 +13,7 @@
       "dest": "/api/share?id=$id"
     },
     {
-      "src": "/.*",
+      "src": "/",
       "has": [
         {
           "type": "header",
@@ -23,12 +23,7 @@
       ],
       "dest": "/api/og"
     },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
