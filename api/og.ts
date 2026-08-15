@@ -42,7 +42,16 @@ async function findDeceasedRecord(supabase: any, rawId: string): Promise<any | n
   return null;
 }
 
+function getBaseUrl(req: any): string {
+  const host = req?.headers?.host || req?.headers?.['x-forwarded-host'] || 'le-zecher-olamim-demo24726.vercel.app';
+  const proto = req?.headers?.['x-forwarded-proto'] || 'https';
+  return `${proto}://${host}`;
+}
+
 export default async function handler(req: any, res: any) {
+  const baseUrl = getBaseUrl(req);
+  const defaultImage = `${baseUrl}/og-banner.png`;
+
   let rawM = req.query?.m || req.query?.id;
   if (Array.isArray(rawM)) {
     rawM = rawM[0];
@@ -68,8 +77,8 @@ export default async function handler(req: any, res: any) {
     description = "Global memorial board, lighting virtual candles, Psalms and Mishnah in memory of loved ones";
   }
 
-  let imageUrl = DEFAULT_IMAGE;
-  const canonicalUrl = m ? `${BASE_URL}/share/${m}?lang=${reqLang}` : `${BASE_URL}/?lang=${reqLang}`;
+  let imageUrl = defaultImage;
+  const canonicalUrl = m ? `${baseUrl}/?m=${encodeURIComponent(m)}&lang=${reqLang}` : `${baseUrl}/?lang=${reqLang}`;
 
   if (m) {
     try {
@@ -103,12 +112,12 @@ export default async function handler(req: any, res: any) {
           }
         }
 
-        // Determine image strictly by priority: photoUrl -> imageUrl -> image_url -> image -> photo
+        // Determine image strictly by priority: image -> imageUrl -> image_url -> photoUrl -> photo
         const rawCandidate = [
-          data.photoUrl,
+          data.image,
           data.imageUrl,
           data.image_url,
-          data.image,
+          data.photoUrl,
           data.photo
         ].find(img => img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-');
 
@@ -117,9 +126,9 @@ export default async function handler(req: any, res: any) {
           if (trimmedImg.startsWith('http://') || trimmedImg.startsWith('https://')) {
             imageUrl = trimmedImg;
           } else if (trimmedImg.startsWith('/')) {
-            imageUrl = `${BASE_URL}${trimmedImg}`;
+            imageUrl = `${baseUrl}${trimmedImg}`;
           } else if (trimmedImg.startsWith('data:') || trimmedImg.length > 100) {
-            imageUrl = `${BASE_URL}/api/og-image?id=${encodeURIComponent(m)}`;
+            imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(m)}`;
           }
         }
       }

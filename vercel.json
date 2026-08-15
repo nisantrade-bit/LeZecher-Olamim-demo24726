@@ -7,22 +7,28 @@
       ]
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/share/:id",
-      "destination": "/api/share?id=:id"
+      "src": "/share/(?<id>[^/]+)",
+      "dest": "/api/share?id=$id"
     },
     {
-      "source": "/",
+      "src": "/.*",
       "has": [
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot).*"
+          "value": ".*(WhatsApp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|yandexbot|bingbot|googlebot).*"
         }
       ],
-      "destination": "/api/og"
+      "dest": "/api/og"
     },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }

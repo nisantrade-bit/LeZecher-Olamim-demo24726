@@ -759,10 +759,10 @@ Return a JSON object with a single string property "refinedNotes".`;
 
           let imageUrl = `${baseUrl}/og-banner.png`;
           const rawCandidate = [
-            deceased.photoUrl,
+            deceased.image,
             deceased.imageUrl,
             deceased.image_url,
-            deceased.image,
+            deceased.photoUrl,
             deceased.photo
           ].find((img: any) => img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-');
 

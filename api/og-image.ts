@@ -32,7 +32,16 @@ async function findDeceasedRecord(supabase: any, rawId: string): Promise<any | n
   return null;
 }
 
+function getBaseUrl(req: any): string {
+  const host = req?.headers?.host || req?.headers?.['x-forwarded-host'] || 'le-zecher-olamim-demo24726.vercel.app';
+  const proto = req?.headers?.['x-forwarded-proto'] || 'https';
+  return `${proto}://${host}`;
+}
+
 export default async function handler(req: any, res: any) {
+  const baseUrl = getBaseUrl(req);
+  const defaultImageUrl = `${baseUrl}/og-banner.png`;
+
   let rawId = req.query?.id || req.query?.m;
   if (Array.isArray(rawId)) {
     rawId = rawId[0];
@@ -41,7 +50,7 @@ export default async function handler(req: any, res: any) {
   const cleanId = rawId ? String(rawId).trim() : '';
 
   if (!cleanId) {
-    return res.redirect(302, DEFAULT_IMAGE_URL);
+    return res.redirect(302, defaultImageUrl);
   }
 
   try {
@@ -49,19 +58,19 @@ export default async function handler(req: any, res: any) {
     const data = await findDeceasedRecord(supabase, cleanId);
 
     if (!data) {
-      return res.redirect(302, DEFAULT_IMAGE_URL);
+      return res.redirect(302, defaultImageUrl);
     }
 
     const rawCandidate = [
-      data.photoUrl,
+      data.image,
       data.imageUrl,
       data.image_url,
-      data.image,
+      data.photoUrl,
       data.photo
     ].find(img => img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-');
 
     if (!rawCandidate) {
-      return res.redirect(302, DEFAULT_IMAGE_URL);
+      return res.redirect(302, defaultImageUrl);
     }
 
     const trimmedImg = rawCandidate.trim();
@@ -71,7 +80,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (trimmedImg.startsWith('/')) {
-      return res.redirect(302, `${BASE_URL}${trimmedImg}`);
+      return res.redirect(302, `${baseUrl}${trimmedImg}`);
     }
 
     // Handle Data URI or raw Base64
@@ -99,7 +108,7 @@ export default async function handler(req: any, res: any) {
     const buffer = Buffer.from(base64Data, 'base64');
 
     if (!buffer || buffer.length === 0) {
-      return res.redirect(302, DEFAULT_IMAGE_URL);
+      return res.redirect(302, defaultImageUrl);
     }
 
     res.setHeader('Content-Type', mimeType);
@@ -109,6 +118,6 @@ export default async function handler(req: any, res: any) {
 
   } catch (e) {
     console.error('[api/og-image handler error]', e);
-    return res.redirect(302, DEFAULT_IMAGE_URL);
+    return res.redirect(302, defaultImageUrl);
   }
 }
