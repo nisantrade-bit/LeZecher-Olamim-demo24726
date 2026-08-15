@@ -182,14 +182,13 @@ export function getShortMemorialUrl(deceasedOrId: number | Deceased, lang?: stri
     baseOrigin = PUBLIC_PRODUCTION_URL;
   }
 
-  const validLang = (lang && ['he', 'en', 'ru'].includes(lang)) ? lang : null;
-  const langQuery = validLang ? `?lang=${validLang}` : '';
+  const validLang = (lang && ['he', 'en', 'ru'].includes(lang)) ? lang : 'he';
 
   if (idVal !== null && idVal !== undefined && String(idVal).trim() !== '') {
-    return `${baseOrigin}/share/${idVal}${langQuery}`;
+    return `${baseOrigin}/?m=${encodeURIComponent(String(idVal).trim())}&lang=${validLang}`;
   }
 
-  return `${baseOrigin}/${langQuery}`;
+  return `${baseOrigin}/?lang=${validLang}`;
 }
 
 export function openWhatsAppShare(text: string) {
