@@ -261,6 +261,7 @@ export async function shareMemorialCard(
   lang: Language,
   shabbatInfo?: ShabbatYahrzeitInfo | null
 ): Promise<void> {
+  const shortUrl = getShortMemorialUrl(deceased, lang);
   const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
   const title = `לזכר עולמים — ${deceased.name}`;
 
@@ -268,7 +269,8 @@ export async function shareMemorialCard(
     try {
       await navigator.share({
         title,
-        text
+        text,
+        url: shortUrl
       });
       return;
     } catch (err: any) {
