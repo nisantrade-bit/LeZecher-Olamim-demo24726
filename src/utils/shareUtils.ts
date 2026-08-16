@@ -262,14 +262,18 @@ export async function shareMemorialCard(
   shabbatInfo?: ShabbatYahrzeitInfo | null
 ): Promise<void> {
   const shortUrl = getShortMemorialUrl(deceased, lang);
-  const text = generateWhatsAppShareText(deceased, lang, shabbatInfo);
+  const fullText = generateWhatsAppShareText(deceased, lang, shabbatInfo);
   const title = `לזכר עולמים — ${deceased.name}`;
 
   if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
     try {
+      const textWithoutUrl = fullText.endsWith(shortUrl)
+        ? fullText.slice(0, -shortUrl.length).trimEnd()
+        : fullText;
+
       await navigator.share({
         title,
-        text,
+        text: textWithoutUrl,
         url: shortUrl
       });
       return;
@@ -280,5 +284,5 @@ export async function shareMemorialCard(
     }
   }
 
-  openWhatsAppShare(text);
+  openWhatsAppShare(fullText);
 }
