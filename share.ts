@@ -52,9 +52,9 @@ export default async function handler(req: any, res: any) {
   const baseUrl = getBaseUrl(req);
   const defaultImage = `${baseUrl}/og-banner.png`;
 
-  let rawM = req.query?.m || req.query?.id;
-  if (Array.isArray(rawM)) {
-    rawM = rawM[0];
+  let rawId = req.query?.id || req.query?.m;
+  if (Array.isArray(rawId)) {
+    rawId = rawId[0];
   }
 
   let rawLang = req.query?.lang;
@@ -64,7 +64,10 @@ export default async function handler(req: any, res: any) {
   const langStr = String(rawLang || '').toLowerCase().trim();
   const reqLang: 'he' | 'en' | 'ru' = (['he', 'en', 'ru'].includes(langStr) ? langStr : 'he') as any;
 
-  const m = rawM ? String(rawM).trim() : '';
+  const cleanId = rawId ? String(rawId).trim() : '';
+  const redirectUrl = cleanId 
+    ? `/?m=${encodeURIComponent(cleanId)}&lang=${reqLang}` 
+    : `/?lang=${reqLang}`;
 
   let title = "לזכר עולמים - ספר זיכרון דיגיטלי ומעקב יארצייט";
   let description = "לוח הנצחה עולמי, הדלקת נר נשמה, תהילים ומשניות לעילוי נשמת יקירינו";
@@ -78,12 +81,12 @@ export default async function handler(req: any, res: any) {
   }
 
   let imageUrl = defaultImage;
-  const canonicalUrl = m ? `${baseUrl}/?m=${encodeURIComponent(m)}&lang=${reqLang}` : `${baseUrl}/?lang=${reqLang}`;
+  const canonicalUrl = cleanId ? `${baseUrl}/share/${cleanId}?lang=${reqLang}` : `${baseUrl}/?lang=${reqLang}`;
 
-  if (m) {
+  if (cleanId) {
     try {
       const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      const data = await findDeceasedRecord(supabase, m);
+      const data = await findDeceasedRecord(supabase, cleanId);
 
       if (data) {
         let name = '';
@@ -128,12 +131,12 @@ export default async function handler(req: any, res: any) {
           } else if (trimmedImg.startsWith('/')) {
             imageUrl = `${baseUrl}${trimmedImg}`;
           } else if (trimmedImg.startsWith('data:') || trimmedImg.length > 100) {
-            imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(m)}`;
+            imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(cleanId)}`;
           }
         }
       }
     } catch (e) {
-      console.error('[api/og handler error]', e);
+      console.error('[api/share handler error]', e);
     }
   }
 
@@ -141,6 +144,7 @@ export default async function handler(req: any, res: any) {
   const safeDesc = escapeHtml(description);
   const safeImg = escapeHtml(imageUrl);
   const safeCanonical = escapeHtml(canonicalUrl);
+  const safeRedirect = escapeHtml(redirectUrl);
 
   const html = `<!DOCTYPE html>
 <html lang="${reqLang}" dir="${reqLang === 'he' ? 'rtl' : 'ltr'}">
@@ -168,10 +172,17 @@ export default async function handler(req: any, res: any) {
   <meta property="twitter:title" content="${safeTitle}" />
   <meta property="twitter:description" content="${safeDesc}" />
   <meta property="twitter:image" content="${safeImg}" />
+
+  <!-- Client Redirect for human visitors -->
+  <meta http-equiv="refresh" content="0;url=${safeRedirect}" />
+  <script>
+    window.location.href = ${JSON.stringify(redirectUrl)};
+  </script>
 </head>
 <body style="background:#070b12;color:#f0f4f8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;">
   <div>
-    <p>עמוד זיכרון - ${safeTitle}</p>
+    <p>${reqLang === 'ru' ? 'Переход на страницу памяти...' : reqLang === 'en' ? 'Redirecting to memorial page...' : 'מעביר לעמוד הזיכרון...'}</p>
+    <a href="${safeRedirect}" style="color:#c8a96e;">${reqLang === 'ru' ? 'Нажмите здесь, если переход не произошел автоматически' : reqLang === 'en' ? 'Click here if you are not redirected automatically' : 'לחץ כאן אם אינך מועבר אוטומטית'}</a>
   </div>
 </body>
 </html>`;
