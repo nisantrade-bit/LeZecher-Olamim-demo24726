@@ -123,11 +123,7 @@ export default async function handler(req: any, res: any) {
 
         if (rawCandidate) {
           const trimmedImg = rawCandidate.trim();
-          if (trimmedImg.startsWith('http://') || trimmedImg.startsWith('https://')) {
-            imageUrl = trimmedImg;
-          } else if (trimmedImg.startsWith('/')) {
-            imageUrl = `${baseUrl}${trimmedImg}`;
-          } else if (trimmedImg.startsWith('data:') || trimmedImg.length > 100) {
+          if (trimmedImg.startsWith('http://') || trimmedImg.startsWith('https://') || trimmedImg.startsWith('/') || trimmedImg.startsWith('data:') || trimmedImg.length > 100) {
             imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(m)}`;
           }
         }
@@ -160,6 +156,7 @@ export default async function handler(req: any, res: any) {
   <meta property="og:description" content="${safeDesc}" />
   <meta property="og:image" content="${safeImg}" />
   <meta property="og:image:secure_url" content="${safeImg}" />
+  <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:site_name" content="לזכר עולמים" />
 
   <!-- Twitter -->
