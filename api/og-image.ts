@@ -38,32 +38,12 @@ function getBaseUrl(req: any): string {
   return `${proto}://${host}`;
 }
 
-async function optimizeImageBuffer(inputBuffer: Buffer, isSquareTest: boolean = false): Promise<Buffer> {
-  const sharpPipeline = sharp(inputBuffer);
-
-  if (isSquareTest) {
-    // A/B TEST SPECIFICALLY FOR SHUSHAN (ID: 1785101989240):
-    // Force 1:1 square ratio with subtle dark memorial background fitting
-    return await sharpPipeline
-      .resize({
-        width: 1200,
-        height: 1200,
-        fit: 'contain',
-        background: { r: 7, g: 11, b: 18, alpha: 1 } // #070b12 background matching app theme
-      })
-      .jpeg({
-        quality: 85,
-        progressive: true,
-        mozjpeg: true
-      })
-      .toBuffer();
-  }
-
-  return await sharpPipeline
+async function optimizeImageBuffer(inputBuffer: Buffer): Promise<Buffer> {
+  return await sharp(inputBuffer)
     .resize({
       width: 1200,
       height: 1200,
-      fit: 'inside', // Preserves exact aspect ratio for all other records
+      fit: 'inside', // Preserves exact aspect ratio without cropping or distortion
       withoutEnlargement: true
     })
     .jpeg({
@@ -140,11 +120,10 @@ export default async function handler(req: any, res: any) {
       return res.redirect(302, defaultImageUrl);
     }
 
-    // Process and optimize image with sharp
+    // Process and optimize image with sharp (maintaining aspect ratio and outputting optimized JPEG)
     let optimizedJpeg: Buffer;
     try {
-      const isSquareTest = String(cleanId) === '1785101989240';
-      optimizedJpeg = await optimizeImageBuffer(inputBuffer, isSquareTest);
+      optimizedJpeg = await optimizeImageBuffer(inputBuffer);
     } catch (sharpError) {
       console.error('[og-image sharp optimization error]', sharpError);
       optimizedJpeg = inputBuffer;

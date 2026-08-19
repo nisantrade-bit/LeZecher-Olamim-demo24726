@@ -265,7 +265,14 @@ export async function shareMemorialCard(
   const fullText = generateWhatsAppShareText(deceased, lang, shabbatInfo);
   const title = `לזכר עולמים — ${deceased.name}`;
 
-  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+  // Experiment B1: Check if running on a mobile device (Android, iOS) vs Desktop
+  const isMobile = typeof window !== 'undefined' && (
+    /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /Macintosh/i.test(navigator.userAgent))
+  );
+
+  // On Mobile, use navigator.share API if available
+  if (isMobile && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
     try {
       const textWithoutUrl = fullText.endsWith(shortUrl)
         ? fullText.slice(0, -shortUrl.length).trimEnd()
@@ -284,5 +291,6 @@ export async function shareMemorialCard(
     }
   }
 
+  // On Desktop (or if navigator.share is unavailable/fails), use direct WhatsApp fallback link
   openWhatsAppShare(fullText);
 }
