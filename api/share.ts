@@ -126,7 +126,10 @@ export default async function handler(req: any, res: any) {
 
         if (rawCandidate) {
           const trimmedImg = rawCandidate.trim();
-          if (trimmedImg.startsWith('http://') || trimmedImg.startsWith('https://')) {
+          if (cleanId === '1785101989240') {
+            // Controlled experiment for Shushan (ID 1785101989240): Route og:image to /api/og-image endpoint
+            imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(cleanId)}`;
+          } else if (trimmedImg.startsWith('http://') || trimmedImg.startsWith('https://')) {
             imageUrl = trimmedImg;
           } else if (trimmedImg.startsWith('/')) {
             imageUrl = `${baseUrl}${trimmedImg}`;
