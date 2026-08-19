@@ -228,10 +228,10 @@ export function generateWhatsAppShareText(
 
   if (lang === 'he') {
     const nameWithParent = parentRel ? `${localizedName} ${parentRel}` : localizedName;
-    const blessingSuffix = isFemale ? 'יהי זכרה ברוך 🙏' : isMale ? 'יהי זכרו ברוך 🙏' : 'יהי זכרו/ה ברוך 🙏';
+    const blessingSuffix = isFemale ? 'זכרונה לברכה' : isMale ? 'זכרונו לברכה' : 'זכרונו/ה לברכה';
 
     return `🕯️ לזכר עולמים – ${nameWithParent}\n\n` +
-      `מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה ולהשתתף בהנצחה.\n\n` +
+      `מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה, לקרוא משניות, תהלים והלכות לעילוי נשמה ולהשתתף בהנצחה.\n\n` +
       `${blessingSuffix}\n\n` +
       `${shortUrl}`;
   } else if (lang === 'ru') {

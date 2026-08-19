@@ -26,7 +26,7 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
   const [gender, setGender] = useState<Gender>('male');
   const [fatherName, setFatherName] = useState('');
   const [motherName, setMotherName] = useState('');
-  const [day, setDay] = useState<number>(1);
+  const [day, setDay] = useState<number | ''>(1);
   const [month, setMonth] = useState('תשרי');
   const [contactPhone, setContactPhone] = useState('');
   const [notes, setNotes] = useState('');
@@ -218,7 +218,7 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       newErrors.fatherName = true;
       newErrors.motherName = true;
     }
-    if (!day || day < 1 || day > 30) newErrors.day = true;
+    if (day === '' || typeof day !== 'number' || day < 1 || day > 30) newErrors.day = true;
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -260,22 +260,79 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       notesRu: editingDeceased?.notesRu
     };
 
-    // Update current language's explicit values
+    // Update current language's explicit values & reset stale translations when fields change during edit
     if (lang === 'he') {
       baseData.nameHe = name.trim();
       baseData.fatherNameHe = cleanFather;
       baseData.motherNameHe = cleanMother;
       baseData.notesHe = notes.trim() || undefined;
+
+      if (editingDeceased) {
+        if (name.trim() !== (editingDeceased.nameHe || editingDeceased.name)) {
+          baseData.nameEn = undefined;
+          baseData.nameRu = undefined;
+        }
+        if (cleanFather !== (editingDeceased.fatherNameHe || editingDeceased.fatherName)) {
+          baseData.fatherNameEn = undefined;
+          baseData.fatherNameRu = undefined;
+        }
+        if (cleanMother !== (editingDeceased.motherNameHe || editingDeceased.motherName)) {
+          baseData.motherNameEn = undefined;
+          baseData.motherNameRu = undefined;
+        }
+        if ((notes.trim() || undefined) !== (editingDeceased.notesHe || editingDeceased.notes || undefined)) {
+          baseData.notesEn = undefined;
+          baseData.notesRu = undefined;
+        }
+      }
     } else if (lang === 'en') {
       baseData.nameEn = name.trim();
       baseData.fatherNameEn = cleanFather;
       baseData.motherNameEn = cleanMother;
       baseData.notesEn = notes.trim() || undefined;
+
+      if (editingDeceased) {
+        if (name.trim() !== (editingDeceased.nameEn || editingDeceased.name)) {
+          baseData.nameHe = undefined;
+          baseData.nameRu = undefined;
+        }
+        if (cleanFather !== (editingDeceased.fatherNameEn || editingDeceased.fatherName)) {
+          baseData.fatherNameHe = undefined;
+          baseData.fatherNameRu = undefined;
+        }
+        if (cleanMother !== (editingDeceased.motherNameEn || editingDeceased.motherName)) {
+          baseData.motherNameHe = undefined;
+          baseData.motherNameRu = undefined;
+        }
+        if ((notes.trim() || undefined) !== (editingDeceased.notesEn || editingDeceased.notes || undefined)) {
+          baseData.notesHe = undefined;
+          baseData.notesRu = undefined;
+        }
+      }
     } else if (lang === 'ru') {
       baseData.nameRu = name.trim();
       baseData.fatherNameRu = cleanFather;
       baseData.motherNameRu = cleanMother;
       baseData.notesRu = notes.trim() || undefined;
+
+      if (editingDeceased) {
+        if (name.trim() !== (editingDeceased.nameRu || editingDeceased.name)) {
+          baseData.nameHe = undefined;
+          baseData.nameEn = undefined;
+        }
+        if (cleanFather !== (editingDeceased.fatherNameRu || editingDeceased.fatherName)) {
+          baseData.fatherNameHe = undefined;
+          baseData.fatherNameEn = undefined;
+        }
+        if (cleanMother !== (editingDeceased.motherNameRu || editingDeceased.motherName)) {
+          baseData.motherNameHe = undefined;
+          baseData.motherNameEn = undefined;
+        }
+        if ((notes.trim() || undefined) !== (editingDeceased.notesRu || editingDeceased.notes || undefined)) {
+          baseData.notesHe = undefined;
+          baseData.notesEn = undefined;
+        }
+      }
     }
 
     onSave(baseData);
@@ -387,7 +444,8 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
               max="30"
               value={day}
               onChange={(e) => {
-                setDay(Number(e.target.value));
+                const val = e.target.value;
+                setDay(val === '' ? '' : Number(val));
                 if (errors.day) setErrors(prev => ({ ...prev, day: false }));
               }}
               className={`w-full bg-[#0d0d0d] border ${errors.day ? 'border-red-500' : 'border-[#c8a96e]/30'} focus:border-[#c8a96e] rounded-lg px-3 py-2 text-sm text-white outline-none transition-all`}

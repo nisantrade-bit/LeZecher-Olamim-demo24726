@@ -108,7 +108,7 @@ export default async function handler(req: any, res: any) {
             const blessing = isFemale ? 'זכרונה לברכה' : isMale ? 'זכרונו לברכה' : 'זכרונו/ה לברכה';
 
             title = `🕯️ לזכר עולמים – ${name} ${blessing}`;
-            description = 'מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה ולהשתתף בהנצחה.';
+            description = 'מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה, לקרוא משניות, תהלים והלכות לעילוי נשמה ולהשתתף בהנצחה.';
           }
         }
 
