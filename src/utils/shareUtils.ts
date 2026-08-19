@@ -236,16 +236,27 @@ export function generateWhatsAppShareText(
       `${shortUrl}`;
   } else if (lang === 'ru') {
     const nameWithParent = parentRel ? `${localizedName} (${parentRel})` : localizedName;
+    const blessingSuffix = isFemale
+      ? 'Да будет благословенна её память.'
+      : isMale
+        ? 'Да будет благословенна его память.'
+        : 'Да будет благословенна его/её память.';
 
     return `🕯️ Светлая память – ${nameWithParent}\n\n` +
-      `Приглашаем вас посетить страницу памяти, зажечь свечу и оставить добрые слова.\n\n` +
-      `Светлая и вечная память 🙏\n\n` +
+      `Приглашаем вас посетить страницу памяти, зажечь поминальную свечу, прочитать Мишнайот, Тегилим и законы во имя возвышения души и принять участие в увековечивании памяти.\n\n` +
+      `${blessingSuffix}\n\n` +
       `${shortUrl}`;
   } else {
     const nameWithParent = parentRel ? `${localizedName} (${parentRel})` : localizedName;
+    const blessingSuffix = isFemale
+      ? 'May her memory be a blessing.'
+      : isMale
+        ? 'May his memory be a blessing.'
+        : 'May their memory be a blessing.';
 
     return `🕯️ In loving memory – ${nameWithParent}\n\n` +
-      `You are invited to visit the memorial page, light a virtual candle and participate in remembrance.\n\n` +
+      `We invite you to visit the memorial page, light a memorial candle, read Mishnayot, Psalms and Jewish laws for the elevation of the soul, and take part in preserving their memory.\n\n` +
+      `${blessingSuffix}\n\n` +
       `${shortUrl}`;
   }
 }

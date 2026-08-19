@@ -101,10 +101,10 @@ export default async function handler(req: any, res: any) {
         if (name) {
           if (reqLang === 'ru') {
             title = `🕯️ Ле-Зехер Оламим – ${name}`;
-            description = 'Приглашаем вас посетить страницу памяти, зажечь свечу и оставить добрые слова.';
+            description = 'Приглашаем вас посетить страницу памяти, зажечь поминальную свечу, прочитать Мишнайот, Тегилим и законы во имя возвышения души и принять участие в увековечивании памяти.';
           } else if (reqLang === 'en') {
             title = `🕯️ L'Zecher Olamim – ${name}`;
-            description = 'You are invited to visit the memorial page, light a virtual candle and participate in remembrance.';
+            description = 'We invite you to visit the memorial page, light a memorial candle, read Mishnayot, Psalms and Jewish laws for the elevation of the soul, and take part in preserving their memory.';
           } else {
             const isFemale = data.gender === 'female';
             const isMale = data.gender === 'male';
