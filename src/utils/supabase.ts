@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { parseAndNormalizeDateFields } from './hebrewDate';
 import { isSameDeceasedRecord, mergeDeceasedRecords, buildDeduplicationPlan, DeduplicationPlan } from './deduplication';
+import { normalizeImageTo3x4 } from './imageUtils';
 
 const FALLBACK_SUPABASE_URL = "https://aoendfkvzsywrykmcloy.supabase.co";
 const FALLBACK_SUPABASE_ANON_KEY = "sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj";
@@ -31,10 +32,16 @@ export async function uploadMemorialImage(file?: File | null, deceasedId?: numbe
   }
 
   try {
-    const originalName = file.name || 'photo.png';
-    const rawExt = originalName.includes('.') ? (originalName.split('.').pop() || 'png') : 'png';
-    const cleanExt = rawExt.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'bmp', 'svg'].includes(cleanExt) ? cleanExt : 'png';
+    // Central Normalization: Convert image to standard 3:4 aspect ratio (900x1200 JPEG)
+    let uploadFile: File = file;
+    try {
+      uploadFile = await normalizeImageTo3x4(file, file.name || 'photo.jpg');
+    } catch (normErr) {
+      console.warn('[uploadMemorialImage normalization fallback]', normErr);
+    }
+
+    const originalName = uploadFile.name || 'photo.jpg';
+    const safeExt = 'jpg';
 
     // 2. Sanitize Path: English characters, numbers, no Hebrew/spaces/slashes, no leading slash
     const randomSuffix = Math.random().toString(36).substring(2, 9);
@@ -48,9 +55,9 @@ export async function uploadMemorialImage(file?: File | null, deceasedId?: numbe
     let error = null;
 
     try {
-      const res = await supabase.storage.from(bucketName).upload(filePath, file, {
+      const res = await supabase.storage.from(bucketName).upload(filePath, uploadFile, {
         upsert: true,
-        contentType: file.type || `image/${safeExt}`
+        contentType: uploadFile.type || 'image/jpeg'
       });
       data = res.data;
       error = res.error;

@@ -10,6 +10,7 @@ import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, normalizeMonthNam
 import { translateDeceasedListClientSize } from '../utils/transliteration';
 import { PlusCircle, Upload, X, Save, User, Sparkles, Loader2 } from 'lucide-react';
 import { uploadMemorialImage, isSupabaseConfigured } from '../utils/supabase';
+import { normalizeImageTo3x4, fileToDataUrl } from '../utils/imageUtils';
 
 interface MemorialFormProps {
   lang: Language;
@@ -166,20 +167,32 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
 
-    // 1. Generate compressed Base64 immediately so photo is saved locally no matter what
-    const localBase64 = await convertFileToBase64(file);
-    if (localBase64) {
-      setImageBase64(localBase64);
+    // 1. Normalize image file to 3:4 aspect ratio (900x1200 JPEG)
+    let normalizedFile = rawFile;
+    try {
+      normalizedFile = await normalizeImageTo3x4(rawFile, rawFile.name);
+    } catch (err) {
+      console.warn("[Image normalization fallback]", err);
     }
 
-    // 2. Try uploading to Supabase Storage in background if configured
+    // 2. Generate local preview from normalized file
+    try {
+      const localBase64 = await fileToDataUrl(normalizedFile);
+      if (localBase64) {
+        setImageBase64(localBase64);
+      }
+    } catch (e) {
+      console.warn("[File to Data URL failed]", e);
+    }
+
+    // 3. Upload normalized file to Supabase Storage in background if configured
     if (isSupabaseConfigured()) {
       try {
         const tempId = editingDeceased ? editingDeceased.id : Date.now();
-        const uploadedUrl = await uploadMemorialImage(file, tempId);
+        const uploadedUrl = await uploadMemorialImage(normalizedFile, tempId);
         if (uploadedUrl) {
           setImageBase64(uploadedUrl);
         }

@@ -90,6 +90,30 @@ async function startServer() {
   // Middleware to parse JSON payloads
   app.use(express.json({ limit: '10mb' }));
 
+  // API Route: Server-side proxy for fetching external images without CORS restrictions
+  app.get('/api/proxy-image', async (req, res) => {
+    try {
+      const targetUrl = req.query.url as string;
+      if (!targetUrl || typeof targetUrl !== 'string') {
+        return res.status(400).send('Missing url parameter');
+      }
+      const response = await fetch(targetUrl);
+      if (!response.ok) {
+        return res.status(response.status).send('Failed to fetch remote image');
+      }
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.status(200).send(buffer);
+    } catch (err: any) {
+      console.error('[proxy-image error]', err);
+      return res.status(500).send('Internal server error proxying image');
+    }
+  });
+
   // Memory cache for translation results
   const translationMemoryCache = new Map<string, any>();
 

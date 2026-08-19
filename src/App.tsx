@@ -23,7 +23,8 @@ import { getUpcomingYahrzeits, requestNotificationPermission, sendYahrzeitNotifi
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-import { supabase, isSupabaseConfigured, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById, normalizeFetchedRecord } from './utils/supabase';
+import { supabase, isSupabaseConfigured, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById, normalizeFetchedRecord, uploadMemorialImage } from './utils/supabase';
+import { normalizeImageTo3x4, fileToDataUrl } from './utils/imageUtils';
 export { supabase, isSupabaseConfigured, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById, normalizeFetchedRecord };
 
 const SEED_DATABASE: Deceased[] = [];
@@ -757,6 +758,38 @@ function MainAppContent() {
         return enriched;
       }
     });
+
+    // Step 2.5: Normalize all images in imported records to standard 3:4 ratio (900x1200 JPEG) & upload to storage
+    await Promise.all(
+      supabaseRecords.map(async (item) => {
+        const rawImg = item.image || item.imageUrl || item.photoUrl || item.photo;
+        if (rawImg && typeof rawImg === 'string' && rawImg.trim() !== '' && rawImg.trim() !== '-') {
+          try {
+            const normalizedFile = await normalizeImageTo3x4(rawImg, `import_${item.id}.jpg`);
+            let publicUrl: string | null = null;
+            if (isSupabaseConfigured()) {
+              publicUrl = await uploadMemorialImage(normalizedFile, item.id);
+            }
+            if (publicUrl) {
+              item.image = publicUrl;
+              item.imageUrl = publicUrl;
+              item.photoUrl = publicUrl;
+              item.photo = publicUrl;
+            } else {
+              const dataUrl = await fileToDataUrl(normalizedFile);
+              if (dataUrl) {
+                item.image = dataUrl;
+                item.imageUrl = dataUrl;
+                item.photoUrl = dataUrl;
+                item.photo = dataUrl;
+              }
+            }
+          } catch (normErr) {
+            console.warn(`[Bulk Import Image Normalization Notice for ID ${item.id}]`, normErr);
+          }
+        }
+      })
+    );
 
     // Update local state and LocalStorage with smart merge and deduplication
     const merged = smartMergeDeceasedLists(currentDb, supabaseRecords);
