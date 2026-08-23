@@ -84,7 +84,8 @@ export const CANONICAL_EXCEL_CSV_HEADERS = [
   'motherNameRu',
   'notesHe',
   'notesEn',
-  'notesRu'
+  'notesRu',
+  'manualFields'
 ];
 
 /**
@@ -137,7 +138,8 @@ export function exportSingleLanguageCsv(deceasedList: Deceased[], lang: Language
       escapeCsvCell(item.motherNameRu || ''),
       escapeCsvCell(item.notesHe || ''),
       escapeCsvCell(item.notesEn || ''),
-      escapeCsvCell(item.notesRu || '')
+      escapeCsvCell(item.notesRu || ''),
+      escapeCsvCell(item.manualFields && Array.isArray(item.manualFields) && item.manualFields.length > 0 ? item.manualFields.join(';') : '')
     ];
     rows.push(row.join(','));
   });

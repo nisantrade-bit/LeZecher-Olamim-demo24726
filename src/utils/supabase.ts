@@ -278,7 +278,8 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
     mother_name_ru: 'motherNameRu',
     notes_he: 'notesHe',
     notes_en: 'notesEn',
-    notes_ru: 'notesRu'
+    notes_ru: 'notesRu',
+    manual_fields: 'manualFields'
   };
 
   for (const [snakeKey, camelKey] of Object.entries(snakeToCamelMap)) {

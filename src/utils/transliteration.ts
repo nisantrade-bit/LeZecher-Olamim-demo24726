@@ -755,6 +755,8 @@ export function translateText(text: string, targetLang: 'he' | 'en' | 'ru'): str
 
   const trimmed = text.trim();
   const lower = trimmed.toLowerCase();
+  const plainText = trimmed.replace(/[\u0591-\u05C7]/g, '');
+  const plainLower = plainText.toLowerCase();
 
   // 1. Exact match in Canonical Phrase Map (guarantees zero-distortion matching)
   if (CANONICAL_PHRASE_MAP[trimmed]) {
@@ -762,6 +764,12 @@ export function translateText(text: string, targetLang: 'he' | 'en' | 'ru'): str
   }
   if (CANONICAL_PHRASE_MAP[lower]) {
     return CANONICAL_PHRASE_MAP[lower][targetLang];
+  }
+  if (CANONICAL_PHRASE_MAP[plainText]) {
+    return CANONICAL_PHRASE_MAP[plainText][targetLang];
+  }
+  if (CANONICAL_PHRASE_MAP[plainLower]) {
+    return CANONICAL_PHRASE_MAP[plainLower][targetLang];
   }
 
   const words = text.split(/\s+/);
@@ -865,87 +873,88 @@ export function enrichDeceasedTranslations(item: Deceased): Deceased {
   if (!item) return item;
 
   const result: Deceased = { ...item };
+  const manualSet = new Set<string>(result.manualFields || []);
 
-  // 1. Name translations - respect existing fields if present
-  if (!result.nameHe) {
+  // 1. Name translations - respect manualFields or existing values
+  if (!result.nameHe && !manualSet.has('nameHe')) {
     result.nameHe = isHebrewText(result.name) ? result.name : translateText(result.name, 'he');
   }
-  if (!result.nameEn) {
+  if (!result.nameEn && !manualSet.has('nameEn')) {
     result.nameEn = isLatinText(result.name) ? result.name : translateText(result.name, 'en');
   }
-  if (!result.nameRu) {
+  if (!result.nameRu && !manualSet.has('nameRu')) {
     result.nameRu = isCyrillicText(result.name) ? result.name : translateText(result.name, 'ru');
   }
 
   // 2. Father Name
   if (result.fatherName) {
-    if (!result.fatherNameHe) {
+    if (!result.fatherNameHe && !manualSet.has('fatherNameHe')) {
       result.fatherNameHe = isHebrewText(result.fatherName) ? result.fatherName : translateText(result.fatherName, 'he');
     }
-    if (!result.fatherNameEn) {
+    if (!result.fatherNameEn && !manualSet.has('fatherNameEn')) {
       result.fatherNameEn = isLatinText(result.fatherName) ? result.fatherName : translateText(result.fatherName, 'en');
     }
-    if (!result.fatherNameRu) {
+    if (!result.fatherNameRu && !manualSet.has('fatherNameRu')) {
       result.fatherNameRu = isCyrillicText(result.fatherName) ? result.fatherName : translateText(result.fatherName, 'ru');
     }
   }
 
   // 3. Mother Name
   if (result.motherName) {
-    if (!result.motherNameHe) {
+    if (!result.motherNameHe && !manualSet.has('motherNameHe')) {
       result.motherNameHe = isHebrewText(result.motherName) ? result.motherName : translateText(result.motherName, 'he');
     }
-    if (!result.motherNameEn) {
+    if (!result.motherNameEn && !manualSet.has('motherNameEn')) {
       result.motherNameEn = isLatinText(result.motherName) ? result.motherName : translateText(result.motherName, 'en');
     }
-    if (!result.motherNameRu) {
+    if (!result.motherNameRu && !manualSet.has('motherNameRu')) {
       result.motherNameRu = isCyrillicText(result.motherName) ? result.motherName : translateText(result.motherName, 'ru');
     }
   }
 
   // 4. Notes
   if (result.notes) {
-    if (!result.notesHe) {
+    if (!result.notesHe && !manualSet.has('notesHe')) {
       result.notesHe = isHebrewText(result.notes) ? result.notes : translateText(result.notes, 'he');
     }
-    if (!result.notesEn) {
+    if (!result.notesEn && !manualSet.has('notesEn')) {
       result.notesEn = isLatinText(result.notes) ? result.notes : translateText(result.notes, 'en');
     }
-    if (!result.notesRu) {
+    if (!result.notesRu && !manualSet.has('notesRu')) {
       result.notesRu = isCyrillicText(result.notes) ? result.notes : translateText(result.notes, 'ru');
     }
   } else {
-    result.notesHe = result.notesHe || '';
-    result.notesEn = result.notesEn || '';
-    result.notesRu = result.notesRu || '';
+    if (!manualSet.has('notesHe')) result.notesHe = result.notesHe || '';
+    if (!manualSet.has('notesEn')) result.notesEn = result.notesEn || '';
+    if (!manualSet.has('notesRu')) result.notesRu = result.notesRu || '';
   }
 
-  // 5. Ensure all translation fields are defined
-  result.nameHe = result.nameHe || result.name || '';
-  result.nameEn = result.nameEn || result.name || '';
-  result.nameRu = result.nameRu || result.name || '';
-  result.fatherNameHe = result.fatherNameHe || result.fatherName || '-';
-  result.fatherNameEn = result.fatherNameEn || result.fatherName || '-';
-  result.fatherNameRu = result.fatherNameRu || result.fatherName || '-';
-  result.motherNameHe = result.motherNameHe || result.motherName || '-';
-  result.motherNameEn = result.motherNameEn || result.motherName || '-';
-  result.motherNameRu = result.motherNameRu || result.motherName || '-';
+  // 5. Ensure all translation fields are defined unless manually set
+  if (!manualSet.has('nameHe')) result.nameHe = result.nameHe || result.name || '';
+  if (!manualSet.has('nameEn')) result.nameEn = result.nameEn || result.name || '';
+  if (!manualSet.has('nameRu')) result.nameRu = result.nameRu || result.name || '';
+  if (!manualSet.has('fatherNameHe')) result.fatherNameHe = result.fatherNameHe || result.fatherName || '-';
+  if (!manualSet.has('fatherNameEn')) result.fatherNameEn = result.fatherNameEn || result.fatherName || '-';
+  if (!manualSet.has('fatherNameRu')) result.fatherNameRu = result.fatherNameRu || result.fatherName || '-';
+  if (!manualSet.has('motherNameHe')) result.motherNameHe = result.motherNameHe || result.motherName || '-';
+  if (!manualSet.has('motherNameEn')) result.motherNameEn = result.motherNameEn || result.motherName || '-';
+  if (!manualSet.has('motherNameRu')) result.motherNameRu = result.motherNameRu || result.motherName || '-';
 
-  // 6. Enforce strict language script separation
-  result.nameHe = sanitizeHebrewScript(result.nameHe);
-  result.fatherNameHe = sanitizeHebrewScript(result.fatherNameHe);
-  result.motherNameHe = sanitizeHebrewScript(result.motherNameHe);
-  result.notesHe = sanitizeHebrewScript(result.notesHe);
+  // 6. Enforce script sanitization only for non-manual fields
+  if (!manualSet.has('nameHe')) result.nameHe = sanitizeHebrewScript(result.nameHe);
+  if (!manualSet.has('fatherNameHe')) result.fatherNameHe = sanitizeHebrewScript(result.fatherNameHe);
+  if (!manualSet.has('motherNameHe')) result.motherNameHe = sanitizeHebrewScript(result.motherNameHe);
+  if (!manualSet.has('notesHe')) result.notesHe = sanitizeHebrewScript(result.notesHe);
 
-  result.nameRu = sanitizeRussianScript(result.nameRu);
-  result.fatherNameRu = sanitizeRussianScript(result.fatherNameRu);
-  result.motherNameRu = sanitizeRussianScript(result.motherNameRu);
-  result.notesRu = sanitizeRussianScript(result.notesRu);
+  if (!manualSet.has('nameRu')) result.nameRu = sanitizeRussianScript(result.nameRu);
+  if (!manualSet.has('fatherNameRu')) result.fatherNameRu = sanitizeRussianScript(result.fatherNameRu);
+  if (!manualSet.has('motherNameRu')) result.motherNameRu = sanitizeRussianScript(result.motherNameRu);
+  if (!manualSet.has('notesRu')) result.notesRu = sanitizeRussianScript(result.notesRu);
 
-  result.nameEn = sanitizeEnglishScript(result.nameEn);
-  result.fatherNameEn = sanitizeEnglishScript(result.fatherNameEn);
-  result.motherNameEn = sanitizeEnglishScript(result.motherNameEn);
-  result.notesEn = sanitizeEnglishScript(result.notesEn);
+  if (!manualSet.has('nameEn')) result.nameEn = sanitizeEnglishScript(result.nameEn);
+  if (!manualSet.has('fatherNameEn')) result.fatherNameEn = sanitizeEnglishScript(result.fatherNameEn);
+  if (!manualSet.has('motherNameEn')) result.motherNameEn = sanitizeEnglishScript(result.motherNameEn);
+  if (!manualSet.has('notesEn')) result.notesEn = sanitizeEnglishScript(result.notesEn);
 
   // 7. Image & imageUrl & photoUrl fields
   const imgStr = result.imageUrl || result.photoUrl || result.image || '';

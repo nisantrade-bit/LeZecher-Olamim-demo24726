@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Deceased, Language } from '../types';
 import { translations, formatParentRelation } from '../utils/translations';
-import { translateText, getLocalizedName, getLocalizedNotes } from '../utils/transliteration';
+import { translateText, getLocalizedName, getLocalizedFatherName, getLocalizedMotherName, getLocalizedNotes } from '../utils/transliteration';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, findYahrzeitGregorianDate, getYahrzeitEveDate, formatYahrzeitDatesWithEve, normalizeMonthName } from '../utils/hebrewDate';
 import { getTorahPortionDetails, getShabbatYahrzeitInfo } from '../utils/torahPortionHelper';
 import { ShabbatYahrzeitBanner } from './ShabbatYahrzeitBanner';
@@ -231,21 +231,28 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
 
     try {
       const localizedName = getLocalizedName(deceased, lang);
+      const localizedFather = getLocalizedFatherName(deceased, lang);
+      const localizedMother = getLocalizedMotherName(deceased, lang);
+      const parentRel = formatParentRelation(deceased.gender, localizedFather, localizedMother, lang, deceased);
+      const nameWithParent = parentRel 
+        ? (lang === 'he' ? `${localizedName} ${parentRel}` : `${localizedName} (${parentRel})`)
+        : localizedName;
+
       const title = lang === 'he' 
-        ? `לזכר עולמים - עמוד זיכרון לעילוי נשמת ${localizedName}` 
+        ? `לזכר עולמים - עמוד זיכרון לעילוי נשמת ${nameWithParent}` 
         : lang === 'ru' 
-        ? `Ле-Зехер Оламим - Страница памяти ${localizedName}` 
-        : `L'Zecher Olamim - Memorial Page for ${localizedName}`;
+        ? `Ле-Зехер Оламим - Страница памяти ${nameWithParent}` 
+        : `L'Zecher Olamim - Memorial Page for ${nameWithParent}`;
       document.title = title;
       const ogTitle = document.querySelector('meta[property="og:title"]');
       if (ogTitle) ogTitle.setAttribute('content', title);
       const ogDesc = document.querySelector('meta[property="og:description"]');
       if (ogDesc) {
         const desc = lang === 'he'
-          ? `נר נשמה דולק לעילוי נשמת ${localizedName} ז״ל | השתתפות בהנצחה, תהילים ומשנה`
+          ? `נר נשמה דולק לעילוי נשמת ${nameWithParent} ז״ל | השתתפות בהנצחה, תהילים ומשנה`
           : lang === 'ru'
-          ? `Свеча памяти горит в честь ${localizedName} | Память, Псалмы и Мишна`
-          : `Memorial candle lit in memory of ${localizedName} | Remembrance, Psalms and Mishnah`;
+          ? `Свеча памяти горит в честь ${nameWithParent} | Память, Псалмы и Мишна`
+          : `Memorial candle lit in memory of ${nameWithParent} | Remembrance, Psalms and Mishnah`;
         ogDesc.setAttribute('content', desc);
       }
       const ogImg = document.querySelector('meta[property="og:image"]');

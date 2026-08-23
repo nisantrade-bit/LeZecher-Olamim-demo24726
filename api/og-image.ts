@@ -147,7 +147,7 @@ export default async function handler(req: any, res: any) {
     }
 
     res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400');
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=300');
     res.setHeader('Content-Length', optimizedJpeg.length.toString());
     return res.status(200).send(optimizedJpeg);
 

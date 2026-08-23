@@ -100,6 +100,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     let fatherHeIdx = -1, fatherEnIdx = -1, fatherRuIdx = -1;
     let motherHeIdx = -1, motherEnIdx = -1, motherRuIdx = -1;
     let notesHeIdx = -1, notesEnIdx = -1, notesRuIdx = -1;
+    let manualFieldsIdx = -1;
     let dayIdx = -1;
     let monthIdx = -1;
 
@@ -141,6 +142,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         else if (c === 'noteshe' || c === 'notes_he') notesHeIdx = idx;
         else if (c === 'notesen' || c === 'notes_en') notesEnIdx = idx;
         else if (c === 'notesru' || c === 'notes_ru') notesRuIdx = idx;
+        else if (c === 'manualfields' || c === 'manual_fields' || c.includes('manualfields') || c.includes('manual_fields')) manualFieldsIdx = idx;
         else if (c === 'bio') bioIdx = idx;
         else if (c === 'notes' || c.includes('story') || c.includes('הערות')) notesIdx = idx;
         else if (c === 'imageurl' || c === 'image_url') imageUrlIdx = idx;
@@ -206,6 +208,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       const rawNotesHe = notesHeIdx !== -1 ? row[notesHeIdx] : undefined;
       const rawNotesEn = notesEnIdx !== -1 ? row[notesEnIdx] : undefined;
       const rawNotesRu = notesRuIdx !== -1 ? row[notesRuIdx] : undefined;
+      const rawManualFields = manualFieldsIdx !== -1 ? row[manualFieldsIdx] : undefined;
 
       if (!rawName) continue; // skip empty names
 
@@ -272,6 +275,25 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       const bioVal = rawBio || rawNotes || '-';
       const imgVal = rawImageUrl || rawPhotoUrl || rawImage || '-';
 
+      let parsedManualFields: string[] | undefined = undefined;
+      if (rawManualFields && String(rawManualFields).trim()) {
+        const str = String(rawManualFields).trim();
+        if (str.startsWith('[') && str.endsWith(']')) {
+          try {
+            const arr = JSON.parse(str);
+            if (Array.isArray(arr)) {
+              parsedManualFields = arr.map(s => String(s).trim()).filter(Boolean);
+            }
+          } catch (e) {}
+        }
+        if (!parsedManualFields && str) {
+          parsedManualFields = str.split(/[,;\s]+/).map(s => s.trim()).filter(Boolean);
+        }
+      }
+      if (parsedManualFields && parsedManualFields.length === 0) {
+        parsedManualFields = undefined;
+      }
+
       const newItem: Deceased = {
         id: parsedId !== undefined ? Number(parsedId) : (undefined as any),
         name: rawName,
@@ -305,7 +327,8 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         motherNameRu: rawMotherRu,
         notesHe: rawNotesHe,
         notesEn: rawNotesEn,
-        notesRu: rawNotesRu
+        notesRu: rawNotesRu,
+        manualFields: parsedManualFields
       };
 
       result.push(newItem);
@@ -330,6 +353,26 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
           const bioVal = item.bio || item.notes || item.story || undefined;
           const hebDate = item.hebrewDate || item.hebrew_date || (item.day && item.month ? `${item.day} ${item.month}` : undefined);
           const passDateVal = item.passDate || item.pass_date || hebDate;
+
+          let mf: string[] | undefined = undefined;
+          const rawMf = item.manualFields || item.manual_fields;
+          if (rawMf) {
+            if (Array.isArray(rawMf)) {
+              mf = rawMf.map((s: any) => String(s).trim()).filter(Boolean);
+            } else if (typeof rawMf === 'string' && rawMf.trim()) {
+              const str = rawMf.trim();
+              if (str.startsWith('[') && str.endsWith(']')) {
+                try {
+                  const arr = JSON.parse(str);
+                  if (Array.isArray(arr)) mf = arr.map((s: any) => String(s).trim()).filter(Boolean);
+                } catch (e) {}
+              }
+              if (!mf && str) {
+                mf = str.split(/[,;\s]+/).map((s: any) => String(s).trim()).filter(Boolean);
+              }
+            }
+          }
+          if (mf && mf.length === 0) mf = undefined;
 
           return {
             id: item.id !== undefined && item.id !== null && String(item.id).trim() !== '' ? Number(item.id) : (undefined as any),
@@ -362,7 +405,8 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
             motherNameRu: item.motherNameRu,
             notesHe: item.notesHe,
             notesEn: item.notesEn,
-            notesRu: item.notesRu
+            notesRu: item.notesRu,
+            manualFields: mf
           };
         }).filter(item => Boolean(item.name));
 
@@ -418,35 +462,58 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
           const text = event.target?.result as string;
           const parsed = JSON.parse(text);
           const arrayToProcess = Array.isArray(parsed) ? parsed : [parsed];
-          const importedList: Deceased[] = arrayToProcess.map((item, idx) => ({
-            id: Number(item.id || Date.now() + idx),
-            name: String(item.name || item.nameHe || item.nameEn || item.nameRu || ''),
-            gender: (item.gender === 'female' ? 'female' : 'male') as Gender,
-            fatherName: sanitizeParentName(item.fatherName || ''),
-            motherName: sanitizeParentName(item.motherName || ''),
-            day: Number(item.day || 1),
-            month: normalizeMonthName(item.month || 'תשרי'),
-            contactPhone: item.contactPhone || undefined,
-            notes: item.notes || undefined,
-            image: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
-            imageUrl: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
-            photoUrl: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
-            photo: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
-            ageAtDeath: item.ageAtDeath ? Number(item.ageAtDeath) : undefined,
-            birthDate: item.birthDate || undefined,
-            nameHe: item.nameHe,
-            nameEn: item.nameEn,
-            nameRu: item.nameRu,
-            fatherNameHe: item.fatherNameHe,
-            fatherNameEn: item.fatherNameEn,
-            fatherNameRu: item.fatherNameRu,
-            motherNameHe: item.motherNameHe,
-            motherNameEn: item.motherNameEn,
-            motherNameRu: item.motherNameRu,
-            notesHe: item.notesHe,
-            notesEn: item.notesEn,
-            notesRu: item.notesRu
-          })).filter(item => Boolean(item.name));
+          const importedList: Deceased[] = arrayToProcess.map((item, idx) => {
+            let mf: string[] | undefined = undefined;
+            const rawMf = item.manualFields || item.manual_fields;
+            if (rawMf) {
+              if (Array.isArray(rawMf)) {
+                mf = rawMf.map((s: any) => String(s).trim()).filter(Boolean);
+              } else if (typeof rawMf === 'string' && rawMf.trim()) {
+                const str = rawMf.trim();
+                if (str.startsWith('[') && str.endsWith(']')) {
+                  try {
+                    const arr = JSON.parse(str);
+                    if (Array.isArray(arr)) mf = arr.map((s: any) => String(s).trim()).filter(Boolean);
+                  } catch (e) {}
+                }
+                if (!mf && str) {
+                  mf = str.split(/[,;\s]+/).map((s: any) => String(s).trim()).filter(Boolean);
+                }
+              }
+            }
+            if (mf && mf.length === 0) mf = undefined;
+
+            return {
+              id: item.id !== undefined && item.id !== null && String(item.id).trim() !== '' ? Number(item.id) : (undefined as any),
+              name: String(item.name || item.nameHe || item.nameEn || item.nameRu || ''),
+              gender: (item.gender === 'female' ? 'female' : 'male') as Gender,
+              fatherName: sanitizeParentName(item.fatherName || ''),
+              motherName: sanitizeParentName(item.motherName || ''),
+              day: Number(item.day || 1),
+              month: normalizeMonthName(item.month || 'תשרי'),
+              contactPhone: item.contactPhone || undefined,
+              notes: item.notes || undefined,
+              image: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
+              imageUrl: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
+              photoUrl: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
+              photo: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
+              ageAtDeath: item.ageAtDeath ? Number(item.ageAtDeath) : undefined,
+              birthDate: item.birthDate || undefined,
+              nameHe: item.nameHe,
+              nameEn: item.nameEn,
+              nameRu: item.nameRu,
+              fatherNameHe: item.fatherNameHe,
+              fatherNameEn: item.fatherNameEn,
+              fatherNameRu: item.fatherNameRu,
+              motherNameHe: item.motherNameHe,
+              motherNameEn: item.motherNameEn,
+              motherNameRu: item.motherNameRu,
+              notesHe: item.notesHe,
+              notesEn: item.notesEn,
+              notesRu: item.notesRu,
+              manualFields: mf
+            };
+          }).filter(item => Boolean(item.name));
 
           if (importedList.length === 0) {
             setFeedback({ 
@@ -607,7 +674,8 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
           item.motherNameRu || '',
           item.notesHe || '',
           item.notesEn || '',
-          item.notesRu || ''
+          item.notesRu || '',
+          item.manualFields && Array.isArray(item.manualFields) && item.manualFields.length > 0 ? item.manualFields.join(';') : ''
         ];
       });
 

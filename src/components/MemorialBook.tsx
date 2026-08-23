@@ -8,6 +8,7 @@ import { Deceased, Language } from '../types';
 import { translations, formatParentRelation } from '../utils/translations';
 import { translateText, getLocalizedName } from '../utils/transliteration';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, gimatriya, normalizeMonthName, findYahrzeitGregorianDate } from '../utils/hebrewDate';
+import { stripNikud } from '../utils/deduplication';
 import { ChevronDown, ChevronUp, Search, Eye, Flame } from 'lucide-react';
 import { DeceasedPhotoFrame } from './YahrzeitCandle';
 
@@ -58,10 +59,29 @@ export const MemorialBook: React.FC<MemorialBookProps> = ({ deceasedList, lang, 
   const monthsList = HEBREW_MONTHS_HE; // Standard Hebrew month keys for grouping
   const currentMonthsTranslated = lang === 'he' ? HEBREW_MONTHS_HE : lang === 'en' ? HEBREW_MONTHS_EN : HEBREW_MONTHS_RU;
 
-  // Search filter
-  const filteredDeceased = deceasedList.filter(d => 
-    d.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Search filter - normalized for Hebrew nikud & cantillation marks
+  const cleanQuery = stripNikud(searchQuery).toLowerCase().trim();
+  const filteredDeceased = deceasedList.filter(d => {
+    if (!cleanQuery) return true;
+    const searchTargets = [
+      d.name,
+      d.nameHe,
+      d.nameEn,
+      d.nameRu,
+      d.fatherName,
+      d.fatherNameHe,
+      d.fatherNameEn,
+      d.fatherNameRu,
+      d.motherName,
+      d.motherNameHe,
+      d.motherNameEn,
+      d.motherNameRu
+    ].filter(Boolean) as string[];
+
+    return searchTargets.some(target => 
+      stripNikud(target).toLowerCase().includes(cleanQuery)
+    );
+  });
 
   return (
     <div id="memorial-book-panel" className="bg-white border border-slate-300 rounded-2xl p-6 text-slate-900 shadow-md shadow-slate-300/40">

@@ -227,6 +227,9 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
 
     const imgVal = imageBase64 ? imageBase64.trim() : undefined;
 
+    const existingManualFields = editingDeceased?.manualFields ? [...editingDeceased.manualFields] : [];
+    const manualSet = new Set<string>(existingManualFields);
+
     const baseData: Deceased = {
       id: editingDeceased ? editingDeceased.id : Date.now(),
       name: name.trim(),
@@ -260,80 +263,148 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       notesRu: editingDeceased?.notesRu
     };
 
-    // Update current language's explicit values & reset stale translations when fields change during edit
+    // Update current language's explicit values & mark as manual fields
     if (lang === 'he') {
       baseData.nameHe = name.trim();
-      baseData.fatherNameHe = cleanFather;
-      baseData.motherNameHe = cleanMother;
-      baseData.notesHe = notes.trim() || undefined;
+      manualSet.add('nameHe');
+
+      if (cleanFather) {
+        baseData.fatherNameHe = cleanFather;
+        manualSet.add('fatherNameHe');
+      } else {
+        baseData.fatherNameHe = undefined;
+        manualSet.delete('fatherNameHe');
+      }
+
+      if (cleanMother) {
+        baseData.motherNameHe = cleanMother;
+        manualSet.add('motherNameHe');
+      } else {
+        baseData.motherNameHe = undefined;
+        manualSet.delete('motherNameHe');
+      }
+
+      if (notes.trim()) {
+        baseData.notesHe = notes.trim();
+        manualSet.add('notesHe');
+      } else {
+        baseData.notesHe = undefined;
+        manualSet.delete('notesHe');
+      }
 
       if (editingDeceased) {
         if (name.trim() !== (editingDeceased.nameHe || editingDeceased.name)) {
-          baseData.nameEn = undefined;
-          baseData.nameRu = undefined;
+          if (!manualSet.has('nameEn')) baseData.nameEn = undefined;
+          if (!manualSet.has('nameRu')) baseData.nameRu = undefined;
         }
         if (cleanFather !== (editingDeceased.fatherNameHe || editingDeceased.fatherName)) {
-          baseData.fatherNameEn = undefined;
-          baseData.fatherNameRu = undefined;
+          if (!manualSet.has('fatherNameEn')) baseData.fatherNameEn = undefined;
+          if (!manualSet.has('fatherNameRu')) baseData.fatherNameRu = undefined;
         }
         if (cleanMother !== (editingDeceased.motherNameHe || editingDeceased.motherName)) {
-          baseData.motherNameEn = undefined;
-          baseData.motherNameRu = undefined;
+          if (!manualSet.has('motherNameEn')) baseData.motherNameEn = undefined;
+          if (!manualSet.has('motherNameRu')) baseData.motherNameRu = undefined;
         }
         if ((notes.trim() || undefined) !== (editingDeceased.notesHe || editingDeceased.notes || undefined)) {
-          baseData.notesEn = undefined;
-          baseData.notesRu = undefined;
+          if (!manualSet.has('notesEn')) baseData.notesEn = undefined;
+          if (!manualSet.has('notesRu')) baseData.notesRu = undefined;
         }
       }
     } else if (lang === 'en') {
       baseData.nameEn = name.trim();
-      baseData.fatherNameEn = cleanFather;
-      baseData.motherNameEn = cleanMother;
-      baseData.notesEn = notes.trim() || undefined;
+      manualSet.add('nameEn');
+
+      if (cleanFather) {
+        baseData.fatherNameEn = cleanFather;
+        manualSet.add('fatherNameEn');
+      } else {
+        baseData.fatherNameEn = undefined;
+        manualSet.delete('fatherNameEn');
+      }
+
+      if (cleanMother) {
+        baseData.motherNameEn = cleanMother;
+        manualSet.add('motherNameEn');
+      } else {
+        baseData.motherNameEn = undefined;
+        manualSet.delete('motherNameEn');
+      }
+
+      if (notes.trim()) {
+        baseData.notesEn = notes.trim();
+        manualSet.add('notesEn');
+      } else {
+        baseData.notesEn = undefined;
+        manualSet.delete('notesEn');
+      }
 
       if (editingDeceased) {
         if (name.trim() !== (editingDeceased.nameEn || editingDeceased.name)) {
-          baseData.nameHe = undefined;
-          baseData.nameRu = undefined;
+          if (!manualSet.has('nameHe')) baseData.nameHe = undefined;
+          if (!manualSet.has('nameRu')) baseData.nameRu = undefined;
         }
         if (cleanFather !== (editingDeceased.fatherNameEn || editingDeceased.fatherName)) {
-          baseData.fatherNameHe = undefined;
-          baseData.fatherNameRu = undefined;
+          if (!manualSet.has('fatherNameHe')) baseData.fatherNameHe = undefined;
+          if (!manualSet.has('fatherNameRu')) baseData.fatherNameRu = undefined;
         }
         if (cleanMother !== (editingDeceased.motherNameEn || editingDeceased.motherName)) {
-          baseData.motherNameHe = undefined;
-          baseData.motherNameRu = undefined;
+          if (!manualSet.has('motherNameHe')) baseData.motherNameHe = undefined;
+          if (!manualSet.has('motherNameRu')) baseData.motherNameRu = undefined;
         }
         if ((notes.trim() || undefined) !== (editingDeceased.notesEn || editingDeceased.notes || undefined)) {
-          baseData.notesHe = undefined;
-          baseData.notesRu = undefined;
+          if (!manualSet.has('notesHe')) baseData.notesHe = undefined;
+          if (!manualSet.has('notesRu')) baseData.notesRu = undefined;
         }
       }
     } else if (lang === 'ru') {
       baseData.nameRu = name.trim();
-      baseData.fatherNameRu = cleanFather;
-      baseData.motherNameRu = cleanMother;
-      baseData.notesRu = notes.trim() || undefined;
+      manualSet.add('nameRu');
+
+      if (cleanFather) {
+        baseData.fatherNameRu = cleanFather;
+        manualSet.add('fatherNameRu');
+      } else {
+        baseData.fatherNameRu = undefined;
+        manualSet.delete('fatherNameRu');
+      }
+
+      if (cleanMother) {
+        baseData.motherNameRu = cleanMother;
+        manualSet.add('motherNameRu');
+      } else {
+        baseData.motherNameRu = undefined;
+        manualSet.delete('motherNameRu');
+      }
+
+      if (notes.trim()) {
+        baseData.notesRu = notes.trim();
+        manualSet.add('notesRu');
+      } else {
+        baseData.notesRu = undefined;
+        manualSet.delete('notesRu');
+      }
 
       if (editingDeceased) {
         if (name.trim() !== (editingDeceased.nameRu || editingDeceased.name)) {
-          baseData.nameHe = undefined;
-          baseData.nameEn = undefined;
+          if (!manualSet.has('nameHe')) baseData.nameHe = undefined;
+          if (!manualSet.has('nameEn')) baseData.nameEn = undefined;
         }
         if (cleanFather !== (editingDeceased.fatherNameRu || editingDeceased.fatherName)) {
-          baseData.fatherNameHe = undefined;
-          baseData.fatherNameEn = undefined;
+          if (!manualSet.has('fatherNameHe')) baseData.fatherNameHe = undefined;
+          if (!manualSet.has('fatherNameEn')) baseData.fatherNameEn = undefined;
         }
         if (cleanMother !== (editingDeceased.motherNameRu || editingDeceased.motherName)) {
-          baseData.motherNameHe = undefined;
-          baseData.motherNameEn = undefined;
+          if (!manualSet.has('motherNameHe')) baseData.motherNameHe = undefined;
+          if (!manualSet.has('motherNameEn')) baseData.motherNameEn = undefined;
         }
         if ((notes.trim() || undefined) !== (editingDeceased.notesRu || editingDeceased.notes || undefined)) {
-          baseData.notesHe = undefined;
-          baseData.notesEn = undefined;
+          if (!manualSet.has('notesHe')) baseData.notesHe = undefined;
+          if (!manualSet.has('notesEn')) baseData.notesEn = undefined;
         }
       }
     }
+
+    baseData.manualFields = manualSet.size > 0 ? Array.from(manualSet) : undefined;
 
     onSave(baseData);
     if (!editingDeceased) {

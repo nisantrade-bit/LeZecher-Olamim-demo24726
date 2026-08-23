@@ -218,11 +218,19 @@ const BUKHARIAN_NAME_ALIASES: Record<string, string> = {
 };
 
 /**
- * Normalizes a raw string by removing quotes, parens, dashes, dots, and converting to lower case
+ * Central normalization function to strip Hebrew nikud and cantillation marks (\u0591-\u05C7)
+ */
+export function stripNikud(str: string | null | undefined): string {
+  if (!str) return '';
+  return String(str).replace(/[\u0591-\u05C7]/g, '');
+}
+
+/**
+ * Normalizes a raw string by removing nikud, quotes, parens, dashes, dots, and converting to lower case
  */
 export function normalizeRawString(str: string | null | undefined): string {
   if (!str) return '';
-  return String(str)
+  return stripNikud(String(str))
     .trim()
     .toLowerCase()
     .replace(/['’‘`״"]/g, '')
@@ -709,6 +717,14 @@ export function mergeDeceasedRecords(existing: Deceased, incoming: Deceased): De
   const existingCandles = Number(existing.candlesCount) || 0;
   const incomingCandles = Number(incoming.candlesCount) || 0;
   merged.candlesCount = Math.max(existingCandles, incomingCandles);
+
+  const combinedManual = Array.from(new Set([
+    ...(existing.manualFields || []),
+    ...(incoming.manualFields || [])
+  ]));
+  if (combinedManual.length > 0) {
+    merged.manualFields = combinedManual;
+  }
 
   return enrichDeceasedTranslations(merged);
 }

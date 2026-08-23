@@ -41,6 +41,9 @@ export interface Deceased {
   notesHe?: string;
   notesEn?: string;
   notesRu?: string;
+
+  // Manual override tracking: fields that were entered/edited manually by user or explicitly imported
+  manualFields?: string[];
 }
 
 export type Language = 'he' | 'en' | 'ru';

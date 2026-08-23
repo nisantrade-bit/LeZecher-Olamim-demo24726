@@ -19,6 +19,70 @@ dotenv.config();
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://aoendfkvzsywrykmcloy.supabase.co";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj";
 
+function normalizeAndEnrichRecord(rawData: any): any {
+  if (!rawData) return null;
+  const data: any = { ...rawData };
+
+  const snakeToCamelMap: Record<string, string> = {
+    father_name: 'fatherName',
+    mother_name: 'motherName',
+    contact_phone: 'contactPhone',
+    image_url: 'imageUrl',
+    photo_url: 'photoUrl',
+    age_at_death: 'ageAtDeath',
+    birth_date: 'birthDate',
+    hebrew_date: 'hebrewDate',
+    pass_date: 'passDate',
+    candles_count: 'candlesCount',
+    likes_count: 'likesCount',
+    name_he: 'nameHe',
+    name_en: 'nameEn',
+    name_ru: 'nameRu',
+    father_name_he: 'fatherNameHe',
+    father_name_en: 'fatherNameEn',
+    father_name_ru: 'fatherNameRu',
+    mother_name_he: 'motherNameHe',
+    mother_name_en: 'motherNameEn',
+    mother_name_ru: 'motherNameRu',
+    notes_he: 'notesHe',
+    notes_en: 'notesEn',
+    notes_ru: 'notesRu',
+    manual_fields: 'manualFields'
+  };
+
+  for (const [snakeKey, camelKey] of Object.entries(snakeToCamelMap)) {
+    if (snakeKey in data) {
+      if (data[camelKey] === undefined || data[camelKey] === null || data[camelKey] === '') {
+        data[camelKey] = data[snakeKey];
+      }
+    }
+  }
+
+  if (data.manualFields) {
+    if (typeof data.manualFields === 'string') {
+      const str = data.manualFields.trim();
+      if (str.startsWith('[') && str.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(str);
+          if (Array.isArray(parsed)) {
+            data.manualFields = parsed.map((s: any) => String(s).trim()).filter(Boolean);
+          }
+        } catch (e) {
+          data.manualFields = str.split(/[,;\s]+/).map((s: any) => String(s).trim()).filter(Boolean);
+        }
+      } else {
+        data.manualFields = str.split(/[,;\s]+/).map((s: any) => String(s).trim()).filter(Boolean);
+      }
+    }
+  }
+
+  if (data.gender !== 'female' && data.gender !== 'male') {
+    data.gender = 'male';
+  }
+
+  return enrichDeceasedTranslations(data);
+}
+
 async function findDeceasedInSupabaseServer(rawId: string): Promise<any | null> {
   if (!rawId) return null;
   const cleanId = rawId.trim();
@@ -715,10 +779,12 @@ Return a JSON object with a single string property "refinedNotes".`;
         db = [];
       }
 
-      let deceased = !isNaN(id) ? db.find((item: any) => Number(item.id) === id) : null;
-
-      if (!deceased && rawId) {
+      let deceased: any = null;
+      if (rawId) {
         deceased = await findDeceasedInSupabaseServer(rawId);
+      }
+      if (!deceased && !isNaN(id)) {
+        deceased = db.find((item: any) => Number(item.id) === id);
       }
 
       const dataParamStr = (req.query.data || req.query.payload || req.query.p || req.query.card || req.query.d) as string;
@@ -766,16 +832,39 @@ Return a JSON object with a single string property "refinedNotes".`;
 
         if (deceased) {
           const reqLang = (['he', 'en', 'ru'].includes(req.query.lang as string) ? req.query.lang : 'he') as 'he' | 'en' | 'ru';
-          const name = getLocalizedName(deceased, reqLang) || deceased.name || 'נפטר/ת';
-          let title = `🕯️ לזכר עולמים - ${name} ז״ל`;
-          let description = `דף הנצחה וזיכרון לעילוי נשמת ${name}. נפטר/ה ב-${deceased.day} ב${deceased.month}. לחצו לצפייה בלוח המודעה, הדלקת נר נשמה ולימוד תהילים.`;
+          const enriched = normalizeAndEnrichRecord(deceased);
+          const localizedName = getLocalizedName(enriched, reqLang) || enriched.name || 'נפטר/ת';
+          const localizedFather = getLocalizedFatherName(enriched, reqLang);
+          const localizedMother = getLocalizedMotherName(enriched, reqLang);
+          const parentRel = formatParentRelation(enriched.gender, localizedFather, localizedMother, reqLang, enriched);
+
+          let nameWithParent = localizedName;
+          if (parentRel) {
+            if (reqLang === 'he') {
+              nameWithParent = `${localizedName} ${parentRel}`;
+            } else {
+              nameWithParent = `${localizedName} (${parentRel})`;
+            }
+          }
+
+          const isFemale = enriched.gender === 'female';
+          const isMale = enriched.gender === 'male';
+
+          let title = '';
+          let description = '';
 
           if (reqLang === 'ru') {
-            title = `🕯️ Ле-Зехер Оламим - ${name}`;
-            description = `Страница памяти в честь ${name}. Нажмите, чтобы зажечь свечу памяти, прочесть Псалмы и оставить слова соболезнования.`;
+            const blessingSuffix = isFemale ? 'Да будет благословенна её память.' : isMale ? 'Да будет благословенна его память.' : 'Да будет благословенна его/её память.';
+            title = `🕯️ Светлая память – ${nameWithParent}`;
+            description = `Приглашаем вас посетить страницу памяти, зажечь поминальную свечу, прочитать Мишнайот, Тегилим и законы во имя возвышения души и принять участие в увековечивании памяти. ${blessingSuffix}`;
           } else if (reqLang === 'en') {
-            title = `🕯️ L'Zecher Olamim - ${name}`;
-            description = `Memorial page in memory of ${name}. Click to view memorial card, light a candle, and read Psalms.`;
+            const blessingSuffix = isFemale ? 'May her memory be a blessing.' : isMale ? 'May his memory be a blessing.' : 'May their memory be a blessing.';
+            title = `🕯️ In loving memory – ${nameWithParent}`;
+            description = `We invite you to visit the memorial page, light a memorial candle, read Mishnayot, Psalms and Jewish laws for the elevation of the soul, and take part in preserving their memory. ${blessingSuffix}`;
+          } else {
+            const blessingSuffix = isFemale ? 'זכרונה לברכה' : isMale ? 'זכרונו לברכה' : 'זכרונו/ה לברכה';
+            title = `🕯️ לזכר עולמים – ${nameWithParent}`;
+            description = `מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה, לקרוא משניות, תהלים והלכות לעילוי נשמה ולהשתתף בהנצחה. ${blessingSuffix}`;
           }
 
           const currentUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
@@ -783,11 +872,11 @@ Return a JSON object with a single string property "refinedNotes".`;
 
           let imageUrl = `${baseUrl}/og-banner.png`;
           const rawCandidate = [
-            deceased.image,
-            deceased.imageUrl,
-            deceased.image_url,
-            deceased.photoUrl,
-            deceased.photo
+            enriched.image,
+            enriched.imageUrl,
+            enriched.image_url,
+            enriched.photoUrl,
+            enriched.photo
           ].find((img: any) => img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-');
 
           if (rawCandidate) {
@@ -797,23 +886,29 @@ Return a JSON object with a single string property "refinedNotes".`;
             } else if (trimmedImg.startsWith('/')) {
               imageUrl = `${baseUrl}${trimmedImg}`;
             } else if (trimmedImg.startsWith('data:') || trimmedImg.length > 100) {
-              imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(deceased.id)}`;
+              imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(enriched.id)}`;
             }
           }
 
+          const safeTitle = escapeHtml(title);
+          const safeDesc = escapeHtml(description);
+          const safeImg = escapeHtml(imageUrl);
+          const safeCanonical = escapeHtml(currentUrl);
+
           const ogTags = `
-    <title>${title}</title>
-    <meta name="description" content="${description}">
-    <meta property="og:title" content="${title}" />
-    <meta property="og:description" content="${description}" />
+    <title>${safeTitle}</title>
+    <meta name="description" content="${safeDesc}">
+    <meta property="og:title" content="${safeTitle}" />
+    <meta property="og:description" content="${safeDesc}" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="${currentUrl}" />
-    <meta property="og:image" content="${imageUrl}" />
-    <meta property="og:image:secure_url" content="${imageUrl}" />
+    <meta property="og:url" content="${safeCanonical}" />
+    <meta property="og:image" content="${safeImg}" />
+    <meta property="og:image:secure_url" content="${safeImg}" />
+    <meta property="og:site_name" content="לזכר עולמים" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="${title}" />
-    <meta name="twitter:description" content="${description}" />
-    <meta name="twitter:image" content="${imageUrl}" />
+    <meta name="twitter:title" content="${safeTitle}" />
+    <meta name="twitter:description" content="${safeDesc}" />
+    <meta name="twitter:image" content="${safeImg}" />
           `;
 
           // Replace existing title and inject metadata into head
@@ -822,6 +917,7 @@ Return a JSON object with a single string property "refinedNotes".`;
         }
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
         return res.send(html);
       }
     } catch (err) {
