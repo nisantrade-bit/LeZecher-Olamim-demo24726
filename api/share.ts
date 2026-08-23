@@ -197,16 +197,7 @@ export default async function handler(req: any, res: any) {
         ].find(img => img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-');
 
         if (rawCandidate) {
-          const trimmedImg = rawCandidate.trim();
-          if (cleanId === '1785101989240') {
-            imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(cleanId)}`;
-          } else if (trimmedImg.startsWith('http://') || trimmedImg.startsWith('https://')) {
-            imageUrl = trimmedImg;
-          } else if (trimmedImg.startsWith('/')) {
-            imageUrl = `${baseUrl}${trimmedImg}`;
-          } else if (trimmedImg.startsWith('data:') || trimmedImg.length > 100) {
-            imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(cleanId)}`;
-          }
+          imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(cleanId)}`;
         }
       }
     } catch (e) {

@@ -194,10 +194,7 @@ export default async function handler(req: any, res: any) {
         ].find(img => img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-');
 
         if (rawCandidate) {
-          const trimmedImg = rawCandidate.trim();
-          if (trimmedImg.startsWith('http://') || trimmedImg.startsWith('https://') || trimmedImg.startsWith('/') || trimmedImg.startsWith('data:') || trimmedImg.length > 100) {
-            imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(m)}`;
-          }
+          imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(m)}`;
         }
       }
     } catch (e) {

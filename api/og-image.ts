@@ -123,24 +123,7 @@ export default async function handler(req: any, res: any) {
     // Process and optimize image with sharp (maintaining aspect ratio and outputting optimized JPEG)
     let optimizedJpeg: Buffer;
     try {
-      if (cleanId === '1785101989240') {
-        // Controlled experiment for Shushan (ID 1785101989240): Fit inside a 3:4 aspect ratio canvas (900x1200) without cropping
-        optimizedJpeg = await sharp(inputBuffer)
-          .resize({
-            width: 900,
-            height: 1200,
-            fit: 'contain',
-            background: { r: 7, g: 11, b: 18, alpha: 1 } // #070b12 background
-          })
-          .jpeg({
-            quality: 80,
-            progressive: true,
-            mozjpeg: true
-          })
-          .toBuffer();
-      } else {
-        optimizedJpeg = await optimizeImageBuffer(inputBuffer);
-      }
+      optimizedJpeg = await optimizeImageBuffer(inputBuffer);
     } catch (sharpError) {
       console.error('[og-image sharp optimization error]', sharpError);
       optimizedJpeg = inputBuffer;

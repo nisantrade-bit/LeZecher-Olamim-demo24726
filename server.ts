@@ -11,7 +11,21 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
-import { translateDeceasedListClientSide, getLocalizedName } from './src/utils/transliteration';
+import { translateDeceasedListClientSide, getLocalizedName, enrichDeceasedTranslations, getLocalizedFatherName, getLocalizedMotherName } from './src/utils/transliteration';
+import { formatParentRelation } from './src/utils/translations';
+import ogImageHandler from './api/og-image';
+import shareHandler from './api/share';
+import ogHandler from './api/og';
+
+function escapeHtml(str: string): string {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
 // Load environment variables
 dotenv.config();
@@ -177,6 +191,10 @@ async function startServer() {
       return res.status(500).send('Internal server error proxying image');
     }
   });
+
+  app.get('/api/og-image', (req, res) => ogImageHandler(req, res));
+  app.get('/api/share', (req, res) => shareHandler(req, res));
+  app.get('/api/og', (req, res) => ogHandler(req, res));
 
   // Memory cache for translation results
   const translationMemoryCache = new Map<string, any>();
@@ -762,9 +780,13 @@ Return a JSON object with a single string property "refinedNotes".`;
     });
   }
 
-  app.get(['/', '/index.html', '/share/:id', '/share/:id.html', '/m/:id', '/p/:id', '/deceased/:id', '/memorial/:id', '/card/:id', '/yahrzeit/:id', '/m/:id.html', '/p/:id.html', '/deceased/:id.html', '/memorial/:id.html'], async (req, res, next) => {
+  app.get(['/share/:id', '/share/:id.html', '/m/:id', '/p/:id', '/deceased/:id', '/memorial/:id', '/card/:id', '/yahrzeit/:id', '/m/:id.html', '/p/:id.html', '/deceased/:id.html', '/memorial/:id.html', '/', '/index.html'], async (req, res, next) => {
     try {
       let rawId = req.params.id ? req.params.id.replace(/\.html$/i, '') : null;
+      if (!rawId) {
+        const pathMatch = req.path.match(/\/(share|m|p|deceased|memorial|card|yahrzeit)\/([^/]+)/i);
+        if (pathMatch) rawId = pathMatch[2].replace(/\.html$/i, '');
+      }
       if (!rawId) {
         rawId = (req.query.id || req.query.m || req.query.deceasedId || req.query.deceased || req.query.d || req.query.card || req.query.cardId) as string;
       }
@@ -880,14 +902,7 @@ Return a JSON object with a single string property "refinedNotes".`;
           ].find((img: any) => img && typeof img === 'string' && img.trim() !== '' && img.trim() !== '-');
 
           if (rawCandidate) {
-            const trimmedImg = rawCandidate.trim();
-            if (trimmedImg.startsWith('http://') || trimmedImg.startsWith('https://')) {
-              imageUrl = trimmedImg;
-            } else if (trimmedImg.startsWith('/')) {
-              imageUrl = `${baseUrl}${trimmedImg}`;
-            } else if (trimmedImg.startsWith('data:') || trimmedImg.length > 100) {
-              imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(enriched.id)}`;
-            }
+            imageUrl = `${baseUrl}/api/og-image?id=${encodeURIComponent(enriched.id)}`;
           }
 
           const safeTitle = escapeHtml(title);
@@ -911,8 +926,11 @@ Return a JSON object with a single string property "refinedNotes".`;
     <meta name="twitter:image" content="${safeImg}" />
           `;
 
-          // Replace existing title and inject metadata into head
+          // Replace existing title and meta tags before injecting dynamic metadata into head
           html = html.replace(/<title>.*?<\/title>/gi, '');
+          html = html.replace(/<meta\s+[^>]*property=["']og:[^"']*["'][^>]*>/gi, '');
+          html = html.replace(/<meta\s+[^>]*name=["']description["'][^>]*>/gi, '');
+          html = html.replace(/<meta\s+[^>]*name=["']twitter:[^"']*["'][^>]*>/gi, '');
           html = html.replace('</head>', `${ogTags}\n</head>`);
         }
 
