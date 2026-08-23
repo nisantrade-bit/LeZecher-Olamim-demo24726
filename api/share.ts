@@ -1,6 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { enrichDeceasedTranslations, getLocalizedName, getLocalizedFatherName, getLocalizedMotherName } from '../src/utils/transliteration';
-import { formatParentRelation } from '../src/utils/translations';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://aoendfkvzsywrykmcloy.supabase.co";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj";
@@ -16,6 +14,81 @@ function escapeHtml(str: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function sanitizeParentName(name: string): string {
+  let cleaned = (name || '').trim();
+  if (cleaned.startsWith('של ')) {
+    cleaned = cleaned.substring(3).trim();
+  } else if (cleaned === 'של') {
+    cleaned = '';
+  }
+  if (cleaned.startsWith('ו') && cleaned.length > 1) {
+    const isRealVName = ['ורד', 'ולדי', 'ויקט', 'ולרי', 'וול', 'ויה', 'ויק', 'וינ', 'ויל'].some(prefix => cleaned.startsWith(prefix));
+    if (!isRealVName) {
+      cleaned = cleaned.substring(1).trim();
+    }
+  }
+  return cleaned;
+}
+
+function formatParentRelation(
+  gender: 'male' | 'female', 
+  fatherName: string | undefined, 
+  motherName: string | undefined, 
+  lang: 'he' | 'en' | 'ru',
+  deceased?: any
+): string {
+  let father = sanitizeParentName(fatherName || '');
+  let mother = sanitizeParentName(motherName || '');
+
+  if (deceased) {
+    if (lang === 'he') {
+      father = deceased.fatherNameHe || father;
+      mother = deceased.motherNameHe || mother;
+    } else if (lang === 'en') {
+      father = deceased.fatherNameEn || father;
+      mother = deceased.motherNameEn || mother;
+    } else if (lang === 'ru') {
+      father = deceased.fatherNameRu || father;
+      mother = deceased.motherNameRu || mother;
+    }
+  }
+
+  father = sanitizeParentName(father);
+  mother = sanitizeParentName(mother);
+
+  const hasFather = father !== '' && father !== '???' && father !== '-';
+  const hasMother = mother !== '' && mother !== '???' && mother !== '-';
+
+  if (lang === 'he') {
+    const prefix = gender === 'female' ? 'בת' : 'בן';
+    if (hasFather && hasMother) {
+      const cleanMother = mother.startsWith('ו') && mother.length > 1 && !['ורד', 'ולדי', 'ויקט', 'ולרי'].some(p => mother.startsWith(p)) 
+        ? mother.substring(1).trim() 
+        : mother;
+      return `${prefix} ${father} ו${cleanMother}`;
+    }
+    if (hasFather) return `${prefix} ${father}`;
+    if (hasMother) return `${prefix} ${mother}`;
+    return `${prefix} הורה`;
+  } else if (lang === 'ru') {
+    const prefix = gender === 'female' ? 'дочь' : 'сын';
+    const translatedFather = hasFather ? (deceased?.fatherNameRu || father) : '';
+    const translatedMother = hasMother ? (deceased?.motherNameRu || mother) : '';
+    if (hasFather && hasMother) return `${prefix} ${translatedFather}, ${translatedMother}`;
+    if (hasFather) return `${prefix} ${translatedFather}`;
+    if (hasMother) return `${prefix} ${translatedMother}`;
+    return `${prefix} родителя`;
+  } else {
+    const prefix = gender === 'female' ? 'daughter of' : 'son of';
+    const translatedFather = hasFather ? (deceased?.fatherNameEn || father) : '';
+    const translatedMother = hasMother ? (deceased?.motherNameEn || mother) : '';
+    if (hasFather && hasMother) return `${prefix} ${translatedFather}, ${translatedMother}`;
+    if (hasFather) return `${prefix} ${translatedFather}`;
+    if (hasMother) return `${prefix} ${translatedMother}`;
+    return `${prefix} parent`;
+  }
 }
 
 function normalizeAndEnrichRecord(rawData: any): any {
@@ -79,7 +152,48 @@ function normalizeAndEnrichRecord(rawData: any): any {
     data.gender = 'male';
   }
 
-  return enrichDeceasedTranslations(data);
+  data.nameHe = data.nameHe || data.name || '';
+  data.nameEn = data.nameEn || data.name || '';
+  data.nameRu = data.nameRu || data.name || '';
+
+  data.fatherNameHe = data.fatherNameHe || data.fatherName || '-';
+  data.fatherNameEn = data.fatherNameEn || data.fatherName || '-';
+  data.fatherNameRu = data.fatherNameRu || data.fatherName || '-';
+
+  data.motherNameHe = data.motherNameHe || data.motherName || '-';
+  data.motherNameEn = data.motherNameEn || data.motherName || '-';
+  data.motherNameRu = data.motherNameRu || data.motherName || '-';
+
+  const imgStr = data.imageUrl || data.photoUrl || data.image || '';
+  data.imageUrl = imgStr;
+  data.photoUrl = imgStr;
+  data.image = imgStr;
+
+  return data;
+}
+
+function getLocalizedName(deceased: any, targetLang: 'he' | 'en' | 'ru'): string {
+  if (!deceased) return '';
+  if (targetLang === 'he' && deceased.nameHe) return deceased.nameHe;
+  if (targetLang === 'en' && deceased.nameEn) return deceased.nameEn;
+  if (targetLang === 'ru' && deceased.nameRu) return deceased.nameRu;
+  return deceased.name || '';
+}
+
+function getLocalizedFatherName(deceased: any, targetLang: 'he' | 'en' | 'ru'): string {
+  if (!deceased || !deceased.fatherName) return '';
+  if (targetLang === 'he' && deceased.fatherNameHe && deceased.fatherNameHe !== '-') return deceased.fatherNameHe;
+  if (targetLang === 'en' && deceased.fatherNameEn && deceased.fatherNameEn !== '-') return deceased.fatherNameEn;
+  if (targetLang === 'ru' && deceased.fatherNameRu && deceased.fatherNameRu !== '-') return deceased.fatherNameRu;
+  return deceased.fatherName !== '-' ? deceased.fatherName : '';
+}
+
+function getLocalizedMotherName(deceased: any, targetLang: 'he' | 'en' | 'ru'): string {
+  if (!deceased || !deceased.motherName) return '';
+  if (targetLang === 'he' && deceased.motherNameHe && deceased.motherNameHe !== '-') return deceased.motherNameHe;
+  if (targetLang === 'en' && deceased.motherNameEn && deceased.motherNameEn !== '-') return deceased.motherNameEn;
+  if (targetLang === 'ru' && deceased.motherNameRu && deceased.motherNameRu !== '-') return deceased.motherNameRu;
+  return deceased.motherName !== '-' ? deceased.motherName : '';
 }
 
 async function findDeceasedRecord(supabase: any, rawId: string): Promise<any | null> {
