@@ -725,6 +725,8 @@ export const CANONICAL_PHRASE_MAP: Record<string, { he: string; en: string; ru: 
   "אמנון הכהן": { he: "אמנון הכהן", en: "Amnon HaKohen", ru: "Амнон ха-Коэн" },
   "amnon hakohen": { he: "אמנון הכהן", en: "Amnon HaKohen", ru: "Амнон ха-Коэн" },
   "амнон ха-коэн": { he: "אמנון הכהן", en: "Amnon HaKohen", ru: "Амнон ха-Коэн" },
+  "амнун - ха-коэн": { he: "אמנון הכהן", en: "Amnon HaKohen", ru: "Амнон ха-Коэн" },
+  "амнун ха-коэн": { he: "אמנון הכהן", en: "Amnon HaKohen", ru: "Амнон ха-Коэн" },
 
   // 47. Avner HaKohen
   "אבנר הכהן": { he: "אבנר הכהן", en: "Avner HaKohen", ru: "Авнер ха-Коэн" },
