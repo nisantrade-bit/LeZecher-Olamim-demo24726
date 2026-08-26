@@ -8,7 +8,7 @@
 
 import { Deceased, Language } from '../types';
 import { normalizeMonthName } from './hebrewDate';
-import { translateText, enrichDeceasedTranslations } from './transliteration';
+import { translateText, enrichDeceasedTranslations, isCorruptedTranslation } from './transliteration';
 
 // Canonical dictionary for Bukharan, Tajik-Jewish, Russian, Hebrew, and Latin name aliases
 const BUKHARIAN_NAME_ALIASES: Record<string, string> = {
@@ -658,16 +658,20 @@ export function mergeDeceasedRecords(existing: Deceased, incoming: Deceased): De
   const pickField = (fieldExisting?: string | null, fieldIncoming?: string | null): string => {
     const ex = (fieldExisting || '').trim();
     const inc = (fieldIncoming || '').trim();
-    if (!ex || ex === '-') return inc;
-    if (!inc || inc === '-') return ex;
+    const exBad = !ex || isCorruptedTranslation(ex);
+    const incBad = !inc || isCorruptedTranslation(inc);
+    if (exBad) return inc;
+    if (incBad) return ex;
     return ex; // Preserve existing non-empty value
   };
 
   const pickLongerText = (ex?: string | null, inc?: string | null): string => {
     const e = (ex || '').trim();
     const i = (inc || '').trim();
-    if (!e || e === '-') return i;
-    if (!i || i === '-') return e;
+    const eBad = !e || isCorruptedTranslation(e);
+    const iBad = !i || isCorruptedTranslation(i);
+    if (eBad) return i;
+    if (iBad) return e;
     return i.length > e.length ? i : e;
   };
 

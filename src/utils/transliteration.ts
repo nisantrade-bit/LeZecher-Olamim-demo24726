@@ -863,6 +863,12 @@ export function getLocalizedMotherName(deceased: Deceased, targetLang: Language)
   return translateText(deceased.motherName, targetLang);
 }
 
+export function isCorruptedTranslation(val?: string | null): boolean {
+  if (!val) return false;
+  const trimmed = val.trim();
+  return trimmed === '-' || trimmed.includes('- -') || trimmed.endsWith('- -');
+}
+
 export function getLocalizedNotes(deceased: Deceased, targetLang: Language): string {
   if (!deceased || !deceased.notes) return '';
   if (targetLang === 'he' && deceased.notesHe) return deceased.notesHe;
@@ -876,6 +882,23 @@ export function enrichDeceasedTranslations(item: Deceased): Deceased {
 
   const result: Deceased = { ...item };
   const manualSet = new Set<string>(result.manualFields || []);
+
+  // Clear corrupted translation artifacts so they can be calculated cleanly
+  if (isCorruptedTranslation(result.nameHe) && !manualSet.has('nameHe')) result.nameHe = undefined;
+  if (isCorruptedTranslation(result.nameEn) && !manualSet.has('nameEn')) result.nameEn = undefined;
+  if (isCorruptedTranslation(result.nameRu) && !manualSet.has('nameRu')) result.nameRu = undefined;
+
+  if (isCorruptedTranslation(result.fatherNameHe) && !manualSet.has('fatherNameHe')) result.fatherNameHe = undefined;
+  if (isCorruptedTranslation(result.fatherNameEn) && !manualSet.has('fatherNameEn')) result.fatherNameEn = undefined;
+  if (isCorruptedTranslation(result.fatherNameRu) && !manualSet.has('fatherNameRu')) result.fatherNameRu = undefined;
+
+  if (isCorruptedTranslation(result.motherNameHe) && !manualSet.has('motherNameHe')) result.motherNameHe = undefined;
+  if (isCorruptedTranslation(result.motherNameEn) && !manualSet.has('motherNameEn')) result.motherNameEn = undefined;
+  if (isCorruptedTranslation(result.motherNameRu) && !manualSet.has('motherNameRu')) result.motherNameRu = undefined;
+
+  if (isCorruptedTranslation(result.notesHe) && !manualSet.has('notesHe')) result.notesHe = undefined;
+  if (isCorruptedTranslation(result.notesEn) && !manualSet.has('notesEn')) result.notesEn = undefined;
+  if (isCorruptedTranslation(result.notesRu) && !manualSet.has('notesRu')) result.notesRu = undefined;
 
   // 1. Name translations - respect manualFields or existing values
   if (!result.nameHe && !manualSet.has('nameHe')) {

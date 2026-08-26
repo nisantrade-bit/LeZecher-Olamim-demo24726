@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { enrichDeceasedTranslations } from '../src/utils/transliteration';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://aoendfkvzsywrykmcloy.supabase.co";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj";
@@ -269,7 +270,7 @@ export default async function handler(req: any, res: any) {
       const rawData = await findDeceasedRecord(supabase, cleanId);
 
       if (rawData) {
-        const enriched = normalizeAndEnrichRecord(rawData);
+        const enriched: any = enrichDeceasedTranslations(normalizeAndEnrichRecord(rawData));
         const localizedName = getLocalizedName(enriched, reqLang) || enriched.name || '';
         const localizedFather = getLocalizedFatherName(enriched, reqLang);
         const localizedMother = getLocalizedMotherName(enriched, reqLang);
