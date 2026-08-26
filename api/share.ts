@@ -1,11 +1,66 @@
 import { createClient } from '@supabase/supabase-js';
-import { enrichDeceasedTranslations } from '../src/utils/transliteration';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://aoendfkvzsywrykmcloy.supabase.co";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "sb_publishable_szEDKkwDPDeNFcO96jwr1A_GWBAF2Nj";
 
 const BASE_URL = "https://le-zecher-olamim-demo24726.vercel.app";
 const DEFAULT_IMAGE = `${BASE_URL}/og-banner.png`;
+
+function isCorruptedTranslation(val?: string | null): boolean {
+  if (!val) return false;
+  const trimmed = val.trim();
+  return trimmed === '-' || trimmed.includes('- -') || trimmed.endsWith('- -');
+}
+
+const CANONICAL_PHRASE_MAP: Record<string, { he: string; en: string; ru: string }> = {
+  "אמנון הכהן": { he: "אמנון הכהן", en: "Amnon HaKohen", ru: "Амнон ха-Коэн" },
+  "amnon hakohen": { he: "אמנון הכהן", en: "Amnon HaKohen", ru: "Амнон ха-Коэн" },
+  "амנון ха-коэн": { he: "אמנון הכהן", en: "Amnon HaKohen", ru: "Амнон ха-Коэн" },
+  "амнун - ха-коэн": { he: "אמנון הכהן", en: "Amnon HaKohen", ru: "Амнон ха-Коэн" },
+  "амнун ха-коэн": { he: "אמנון הכהן", en: "Amnon HaKohen", ru: "Амнон ха-Коэн" },
+  "אבנר הכהן": { he: "אבנר הכהן", en: "Avner HaKohen", ru: "Авнер ха-Коэн" },
+  "avner hakohen": { he: "אבנר הכהן", en: "Avner HaKohen", ru: "Авнер ха-Коэн" },
+  "авнер ха-коэн": { he: "אבנר הכהן", en: "Avner HaKohen", ru: "Авнер ха-Коэн" }
+};
+
+function translateTextInline(text: string, targetLang: 'he' | 'en' | 'ru'): string {
+  if (!text) return text;
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+  if (CANONICAL_PHRASE_MAP[trimmed]) return CANONICAL_PHRASE_MAP[trimmed][targetLang];
+  if (CANONICAL_PHRASE_MAP[lower]) return CANONICAL_PHRASE_MAP[lower][targetLang];
+  return text;
+}
+
+function enrichDeceasedTranslationsInline(item: any): any {
+  if (!item) return item;
+  const result = { ...item };
+  const manualSet = new Set<string>(result.manualFields || []);
+
+  if (isCorruptedTranslation(result.nameHe) && !manualSet.has('nameHe')) result.nameHe = undefined;
+  if (isCorruptedTranslation(result.nameEn) && !manualSet.has('nameEn')) result.nameEn = undefined;
+  if (isCorruptedTranslation(result.nameRu) && !manualSet.has('nameRu')) result.nameRu = undefined;
+
+  const validName = [result.nameHe, result.nameEn, result.nameRu, result.name].find(n => n && !isCorruptedTranslation(n));
+
+  if (validName) {
+    if (!result.nameHe && !manualSet.has('nameHe')) {
+      result.nameHe = translateTextInline(validName, 'he');
+    }
+    if (!result.nameEn && !manualSet.has('nameEn')) {
+      result.nameEn = translateTextInline(validName, 'en');
+    }
+    if (!result.nameRu && !manualSet.has('nameRu')) {
+      result.nameRu = translateTextInline(validName, 'ru');
+    }
+  }
+
+  result.nameHe = result.nameHe || result.name || '';
+  result.nameEn = result.nameEn || result.name || '';
+  result.nameRu = result.nameRu || result.name || '';
+
+  return result;
+}
 
 function escapeHtml(str: string): string {
   if (!str) return '';
@@ -270,7 +325,7 @@ export default async function handler(req: any, res: any) {
       const rawData = await findDeceasedRecord(supabase, cleanId);
 
       if (rawData) {
-        const enriched: any = enrichDeceasedTranslations(normalizeAndEnrichRecord(rawData));
+        const enriched: any = enrichDeceasedTranslationsInline(normalizeAndEnrichRecord(rawData));
         const localizedName = getLocalizedName(enriched, reqLang) || enriched.name || '';
         const localizedFather = getLocalizedFatherName(enriched, reqLang);
         const localizedMother = getLocalizedMotherName(enriched, reqLang);
