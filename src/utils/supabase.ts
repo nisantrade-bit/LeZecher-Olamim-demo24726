@@ -244,6 +244,41 @@ export function sanitizeValueForSupabase(val: any, fallback: string = 'לא צו
   return val;
 }
 
+const SUPABASE_DECEASED_COLUMNS = new Set([
+  'id',
+  'name',
+  'gender',
+  'fatherName',
+  'motherName',
+  'day',
+  'month',
+  'contactPhone',
+  'notes',
+  'bio',
+  'hebrewDate',
+  'passDate',
+  'candlesCount',
+  'likesCount',
+  'image',
+  'imageUrl',
+  'photoUrl',
+  'imagePosition',
+  'ageAtDeath',
+  'birthDate',
+  'nameHe',
+  'nameEn',
+  'nameRu',
+  'fatherNameHe',
+  'fatherNameEn',
+  'fatherNameRu',
+  'motherNameHe',
+  'motherNameEn',
+  'motherNameRu',
+  'notesHe',
+  'notesEn',
+  'notesRu'
+]);
+
 /**
  * Sanitizes a record object before sending to Supabase insert, update, or upsert.
  * Ensures required fields like name, gender, month are not empty string ("").
@@ -367,6 +402,13 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
   if (copy.ageAtDeath !== undefined && copy.ageAtDeath !== null) {
     const parsedAge = Number(copy.ageAtDeath);
     copy.ageAtDeath = !isNaN(parsedAge) ? parsedAge : null;
+  }
+
+  // 4. Enforce exact DB column whitelist for Supabase payload
+  for (const key of Object.keys(copy)) {
+    if (!SUPABASE_DECEASED_COLUMNS.has(key)) {
+      delete copy[key];
+    }
   }
 
   return copy as T;
