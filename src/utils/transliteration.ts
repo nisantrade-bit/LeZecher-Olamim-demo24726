@@ -1140,7 +1140,8 @@ export const KNOWN_PRONUNCIATION_MAP: Record<string, string> = {
   'מיכאל': 'מִיכָאֵל',
   'ראובן': 'רְאוּבֵן',
   'ניסים': 'נִסִּים',
-  'נסים': 'נִסִּים'
+  'נסים': 'נִסִּים',
+  'פוזיילוב': 'פוּזַיְלוֹב'
 };
 
 const EXACT_PHONETIC_PAIRS: Record<string, { en: string; ru: string }> = {
@@ -1153,6 +1154,10 @@ const EXACT_PHONETIC_PAIRS: Record<string, { en: string; ru: string }> = {
   'נֵרִיָּה': { en: 'Neriah', ru: 'Нерия' },
   'דּוּגְמָן': { en: 'Dugman', ru: 'Дугман' },
   'אַבְרָהָם': { en: 'Avraham', ru: 'Авраам' },
+  'פוּזַיְלוֹב': { en: 'Fuzailov', ru: 'Фузайлов' },
+  'פּוֹזֵילוֹב': { en: 'Fuzailov', ru: 'Фузайлов' },
+  'פֿוּזַיְלוֹב': { en: 'Fuzailov', ru: 'Фузайлов' },
+  'פֻּזַיְלוֹב': { en: 'Fuzailov', ru: 'Фузайлов' },
   'שָׂרָה': { en: 'Sarah', ru: 'Сара' },
   'דָּוִד': { en: 'David', ru: 'Давид' },
   'מֹשֶׁה': { en: 'Moshe', ru: 'Моше' },
@@ -1205,6 +1210,121 @@ export function extractBaseHebrewLetters(text: string): string {
 }
 
 /**
+ * Transliterates a single vocalized Hebrew word (containing niqqud) into English or Russian phonetics
+ */
+export function transliterateVocalizedWord(word: string, targetLang: 'en' | 'ru'): string {
+  if (!word) return '';
+
+  if (EXACT_PHONETIC_PAIRS[word]) {
+    return EXACT_PHONETIC_PAIRS[word][targetLang];
+  }
+
+  const unvocalized = word.replace(/[\u0591-\u05C7]/g, '');
+  if (KNOWN_PRONUNCIATION_MAP[unvocalized] && EXACT_PHONETIC_PAIRS[KNOWN_PRONUNCIATION_MAP[unvocalized]]) {
+    return EXACT_PHONETIC_PAIRS[KNOWN_PRONUNCIATION_MAP[unvocalized]][targetLang];
+  }
+
+  let res = '';
+  let i = 0;
+  while (i < word.length) {
+    const char = word[i];
+
+    if (char >= '\u05D0' && char <= '\u05EA') {
+      let marks = '';
+      let j = i + 1;
+      while (j < word.length && word[j] >= '\u0591' && word[j] <= '\u05C7') {
+        marks += word[j];
+        j++;
+      }
+
+      const hasDagesh = marks.includes('\u05BC');
+      const hasShin = marks.includes('\u05C1');
+      const hasSin = marks.includes('\u05C2');
+      const hasPatachOrKamatz = marks.includes('\u05B7') || marks.includes('\u05B8') || marks.includes('\u05B2') || marks.includes('\u05B3');
+      const hasTzereOrSegol = marks.includes('\u05B5') || marks.includes('\u05B6') || marks.includes('\u05B1');
+      const hasHiriq = marks.includes('\u05B4');
+      const hasCholam = marks.includes('\u05B9') || marks.includes('\u05BA');
+      const hasKubutz = marks.includes('\u05BB');
+      const hasSheva = marks.includes('\u05B0');
+
+      let consonant = '';
+      if (char === 'ש') {
+        if (hasSin) consonant = targetLang === 'ru' ? 'с' : 's';
+        else consonant = targetLang === 'ru' ? 'ш' : 'sh';
+      } else if (char === 'צ' || char === 'ץ') {
+        consonant = targetLang === 'ru' ? 'ц' : 'tz';
+      } else if (char === 'ח') {
+        consonant = targetLang === 'ru' ? 'х' : 'ch';
+      } else if (char === 'א') {
+        consonant = i === 0 ? (targetLang === 'ru' ? 'А' : 'A') : '';
+      } else if (char === 'ב') {
+        consonant = hasDagesh || i === 0 ? (targetLang === 'ru' ? 'б' : 'b') : (targetLang === 'ru' ? 'в' : 'v');
+      } else if (char === 'ג') {
+        consonant = targetLang === 'ru' ? 'г' : 'g';
+      } else if (char === 'ד') {
+        consonant = targetLang === 'ru' ? 'д' : 'd';
+      } else if (char === 'ה') {
+        consonant = (j === word.length) ? (targetLang === 'ru' ? 'а' : 'ah') : (targetLang === 'ru' ? 'х' : 'h');
+      } else if (char === 'ו') {
+        if (hasDagesh || hasKubutz) consonant = targetLang === 'ru' ? 'у' : 'u';
+        else if (hasCholam) consonant = targetLang === 'ru' ? 'о' : 'o';
+        else consonant = (i > 0 && j < word.length) ? (targetLang === 'ru' ? 'о' : 'o') : (targetLang === 'ru' ? 'в' : 'v');
+      } else if (char === 'ז') {
+        consonant = targetLang === 'ru' ? 'з' : 'z';
+      } else if (char === 'ט' || char === 'ת') {
+        consonant = targetLang === 'ru' ? 'т' : 't';
+      } else if (char === 'י') {
+        consonant = (i === 0) ? (targetLang === 'ru' ? 'И' : 'Y') : (targetLang === 'ru' ? 'й' : 'i');
+      } else if (char === 'כ' || char === 'ך') {
+        consonant = hasDagesh || i === 0 ? (targetLang === 'ru' ? 'к' : 'k') : (targetLang === 'ru' ? 'х' : 'ch');
+      } else if (char === 'ל') {
+        consonant = targetLang === 'ru' ? 'л' : 'l';
+      } else if (char === 'מ' || char === 'ם') {
+        consonant = targetLang === 'ru' ? 'м' : 'm';
+      } else if (char === 'נ' || char === 'ן') {
+        consonant = targetLang === 'ru' ? 'н' : 'n';
+      } else if (char === 'ס') {
+        consonant = targetLang === 'ru' ? 'с' : 's';
+      } else if (char === 'ע') {
+        consonant = i === 0 ? (targetLang === 'ru' ? 'А' : 'A') : '';
+      } else if (char === 'פ' || char === 'ף') {
+        consonant = hasDagesh || i === 0 ? (targetLang === 'ru' ? 'п' : 'p') : (targetLang === 'ru' ? 'ф' : 'f');
+      } else if (char === 'ק') {
+        consonant = targetLang === 'ru' ? 'к' : 'k';
+      } else if (char === 'ר') {
+        consonant = targetLang === 'ru' ? 'р' : 'r';
+      }
+
+      let vowel = '';
+      if (hasPatachOrKamatz) {
+        vowel = targetLang === 'ru' ? 'а' : 'a';
+      } else if (hasTzereOrSegol) {
+        vowel = targetLang === 'ru' ? 'е' : 'e';
+      } else if (hasHiriq) {
+        vowel = targetLang === 'ru' ? 'и' : 'i';
+      } else if (hasCholam && char !== 'ו') {
+        vowel = targetLang === 'ru' ? 'о' : 'o';
+      } else if (hasKubutz && char !== 'ו') {
+        vowel = targetLang === 'ru' ? 'у' : 'u';
+      } else if (hasSheva && j < word.length - 1) {
+        vowel = targetLang === 'ru' ? 'е' : 'e';
+      }
+
+      res += consonant + vowel;
+      i = j;
+    } else {
+      res += char;
+      i++;
+    }
+  }
+
+  if (res.length > 0) {
+    res = res.charAt(0).toUpperCase() + res.slice(1);
+  }
+  return res || unvocalized;
+}
+
+/**
  * Translates vocalized Hebrew text (containing niqqud) into English or Russian phonetic transliteration
  */
 export function translatePronunciationToPhonetic(pronunciation: string, targetLang: 'en' | 'ru'): string {
@@ -1216,12 +1336,31 @@ export function translatePronunciationToPhonetic(pronunciation: string, targetLa
     return EXACT_PHONETIC_PAIRS[trimmed][targetLang];
   }
 
-  const unvocalized = trimmed.replace(/[\u0591-\u05C7]/g, '');
-  if (KNOWN_PRONUNCIATION_MAP[unvocalized] && EXACT_PHONETIC_PAIRS[KNOWN_PRONUNCIATION_MAP[unvocalized]]) {
-    return EXACT_PHONETIC_PAIRS[KNOWN_PRONUNCIATION_MAP[unvocalized]][targetLang];
+  const unvocalizedWhole = trimmed.replace(/[\u0591-\u05C7]/g, '');
+  if (KNOWN_PRONUNCIATION_MAP[unvocalizedWhole] && EXACT_PHONETIC_PAIRS[KNOWN_PRONUNCIATION_MAP[unvocalizedWhole]]) {
+    return EXACT_PHONETIC_PAIRS[KNOWN_PRONUNCIATION_MAP[unvocalizedWhole]][targetLang];
   }
 
-  // Fallback to standard transliteration if no vocalized rules match
-  return translateText(unvocalized || trimmed, targetLang);
+  // Tokenize multi-word strings into individual vocalized words
+  const words = trimmed.split(/\s+/);
+  const translatedWords = words.map(word => {
+    if (EXACT_PHONETIC_PAIRS[word]) {
+      return EXACT_PHONETIC_PAIRS[word][targetLang];
+    }
+    const unvocalized = word.replace(/[\u0591-\u05C7]/g, '');
+    if (KNOWN_PRONUNCIATION_MAP[unvocalized] && EXACT_PHONETIC_PAIRS[KNOWN_PRONUNCIATION_MAP[unvocalized]]) {
+      return EXACT_PHONETIC_PAIRS[KNOWN_PRONUNCIATION_MAP[unvocalized]][targetLang];
+    }
+    if (/[\u0591-\u05C7]/.test(word)) {
+      return transliterateVocalizedWord(word, targetLang);
+    }
+    const dictTrans = translateText(unvocalized, targetLang);
+    if (dictTrans && dictTrans.toLowerCase() !== unvocalized.toLowerCase()) {
+      return dictTrans;
+    }
+    return dictTrans || unvocalized;
+  });
+
+  return translatedWords.join(' ');
 }
 

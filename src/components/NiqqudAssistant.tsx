@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Language } from '../types';
 import {
   getCanonicalHebrewSuggestion,
@@ -47,6 +47,7 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
 }) => {
   const [showManualEditor, setShowManualEditor] = useState(false);
   const [customVal, setCustomVal] = useState(pronunciation || sourceText);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   if (!sourceText || !sourceText.trim() || !isHebrewText(sourceText)) {
     return null;
@@ -55,7 +56,24 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
   const canonicalSuggestion = getCanonicalHebrewSuggestion(sourceText);
   const niqqudSuggestion = getNiqqudSuggestion(sourceText);
 
-  const isRtl = lang === 'he';
+  const handleInsertNiqqud = (char: string) => {
+    const input = inputRef.current;
+    if (input) {
+      const start = input.selectionStart ?? customVal.length;
+      const end = input.selectionEnd ?? customVal.length;
+      const newVal = customVal.slice(0, start) + char + customVal.slice(end);
+      setCustomVal(newVal);
+      setTimeout(() => {
+        if (input) {
+          input.focus();
+          const nextPos = start + char.length;
+          input.setSelectionRange(nextPos, nextPos);
+        }
+      }, 0);
+    } else {
+      setCustomVal(prev => prev + char);
+    }
+  };
 
   return (
     <div className="mt-1 space-y-1.5 text-xs font-sans">
@@ -70,7 +88,7 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
                 : lang === 'ru'
                 ? `Стандартное написание: `
                 : `Canonical spelling: `}
-              <strong className="font-serif text-white font-bold">{canonicalSuggestion}</strong>
+              <strong className="font-serif text-white font-bold text-sm leading-relaxed">{canonicalSuggestion}</strong>
             </span>
           </div>
           <button
@@ -93,7 +111,7 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
               <span className="text-gray-300">
                 {lang === 'he' ? 'הגייה מאושרת:' : lang === 'ru' ? 'Произношение:' : 'Confirmed pronunciation:'}{' '}
-                <strong className="font-serif text-amber-200 text-sm font-semibold">{pronunciation}</strong>
+                <strong className="font-serif text-amber-200 text-base sm:text-lg font-bold leading-relaxed py-0.5">{pronunciation}</strong>
               </span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
@@ -106,7 +124,7 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
                 className="text-gray-400 hover:text-amber-300 p-1 rounded hover:bg-white/5 transition-all"
                 title={lang === 'he' ? 'ערוך ניקוד' : 'Edit niqqud'}
               >
-                <Edit2 className="w-3 h-3" />
+                <Edit2 className="w-3.5 h-3.5" />
               </button>
               <button
                 type="button"
@@ -117,7 +135,7 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
                 className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-white/5 transition-all"
                 title={lang === 'he' ? 'נקה הגייה' : 'Clear pronunciation'}
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -128,25 +146,25 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span className="text-gray-300">
                 {lang === 'he' ? 'הגייה מוצעת (ניקוד):' : lang === 'ru' ? 'Предлагаемый огласовка:' : 'Suggested niqqud:'}{' '}
-                <strong className="font-serif text-amber-200 text-sm font-semibold">{niqqudSuggestion}</strong>
+                <strong className="font-serif text-amber-200 text-base sm:text-lg font-bold leading-relaxed py-0.5">{niqqudSuggestion}</strong>
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => onConfirmPronunciation(niqqudSuggestion)}
-                className="bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 border border-amber-500/40 font-medium px-2 py-0.5 rounded text-[11px] transition-all flex items-center gap-1"
+                className="bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 border border-amber-500/40 font-medium px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1"
               >
-                <Check className="w-3 h-3 text-amber-400" />
+                <Check className="w-3.5 h-3.5 text-amber-400" />
                 {lang === 'he' ? 'אשר הגייה' : lang === 'ru' ? 'Подтвердить' : 'Confirm'}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setCustomVal(sourceText);
+                  setCustomVal(niqqudSuggestion);
                   setShowManualEditor(true);
                 }}
-                className="text-gray-400 hover:text-gray-200 text-[11px] underline px-1"
+                className="text-gray-400 hover:text-gray-200 text-xs underline px-1"
               >
                 {lang === 'he' ? 'ערוך' : 'Edit'}
               </button>
@@ -155,7 +173,7 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
         ) : (
           /* No Automatic Suggestion State -> Allow Manual Niqqud */
           <div className="flex items-center justify-between gap-2">
-            <span className="text-gray-400 text-[11px]">
+            <span className="text-gray-400 text-xs">
               {lang === 'he'
                 ? 'לא נמצאה הגייה אוטומטית במילון.'
                 : 'No automatic niqqud found.'}
@@ -166,9 +184,9 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
                 setCustomVal(sourceText);
                 setShowManualEditor(!showManualEditor);
               }}
-              className="text-amber-400 hover:text-amber-300 text-[11px] font-medium underline flex items-center gap-1"
+              className="text-amber-400 hover:text-amber-300 text-xs font-medium underline flex items-center gap-1"
             >
-              <Edit2 className="w-3 h-3" />
+              <Edit2 className="w-3.5 h-3.5" />
               {lang === 'he' ? 'הוסף ניקוד ידני' : 'Add custom niqqud'}
             </button>
           </div>
@@ -176,14 +194,26 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
 
         {/* 3. Manual Niqqud Editor Panel */}
         {showManualEditor && (
-          <div className="mt-2 pt-2 border-t border-[#c8a96e]/15 space-y-2">
-            <div className="flex items-center gap-1.5">
+          <div className="mt-2.5 pt-2.5 border-t border-[#c8a96e]/20 space-y-2.5">
+            {/* Vocalized Pronunciation Large Preview Box */}
+            <div className="bg-[#070b12] border border-[#c8a96e]/40 rounded-lg p-3 text-center shadow-inner min-h-[60px] flex flex-col justify-center items-center">
+              <span className="text-[11px] text-amber-200/70 mb-1 font-sans">
+                {lang === 'he' ? 'תצוגה מקדימה של ההגייה (ניקוד):' : lang === 'ru' ? 'Предпросмотр огласовки:' : 'Pronunciation Preview:'}
+              </span>
+              <span className="font-serif text-2xl text-amber-300 font-bold tracking-wider leading-relaxed py-1 px-2 select-all overflow-x-auto max-w-full">
+                {customVal || sourceText}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
               <input
+                ref={inputRef}
                 type="text"
                 value={customVal}
                 onChange={(e) => setCustomVal(e.target.value)}
                 placeholder={sourceText}
-                className="w-full bg-[#070b12] border border-[#c8a96e]/30 rounded px-2 py-1 text-xs text-amber-200 font-serif outline-none focus:border-[#c8a96e]"
+                dir="rtl"
+                className="w-full bg-[#070b12] border border-[#c8a96e]/40 rounded-lg px-3 py-2 text-base sm:text-lg text-amber-200 font-serif outline-none focus:border-[#c8a96e] leading-relaxed shadow-sm"
               />
               <button
                 type="button"
@@ -193,20 +223,20 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
                     setShowManualEditor(false);
                   }
                 }}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-xs font-medium shrink-0"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold shrink-0 transition-all shadow-sm"
               >
                 {lang === 'he' ? 'שמור' : 'Save'}
               </button>
             </div>
 
             {/* Niqqud Characters Toolbar */}
-            <div className="flex flex-wrap gap-1 pt-1">
+            <div className="flex flex-wrap gap-1.5 pt-1">
               {NIQQUD_CHARACTERS.map((item, idx) => (
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => setCustomVal(prev => prev + item.char)}
-                  className="bg-[#141c2b] hover:bg-[#1e2a40] border border-[#c8a96e]/20 text-amber-100 rounded px-1.5 py-0.5 text-xs font-serif transition-all"
+                  onClick={() => handleInsertNiqqud(item.char)}
+                  className="bg-[#141c2b] hover:bg-[#1e2a40] active:scale-95 border border-[#c8a96e]/30 text-amber-100 rounded-md px-2.5 py-1 text-sm sm:text-base font-serif transition-all shadow-xs"
                   title={item.label}
                 >
                   א{item.char}

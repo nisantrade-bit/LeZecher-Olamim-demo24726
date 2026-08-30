@@ -1187,8 +1187,8 @@ function MainAppContent() {
               <div>
                 <p className="font-semibold text-[#3B2F2F] text-xs sm:text-sm">
                   {notifPermission === 'granted'
-                    ? (lang === 'he' ? `התראות יארצייט פעילות בנייד (${upcomingNotices.length} אזכרות קרובות ב-3 הימים הקרובים)` : lang === 'ru' ? `Уведомления о Йארцайтах активны (${upcomingNotices.length} ближайших)` : `Mobile Yahrzeit Notifications Active (${upcomingNotices.length} upcoming)`)
-                    : (lang === 'he' ? 'קבל התראות לנייד על אזכרות קרובות ב-3 הימים הקרובים' : lang === 'ru' ? 'Получать уведомления о приближающихся Йארцайтах' : 'Get mobile push notifications for upcoming Yahrzeits')}
+                    ? (lang === 'he' ? `התראות יארצייט פעילות בנייד (${upcomingNotices.length} אזכרות קרובות ב-3 הימים הקרובים)` : lang === 'ru' ? `Уведомления о Йарцайтах активны (${upcomingNotices.length} ближайших)` : `Mobile Yahrzeit Notifications Active (${upcomingNotices.length} upcoming)`)
+                    : (lang === 'he' ? 'קבל התראות לנייד על אזכרות קרובות ב-3 הימים הקרובים' : lang === 'ru' ? 'Получать уведомления о приближающихся Йарцайтах' : 'Get mobile push notifications for upcoming Yahrzeits')}
                 </p>
                 <p className="text-[11px] text-[#6B5E53] mt-0.5">
                   {lang === 'he' ? 'המערכת תשלח תזכורת אוטומטית למכשירך לקראת יום האזכרה' : lang === 'ru' ? 'Система автоматически отправит напоминание на ваше устройство' : 'Automatic push notifications directly on your phone or computer'}
