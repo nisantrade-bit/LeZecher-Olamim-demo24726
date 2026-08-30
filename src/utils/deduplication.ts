@@ -691,6 +691,10 @@ export function mergeDeceasedRecords(existing: Deceased, incoming: Deceased): De
   merged.motherNameEn = pickField(existing.motherNameEn, incoming.motherNameEn);
   merged.motherNameRu = pickField(existing.motherNameRu, incoming.motherNameRu);
 
+  merged.namePronunciation = pickField(existing.namePronunciation, incoming.namePronunciation) || null;
+  merged.fatherNamePronunciation = pickField(existing.fatherNamePronunciation, incoming.fatherNamePronunciation) || null;
+  merged.motherNamePronunciation = pickField(existing.motherNamePronunciation, incoming.motherNamePronunciation) || null;
+
   merged.gender = (existing.gender || incoming.gender || 'male') as any;
   merged.day = existing.day || incoming.day;
   merged.month = existing.month || incoming.month;

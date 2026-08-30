@@ -276,7 +276,10 @@ const SUPABASE_DECEASED_COLUMNS = new Set([
   'motherNameRu',
   'notesHe',
   'notesEn',
-  'notesRu'
+  'notesRu',
+  'namePronunciation',
+  'fatherNamePronunciation',
+  'motherNamePronunciation'
 ]);
 
 /**
@@ -314,6 +317,9 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
     notes_he: 'notesHe',
     notes_en: 'notesEn',
     notes_ru: 'notesRu',
+    name_pronunciation: 'namePronunciation',
+    father_name_pronunciation: 'fatherNamePronunciation',
+    mother_name_pronunciation: 'motherNamePronunciation',
     manual_fields: 'manualFields'
   };
 
@@ -458,6 +464,11 @@ export function normalizeFetchedRecord(item: any): any {
   // Father & Mother names
   if (!item.fatherName && item.father_name) item.fatherName = item.father_name;
   if (!item.motherName && item.mother_name) item.motherName = item.mother_name;
+
+  // Pronunciation fields
+  if (!item.namePronunciation && item.name_pronunciation) item.namePronunciation = item.name_pronunciation;
+  if (!item.fatherNamePronunciation && item.father_name_pronunciation) item.fatherNamePronunciation = item.father_name_pronunciation;
+  if (!item.motherNamePronunciation && item.mother_name_pronunciation) item.motherNamePronunciation = item.mother_name_pronunciation;
 
   // Candles Count
   if (item.candlesCount !== undefined) {
@@ -859,6 +870,9 @@ CREATE TABLE IF NOT EXISTS public.deceased (
   "notesHe" TEXT,
   "notesEn" TEXT,
   "notesRu" TEXT,
+  "namePronunciation" TEXT,
+  "fatherNamePronunciation" TEXT,
+  "motherNamePronunciation" TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

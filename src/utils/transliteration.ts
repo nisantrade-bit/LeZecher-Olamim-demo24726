@@ -904,36 +904,63 @@ export function enrichDeceasedTranslations(item: Deceased): Deceased {
   if (!result.nameHe && !manualSet.has('nameHe')) {
     result.nameHe = isHebrewText(result.name) ? result.name : translateText(result.name, 'he');
   }
-  if (!result.nameEn && !manualSet.has('nameEn')) {
-    result.nameEn = isLatinText(result.name) ? result.name : translateText(result.name, 'en');
+  const sourceNameForEn = result.nameHe || result.name;
+  if (!manualSet.has('nameEn')) {
+    if (result.namePronunciation) {
+      result.nameEn = translatePronunciationToPhonetic(result.namePronunciation, 'en');
+    } else if (!result.nameEn) {
+      result.nameEn = isLatinText(result.name) ? result.name : translateText(sourceNameForEn, 'en');
+    }
   }
-  if (!result.nameRu && !manualSet.has('nameRu')) {
-    result.nameRu = isCyrillicText(result.name) ? result.name : translateText(result.name, 'ru');
+  if (!manualSet.has('nameRu')) {
+    if (result.namePronunciation) {
+      result.nameRu = translatePronunciationToPhonetic(result.namePronunciation, 'ru');
+    } else if (!result.nameRu) {
+      result.nameRu = isCyrillicText(result.name) ? result.name : translateText(sourceNameForEn, 'ru');
+    }
   }
 
   // 2. Father Name
-  if (result.fatherName) {
+  if (result.fatherName || result.fatherNameHe) {
     if (!result.fatherNameHe && !manualSet.has('fatherNameHe')) {
-      result.fatherNameHe = isHebrewText(result.fatherName) ? result.fatherName : translateText(result.fatherName, 'he');
+      result.fatherNameHe = isHebrewText(result.fatherName || '') ? result.fatherName : translateText(result.fatherName || '', 'he');
     }
-    if (!result.fatherNameEn && !manualSet.has('fatherNameEn')) {
-      result.fatherNameEn = isLatinText(result.fatherName) ? result.fatherName : translateText(result.fatherName, 'en');
+    const fSource = result.fatherNameHe || result.fatherName || '';
+    if (!manualSet.has('fatherNameEn')) {
+      if (result.fatherNamePronunciation) {
+        result.fatherNameEn = translatePronunciationToPhonetic(result.fatherNamePronunciation, 'en');
+      } else if (!result.fatherNameEn) {
+        result.fatherNameEn = isLatinText(fSource) ? fSource : translateText(fSource, 'en');
+      }
     }
-    if (!result.fatherNameRu && !manualSet.has('fatherNameRu')) {
-      result.fatherNameRu = isCyrillicText(result.fatherName) ? result.fatherName : translateText(result.fatherName, 'ru');
+    if (!manualSet.has('fatherNameRu')) {
+      if (result.fatherNamePronunciation) {
+        result.fatherNameRu = translatePronunciationToPhonetic(result.fatherNamePronunciation, 'ru');
+      } else if (!result.fatherNameRu) {
+        result.fatherNameRu = isCyrillicText(fSource) ? fSource : translateText(fSource, 'ru');
+      }
     }
   }
 
   // 3. Mother Name
-  if (result.motherName) {
+  if (result.motherName || result.motherNameHe) {
     if (!result.motherNameHe && !manualSet.has('motherNameHe')) {
-      result.motherNameHe = isHebrewText(result.motherName) ? result.motherName : translateText(result.motherName, 'he');
+      result.motherNameHe = isHebrewText(result.motherName || '') ? result.motherName : translateText(result.motherName || '', 'he');
     }
-    if (!result.motherNameEn && !manualSet.has('motherNameEn')) {
-      result.motherNameEn = isLatinText(result.motherName) ? result.motherName : translateText(result.motherName, 'en');
+    const mSource = result.motherNameHe || result.motherName || '';
+    if (!manualSet.has('motherNameEn')) {
+      if (result.motherNamePronunciation) {
+        result.motherNameEn = translatePronunciationToPhonetic(result.motherNamePronunciation, 'en');
+      } else if (!result.motherNameEn) {
+        result.motherNameEn = isLatinText(mSource) ? mSource : translateText(mSource, 'en');
+      }
     }
-    if (!result.motherNameRu && !manualSet.has('motherNameRu')) {
-      result.motherNameRu = isCyrillicText(result.motherName) ? result.motherName : translateText(result.motherName, 'ru');
+    if (!manualSet.has('motherNameRu')) {
+      if (result.motherNamePronunciation) {
+        result.motherNameRu = translatePronunciationToPhonetic(result.motherNamePronunciation, 'ru');
+      } else if (!result.motherNameRu) {
+        result.motherNameRu = isCyrillicText(mSource) ? mSource : translateText(mSource, 'ru');
+      }
     }
   }
 
@@ -1068,4 +1095,133 @@ export function phoneticTransliterateHebrewVerse(hebrewVerse: string, targetLang
 }
 
 export const translateDeceasedListClientSize = translateDeceasedListClientSide;
+
+// ==========================================
+// CANONICAL HEBREW & NIQQUD PRONUNCIATION MAPS
+// ==========================================
+
+export const CANONICAL_HEBREW_DISPLAY_MAP: Record<string, string> = {
+  'מאזאל': 'מזל',
+  'מאלקא': 'מלכה',
+  'ברוריאה': 'ברוריה',
+  'דאווראה': 'דבורה',
+  'ביתיא': 'בתיה',
+  'אלייאהו': 'אליהו',
+  'אילושה': 'אליהו',
+  'איליה': 'אליהו',
+  'יוסוף': 'יוסף',
+  'אברם': 'אברהם'
+};
+
+export const KNOWN_PRONUNCIATION_MAP: Record<string, string> = {
+  'מזל': 'מַזָּל',
+  'מאזאל': 'מַזָּל',
+  'מלכה': 'מַלְכָּה',
+  'מאלקא': 'מַלְכָּה',
+  'ברוריה': 'בְּרוּרְיָה',
+  'ברוריאה': 'בְּרוּרְיָה',
+  'דבורה': 'דְּבוֹרָה',
+  'דאווראה': 'דְּבוֹרָה',
+  'בתיה': 'בַּתְיָה',
+  'ביתיא': 'בַּתְיָה',
+  'אליהו': 'אֵלִיָּהוּ',
+  'אלייאהו': 'אֵלִיָּהוּ',
+  'נריה': 'נֵרִיָּה',
+  'דוגמן': 'דּוּגְמָן',
+  'אברהם': 'אַבְרָהָם',
+  'שרה': 'שָׂרָה',
+  'דוד': 'דָּוִד',
+  'משה': 'מֹשֶׁה',
+  'יוסף': 'יוֹסֵף',
+  'יצחק': 'יִצְחָק',
+  'יעקב': 'יַעֲקֹב',
+  'שלמה': 'שְׁלֹמֹה',
+  'פנחס': 'פִּנְחָס',
+  'מיכאל': 'מִיכָאֵל',
+  'ראובן': 'רְאוּבֵן',
+  'ניסים': 'נִסִּים',
+  'נסים': 'נִסִּים'
+};
+
+const EXACT_PHONETIC_PAIRS: Record<string, { en: string; ru: string }> = {
+  'מַזָּל': { en: 'Mazal', ru: 'Мазаль' },
+  'מַלְכָּה': { en: 'Malka', ru: 'Малька' },
+  'בְּרוּרְיָה': { en: 'Bruriah', ru: 'Брурия' },
+  'דְּבוֹרָה': { en: 'Dvora', ru: 'Двора' },
+  'בַּתְיָה': { en: 'Bitya', ru: 'Батья' },
+  'אֵלִיָּהוּ': { en: 'Eliyahu', ru: 'Илиягу' },
+  'נֵרִיָּה': { en: 'Neriah', ru: 'Нерия' },
+  'דּוּגְמָן': { en: 'Dugman', ru: 'Дугман' },
+  'אַבְרָהָם': { en: 'Avraham', ru: 'Авраам' },
+  'שָׂרָה': { en: 'Sarah', ru: 'Сара' },
+  'דָּוִד': { en: 'David', ru: 'Давид' },
+  'מֹשֶׁה': { en: 'Moshe', ru: 'Моше' },
+  'יוֹסֵף': { en: 'Yosef', ru: 'Иосиф' },
+  'יִצְחָק': { en: 'Yitzhak', ru: 'Ицхак' },
+  'יַעֲקֹב': { en: 'Yaakov', ru: 'Яков' },
+  'שְׁלֹמֹה': { en: 'Shlomo', ru: 'Соломон' },
+  'פִּנְחָס': { en: 'Pinchas', ru: 'Пинхас' },
+  'מִיכָאֵל': { en: 'Michael', ru: 'Михаил' },
+  'רְאוּבֵן': { en: 'Reuven', ru: 'Рувин' },
+  'נִסִּים': { en: 'Nisim', ru: 'Нисим' }
+};
+
+/**
+ * Returns canonical Hebrew display suggestion if input is a known spelling variant (e.g. מאזאל -> מזל)
+ */
+export function getCanonicalHebrewSuggestion(text: string): string | null {
+  if (!text || typeof text !== 'string') return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const unvocalized = trimmed.replace(/[\u0591-\u05C7]/g, '');
+  const canonical = CANONICAL_HEBREW_DISPLAY_MAP[unvocalized];
+  if (canonical && canonical !== unvocalized && canonical !== trimmed) {
+    return canonical;
+  }
+  return null;
+}
+
+/**
+ * Returns suggested vocalized Hebrew pronunciation (niqqud) for a given Hebrew text
+ */
+export function getNiqqudSuggestion(text: string): string | null {
+  if (!text || typeof text !== 'string') return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const unvocalized = trimmed.replace(/[\u0591-\u05C7]/g, '');
+  const suggested = KNOWN_PRONUNCIATION_MAP[unvocalized] || KNOWN_PRONUNCIATION_MAP[trimmed];
+  if (suggested && suggested !== trimmed) {
+    return suggested;
+  }
+  return null;
+}
+
+/**
+ * Extracts base Hebrew letters (removing niqqud, whitespace, and numbers) for source change comparison
+ */
+export function extractBaseHebrewLetters(text: string): string {
+  if (!text) return '';
+  return text.replace(/[\u0591-\u05C7\s\d]/g, '');
+}
+
+/**
+ * Translates vocalized Hebrew text (containing niqqud) into English or Russian phonetic transliteration
+ */
+export function translatePronunciationToPhonetic(pronunciation: string, targetLang: 'en' | 'ru'): string {
+  if (!pronunciation || typeof pronunciation !== 'string') return '';
+  const trimmed = pronunciation.trim();
+  if (!trimmed) return '';
+
+  if (EXACT_PHONETIC_PAIRS[trimmed]) {
+    return EXACT_PHONETIC_PAIRS[trimmed][targetLang];
+  }
+
+  const unvocalized = trimmed.replace(/[\u0591-\u05C7]/g, '');
+  if (KNOWN_PRONUNCIATION_MAP[unvocalized] && EXACT_PHONETIC_PAIRS[KNOWN_PRONUNCIATION_MAP[unvocalized]]) {
+    return EXACT_PHONETIC_PAIRS[KNOWN_PRONUNCIATION_MAP[unvocalized]][targetLang];
+  }
+
+  // Fallback to standard transliteration if no vocalized rules match
+  return translateText(unvocalized || trimmed, targetLang);
+}
 

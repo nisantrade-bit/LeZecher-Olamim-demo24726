@@ -42,6 +42,11 @@ export interface Deceased {
   notesEn?: string;
   notesRu?: string;
 
+  // Internal vocalized pronunciation metadata (niqqud) for accurate transliteration
+  namePronunciation?: string | null;
+  fatherNamePronunciation?: string | null;
+  motherNamePronunciation?: string | null;
+
   // Manual override tracking: fields that were entered/edited manually by user or explicitly imported
   manualFields?: string[];
 }

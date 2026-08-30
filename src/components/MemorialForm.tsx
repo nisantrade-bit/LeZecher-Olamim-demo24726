@@ -7,10 +7,11 @@ import React, { useState, useEffect } from 'react';
 import { Deceased, Gender, Language } from '../types';
 import { translations, sanitizeParentName } from '../utils/translations';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, normalizeMonthName } from '../utils/hebrewDate';
-import { translateDeceasedListClientSize } from '../utils/transliteration';
+import { translateDeceasedListClientSize, extractBaseHebrewLetters } from '../utils/transliteration';
 import { PlusCircle, Upload, X, Save, User, Sparkles, Loader2 } from 'lucide-react';
 import { uploadMemorialImage, isSupabaseConfigured } from '../utils/supabase';
 import { normalizeImageTo3x4, fileToDataUrl } from '../utils/imageUtils';
+import { NiqqudAssistant } from './NiqqudAssistant';
 
 interface MemorialFormProps {
   lang: Language;
@@ -34,6 +35,11 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
   const [imagePosition, setImagePosition] = useState<string>('center top');
   const [ageAtDeath, setAgeAtDeath] = useState<number | ''>('');
   const [birthDate, setBirthDate] = useState('');
+
+  // Internal pronunciation states
+  const [namePronunciation, setNamePronunciation] = useState<string | null>(null);
+  const [fatherNamePronunciation, setFatherNamePronunciation] = useState<string | null>(null);
+  const [motherNamePronunciation, setMotherNamePronunciation] = useState<string | null>(null);
   
   const [errors, setErrors] = useState<{ name?: boolean; day?: boolean; fatherName?: boolean; motherName?: boolean }>({});
   const [isRefiningAi, setIsRefiningAi] = useState(false);
@@ -99,6 +105,9 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       setImagePosition(editingDeceased.imagePosition || 'center top');
       setAgeAtDeath(editingDeceased.ageAtDeath !== undefined ? editingDeceased.ageAtDeath : '');
       setBirthDate(editingDeceased.birthDate || '');
+      setNamePronunciation(editingDeceased.namePronunciation || null);
+      setFatherNamePronunciation(editingDeceased.fatherNamePronunciation || null);
+      setMotherNamePronunciation(editingDeceased.motherNamePronunciation || null);
     } else {
       resetForm();
     }
@@ -118,6 +127,9 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
     setImagePosition('center top');
     setAgeAtDeath('');
     setBirthDate('');
+    setNamePronunciation(null);
+    setFatherNamePronunciation(null);
+    setMotherNamePronunciation(null);
   };
 
   const convertFileToBase64 = (file: File): Promise<string> => {
@@ -247,6 +259,11 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       imagePosition: imgVal ? imagePosition : undefined,
       ageAtDeath: ageAtDeath !== '' ? Number(ageAtDeath) : undefined,
       birthDate: birthDate.trim() || undefined,
+
+      // Internal vocalized pronunciation fields
+      namePronunciation: namePronunciation || undefined,
+      fatherNamePronunciation: fatherNamePronunciation || undefined,
+      motherNamePronunciation: motherNamePronunciation || undefined,
 
       // Preserve existing multi-language translations if editing
       nameHe: editingDeceased?.nameHe,
@@ -433,11 +450,24 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
             type="text"
             value={name}
             onChange={(e) => {
-              setName(e.target.value);
+              const val = e.target.value;
+              if (extractBaseHebrewLetters(val) !== extractBaseHebrewLetters(name)) {
+                setNamePronunciation(null);
+              }
+              setName(val);
               if (errors.name) setErrors(prev => ({ ...prev, name: false }));
             }}
             placeholder={t.namePlaceholder}
             className={`w-full bg-[#0d0d0d] border ${errors.name ? 'border-red-500' : 'border-[#c8a96e]/30'} focus:border-[#c8a96e] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 outline-none transition-all`}
+          />
+          <NiqqudAssistant
+            fieldName="name"
+            sourceText={name}
+            pronunciation={namePronunciation}
+            onApplyCanonical={(canonical) => setName(canonical)}
+            onConfirmPronunciation={(pron) => setNamePronunciation(pron)}
+            onClearPronunciation={() => setNamePronunciation(null)}
+            lang={lang}
           />
         </div>
 
@@ -474,13 +504,26 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
               type="text"
               value={fatherName}
               onChange={(e) => {
-                setFatherName(e.target.value);
+                const val = e.target.value;
+                if (extractBaseHebrewLetters(val) !== extractBaseHebrewLetters(fatherName)) {
+                  setFatherNamePronunciation(null);
+                }
+                setFatherName(val);
                 if (errors.fatherName || errors.motherName) {
                   setErrors(prev => ({ ...prev, fatherName: false, motherName: false }));
                 }
               }}
               placeholder={t.fatherPlaceholder}
               className={`w-full bg-[#0d0d0d] border ${errors.fatherName ? 'border-red-500' : 'border-[#c8a96e]/30'} focus:border-[#c8a96e] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 outline-none transition-all`}
+            />
+            <NiqqudAssistant
+              fieldName="fatherName"
+              sourceText={fatherName}
+              pronunciation={fatherNamePronunciation}
+              onApplyCanonical={(canonical) => setFatherName(canonical)}
+              onConfirmPronunciation={(pron) => setFatherNamePronunciation(pron)}
+              onClearPronunciation={() => setFatherNamePronunciation(null)}
+              lang={lang}
             />
           </div>
 
@@ -492,13 +535,26 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
               type="text"
               value={motherName}
               onChange={(e) => {
-                setMotherName(e.target.value);
+                const val = e.target.value;
+                if (extractBaseHebrewLetters(val) !== extractBaseHebrewLetters(motherName)) {
+                  setMotherNamePronunciation(null);
+                }
+                setMotherName(val);
                 if (errors.fatherName || errors.motherName) {
                   setErrors(prev => ({ ...prev, fatherName: false, motherName: false }));
                 }
               }}
               placeholder={t.motherPlaceholder}
               className={`w-full bg-[#0d0d0d] border ${errors.motherName ? 'border-red-500' : 'border-[#c8a96e]/30'} focus:border-[#c8a96e] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 outline-none transition-all`}
+            />
+            <NiqqudAssistant
+              fieldName="motherName"
+              sourceText={motherName}
+              pronunciation={motherNamePronunciation}
+              onApplyCanonical={(canonical) => setMotherName(canonical)}
+              onConfirmPronunciation={(pron) => setMotherNamePronunciation(pron)}
+              onClearPronunciation={() => setMotherNamePronunciation(null)}
+              lang={lang}
             />
           </div>
         </div>
