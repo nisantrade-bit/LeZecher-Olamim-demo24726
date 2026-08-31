@@ -79,6 +79,37 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
     };
   }, []);
 
+  // Set initial cursor position after first Hebrew base letter + attached combining marks when manual editor opens
+  useEffect(() => {
+    if (showManualEditor && inputRef.current) {
+      const text = customVal || '';
+      let targetPos = text.length;
+
+      for (let i = 0; i < text.length; i++) {
+        if (/[\u05D0-\u05EA]/.test(text[i])) {
+          let endOfFirstLetter = i + 1;
+          while (
+            endOfFirstLetter < text.length &&
+            /[\u0591-\u05C7]/.test(text[endOfFirstLetter])
+          ) {
+            endOfFirstLetter++;
+          }
+          targetPos = endOfFirstLetter;
+          break;
+        }
+      }
+
+      const timer = setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(targetPos, targetPos);
+        }
+      }, 0);
+
+      return () => clearTimeout(timer);
+    }
+  }, [showManualEditor]);
+
   if (!sourceText || !sourceText.trim() || !isHebrewText(sourceText)) {
     return null;
   }
@@ -147,37 +178,6 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
       }
     }, 2000);
   };
-
-  // Set initial cursor position after first Hebrew base letter + attached combining marks when manual editor opens
-  useEffect(() => {
-    if (showManualEditor && inputRef.current) {
-      const text = customVal || '';
-      let targetPos = text.length;
-
-      for (let i = 0; i < text.length; i++) {
-        if (/[\u05D0-\u05EA]/.test(text[i])) {
-          let endOfFirstLetter = i + 1;
-          while (
-            endOfFirstLetter < text.length &&
-            /[\u0591-\u05C7]/.test(text[endOfFirstLetter])
-          ) {
-            endOfFirstLetter++;
-          }
-          targetPos = endOfFirstLetter;
-          break;
-        }
-      }
-
-      const timer = setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          inputRef.current.setSelectionRange(targetPos, targetPos);
-        }
-      }, 0);
-
-      return () => clearTimeout(timer);
-    }
-  }, [showManualEditor]);
 
   return (
     <div className="mt-1 space-y-1.5 text-xs font-sans">
