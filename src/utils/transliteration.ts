@@ -1141,6 +1141,8 @@ export const KNOWN_PRONUNCIATION_MAP: Record<string, string> = {
   'ראובן': 'רְאוּבֵן',
   'ניסים': 'נִסִּים',
   'נסים': 'נִסִּים',
+  'חנניה': 'חַנָנִיָה',
+  'פנינה': 'פְּנִינָה',
   'פוזיילוב': 'פוּזַיְלוֹב'
 };
 
@@ -1154,6 +1156,10 @@ const EXACT_PHONETIC_PAIRS: Record<string, { en: string; ru: string }> = {
   'נֵרִיָּה': { en: 'Neriah', ru: 'Нерия' },
   'דּוּגְמָן': { en: 'Dugman', ru: 'Дугман' },
   'אַבְרָהָם': { en: 'Avraham', ru: 'Авраам' },
+  'חַנָנִיָה': { en: 'Chanania', ru: 'Ханания' },
+  'חנניה': { en: 'Chanania', ru: 'Ханания' },
+  'פְּנִינָה': { en: 'Pninah', ru: 'Пнина' },
+  'פנינה': { en: 'Pninah', ru: 'Пнина' },
   'פוּזַיְלוֹב': { en: 'Fuzailov', ru: 'Фузайлов' },
   'פּוֹזֵילוֹב': { en: 'Fuzailov', ru: 'Фузайлов' },
   'פֿוּזַיְלוֹב': { en: 'Fuzailov', ru: 'Фузайлов' },

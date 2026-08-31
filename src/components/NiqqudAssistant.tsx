@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Language } from '../types';
 import {
   getCanonicalHebrewSuggestion,
@@ -36,6 +36,27 @@ const NIQQUD_CHARACTERS = [
   { char: '\u05C2', label: 'שִׂין' },
 ];
 
+const isNiqqud = (ch: string) => /[\u0591-\u05C7]/.test(ch);
+const isHebrewBase = (ch: string) => /[\u05D0-\u05EA]/.test(ch);
+
+const getNextHebrewBasePos = (text: string, currentPos: number): number => {
+  let i = currentPos;
+  while (i < text.length && isNiqqud(text[i])) {
+    i++;
+  }
+  while (i < text.length && !isHebrewBase(text[i])) {
+    i++;
+  }
+  if (i >= text.length) {
+    return text.length;
+  }
+  let nextPos = i + 1;
+  while (nextPos < text.length && isNiqqud(text[nextPos])) {
+    nextPos++;
+  }
+  return nextPos;
+};
+
 export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
   fieldName,
   sourceText,
@@ -48,6 +69,15 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
   const [showManualEditor, setShowManualEditor] = useState(false);
   const [customVal, setCustomVal] = useState(pronunciation || sourceText);
   const inputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   if (!sourceText || !sourceText.trim() || !isHebrewText(sourceText)) {
     return null;
@@ -57,22 +87,65 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
   const niqqudSuggestion = getNiqqudSuggestion(sourceText);
 
   const handleInsertNiqqud = (char: string) => {
-    const input = inputRef.current;
-    if (input) {
-      const start = input.selectionStart ?? customVal.length;
-      const end = input.selectionEnd ?? customVal.length;
-      const newVal = customVal.slice(0, start) + char + customVal.slice(end);
-      setCustomVal(newVal);
-      setTimeout(() => {
-        if (input) {
-          input.focus();
-          const nextPos = start + char.length;
-          input.setSelectionRange(nextPos, nextPos);
-        }
-      }, 0);
-    } else {
-      setCustomVal(prev => prev + char);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
+
+    const input = inputRef.current;
+    const start = input ? input.selectionStart ?? customVal.length : customVal.length;
+    const end = input ? input.selectionEnd ?? customVal.length : customVal.length;
+
+    let newVal = customVal;
+    let insertedPos = start;
+
+    if (start !== end) {
+      newVal = customVal.slice(0, start) + char + customVal.slice(end);
+      insertedPos = start + char.length;
+    } else {
+      let baseIdx = -1;
+      if (start > 0) {
+        if (isNiqqud(customVal[start - 1])) {
+          let i = start - 1;
+          while (i >= 0 && isNiqqud(customVal[i])) i--;
+          baseIdx = i >= 0 ? i : -1;
+        } else {
+          baseIdx = start - 1;
+        }
+      } else if (customVal.length > 0) {
+        baseIdx = 0;
+      }
+
+      if (baseIdx !== -1) {
+        const markStart = baseIdx + 1;
+        let markEnd = markStart;
+        while (markEnd < customVal.length && isNiqqud(customVal[markEnd])) {
+          markEnd++;
+        }
+        newVal = customVal.slice(0, markStart) + char + customVal.slice(markEnd);
+        insertedPos = markStart + char.length;
+      } else {
+        newVal = customVal.slice(0, start) + char + customVal.slice(end);
+        insertedPos = start + char.length;
+      }
+    }
+
+    setCustomVal(newVal);
+
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.setSelectionRange(insertedPos, insertedPos);
+      }
+    }, 0);
+
+    timerRef.current = setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const nextPos = getNextHebrewBasePos(newVal, insertedPos);
+        inputRef.current.setSelectionRange(nextPos, nextPos);
+      }
+    }, 2000);
   };
 
   return (
