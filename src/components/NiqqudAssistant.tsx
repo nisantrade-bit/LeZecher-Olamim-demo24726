@@ -168,8 +168,14 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
         }
       }
 
-      inputRef.current.focus();
-      inputRef.current.setSelectionRange(targetPos, targetPos);
+      const timer = setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(targetPos, targetPos);
+        }
+      }, 0);
+
+      return () => clearTimeout(timer);
     }
   }, [showManualEditor]);
 
