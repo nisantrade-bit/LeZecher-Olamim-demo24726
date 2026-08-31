@@ -10,6 +10,10 @@ import {
   getNiqqudSuggestion,
   isHebrewText
 } from '../utils/transliteration';
+import {
+  upsertApprovedPronunciation,
+  fetchApprovedPronunciation
+} from '../utils/supabase';
 import { Sparkles, Check, X, Edit2 } from 'lucide-react';
 
 export interface NiqqudAssistantProps {
@@ -68,6 +72,7 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
 }) => {
   const [showManualEditor, setShowManualEditor] = useState(false);
   const [customVal, setCustomVal] = useState(pronunciation || sourceText);
+  const [dbApprovedPronunciation, setDbApprovedPronunciation] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -110,12 +115,46 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
     }
   }, [showManualEditor]);
 
+  // Query global approved pronunciation dictionary asynchronously
+  useEffect(() => {
+    let isMounted = true;
+    if (sourceText && isHebrewText(sourceText)) {
+      const nameType = fieldName === 'fatherName' ? 'father' : fieldName === 'motherName' ? 'mother' : 'deceased';
+      fetchApprovedPronunciation(sourceText, nameType)
+        .then((approved) => {
+          if (isMounted) {
+            setDbApprovedPronunciation(approved);
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setDbApprovedPronunciation(null);
+          }
+        });
+    } else {
+      setDbApprovedPronunciation(null);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [sourceText, fieldName]);
+
   if (!sourceText || !sourceText.trim() || !isHebrewText(sourceText)) {
     return null;
   }
 
   const canonicalSuggestion = getCanonicalHebrewSuggestion(sourceText);
-  const niqqudSuggestion = getNiqqudSuggestion(sourceText);
+  const niqqudSuggestion = dbApprovedPronunciation || getNiqqudSuggestion(sourceText);
+
+  const handleConfirmPronunciation = (pronText: string) => {
+    onConfirmPronunciation(pronText);
+    if (sourceText && pronText) {
+      const nameType = fieldName === 'fatherName' ? 'father' : fieldName === 'motherName' ? 'mother' : 'deceased';
+      upsertApprovedPronunciation(sourceText, pronText, nameType).catch((err) => {
+        console.warn('[Global Dictionary Async Upsert Exception]', err);
+      });
+    }
+  };
 
   const handleInsertNiqqud = (char: string) => {
     if (timerRef.current) {
@@ -256,7 +295,7 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
-                onClick={() => onConfirmPronunciation(niqqudSuggestion)}
+                onClick={() => handleConfirmPronunciation(niqqudSuggestion)}
                 className="bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 border border-amber-500/40 font-medium px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1"
               >
                 <Check className="w-3.5 h-3.5 text-amber-400" />
@@ -323,7 +362,7 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
                 type="button"
                 onClick={() => {
                   if (customVal.trim()) {
-                    onConfirmPronunciation(customVal.trim());
+                    handleConfirmPronunciation(customVal.trim());
                     setShowManualEditor(false);
                   }
                 }}
