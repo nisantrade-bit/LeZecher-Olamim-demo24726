@@ -129,18 +129,18 @@ function formatParentRelation(
     if (hasMother) return `${prefix} ${mother}`;
     return `${prefix} הורה`;
   } else if (lang === 'ru') {
-    const prefix = gender === 'female' ? 'дочь' : 'сын';
+    const prefix = gender === 'female' ? 'Бат' : 'Бен';
     const translatedFather = hasFather ? (deceased?.fatherNameRu || father) : '';
     const translatedMother = hasMother ? (deceased?.motherNameRu || mother) : '';
-    if (hasFather && hasMother) return `${prefix} ${translatedFather}, ${translatedMother}`;
+    if (hasFather && hasMother) return `${prefix} ${translatedFather} и ${translatedMother}`;
     if (hasFather) return `${prefix} ${translatedFather}`;
     if (hasMother) return `${prefix} ${translatedMother}`;
     return `${prefix} родителя`;
   } else {
-    const prefix = gender === 'female' ? 'daughter of' : 'son of';
+    const prefix = gender === 'female' ? 'Bat' : 'Ben';
     const translatedFather = hasFather ? (deceased?.fatherNameEn || father) : '';
     const translatedMother = hasMother ? (deceased?.motherNameEn || mother) : '';
-    if (hasFather && hasMother) return `${prefix} ${translatedFather}, ${translatedMother}`;
+    if (hasFather && hasMother) return `${prefix} ${translatedFather} and ${translatedMother}`;
     if (hasFather) return `${prefix} ${translatedFather}`;
     if (hasMother) return `${prefix} ${translatedMother}`;
     return `${prefix} parent`;

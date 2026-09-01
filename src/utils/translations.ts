@@ -229,8 +229,8 @@ export const translations: Record<'he' | 'en' | 'ru', Translation> = {
     notesPlaceholder: "Share memory, cemetery location or additional remarks...",
     
     yahrzeitDate: "Annual Yahrzeit Date",
-    relationTextMale: "son of {father}, {mother}",
-    relationTextFemale: "daughter of {father}, {mother}",
+    relationTextMale: "Ben {father} and {mother}",
+    relationTextFemale: "Bat {father} and {mother}",
     contactDetails: "Contact Details",
     
     shabbatYahrzeitBadge: "📌 Yahrzeit on Shabbat",
@@ -306,8 +306,8 @@ export const translations: Record<'he' | 'en' | 'ru', Translation> = {
     notesPlaceholder: "Поделитесь воспоминаниями, укажите место захоронения...",
     
     yahrzeitDate: "Ежегодная дата Йарцайта",
-    relationTextMale: "сын {father}, {mother}",
-    relationTextFemale: "дочь {father}, {mother}",
+    relationTextMale: "Бен {father} и {mother}",
+    relationTextFemale: "Бат {father} и {mother}",
     contactDetails: "Контактные данные",
     
     shabbatYahrzeitBadge: "📌 Йарцайт в Шаббат",
@@ -398,22 +398,20 @@ export function formatParentRelation(
     if (hasMother) return `${prefix} ${mother}`;
     return `${prefix} הורה`;
   } else if (lang === 'ru') {
-    const prefix = gender === 'male' ? 'сын' : 'дочь';
+    const prefix = gender === 'male' ? 'Бен' : 'Бат';
     const translatedFather = hasFather ? (deceased?.fatherNameRu || translateText(father, 'ru')) : '';
     const translatedMother = hasMother ? (deceased?.motherNameRu || translateText(mother, 'ru')) : '';
 
-    // No "и" between father and mother names as requested
-    if (hasFather && hasMother) return `${prefix} ${translatedFather}, ${translatedMother}`;
+    if (hasFather && hasMother) return `${prefix} ${translatedFather} и ${translatedMother}`;
     if (hasFather) return `${prefix} ${translatedFather}`;
     if (hasMother) return `${prefix} ${translatedMother}`;
     return `${prefix} родителя`;
   } else {
-    const prefix = gender === 'male' ? 'son of' : 'daughter of';
+    const prefix = gender === 'male' ? 'Ben' : 'Bat';
     const translatedFather = hasFather ? (deceased?.fatherNameEn || translateText(father, 'en')) : '';
     const translatedMother = hasMother ? (deceased?.motherNameEn || translateText(mother, 'en')) : '';
 
-    // No "AND" between father and mother names as requested
-    if (hasFather && hasMother) return `${prefix} ${translatedFather}, ${translatedMother}`;
+    if (hasFather && hasMother) return `${prefix} ${translatedFather} and ${translatedMother}`;
     if (hasFather) return `${prefix} ${translatedFather}`;
     if (hasMother) return `${prefix} ${translatedMother}`;
     return `${prefix} parent`;
