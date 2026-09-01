@@ -396,7 +396,7 @@ export function formatParentRelation(
     }
     if (hasFather) return `${prefix} ${father}`;
     if (hasMother) return `${prefix} ${mother}`;
-    return `${prefix} הורה`;
+    return '';
   } else if (lang === 'ru') {
     const prefix = gender === 'male' ? 'Бен' : 'Бат';
     const translatedFather = hasFather ? (deceased?.fatherNameRu || translateText(father, 'ru')) : '';
@@ -405,7 +405,7 @@ export function formatParentRelation(
     if (hasFather && hasMother) return `${prefix} ${translatedFather} и ${translatedMother}`;
     if (hasFather) return `${prefix} ${translatedFather}`;
     if (hasMother) return `${prefix} ${translatedMother}`;
-    return `${prefix} родителя`;
+    return '';
   } else {
     const prefix = gender === 'male' ? 'Ben' : 'Bat';
     const translatedFather = hasFather ? (deceased?.fatherNameEn || translateText(father, 'en')) : '';
@@ -414,7 +414,7 @@ export function formatParentRelation(
     if (hasFather && hasMother) return `${prefix} ${translatedFather} and ${translatedMother}`;
     if (hasFather) return `${prefix} ${translatedFather}`;
     if (hasMother) return `${prefix} ${translatedMother}`;
-    return `${prefix} parent`;
+    return '';
   }
 }
 

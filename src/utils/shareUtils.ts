@@ -231,7 +231,7 @@ export function generateWhatsAppShareText(
   if (lang === 'he') {
     const blessingSuffix = isFemale ? 'זכרונה לברכה ומנוחתה בגן עדן' : 'זכרונו לברכה ומנוחתו בגן עדן';
 
-    return `🕯️ לזכר עולמים – ${nameWithParent} ${blessingSuffix}\n\n` +
+    return `🕯️ לזכר עולמים – *${nameWithParent}* ${blessingSuffix}\n\n` +
       `מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה, לקרוא משניות, תהלים והלכות לעילוי נשמה ולהשתתף בהנצחה.\n\n` +
       `${shortUrl}`;
   } else if (lang === 'ru') {
@@ -239,7 +239,7 @@ export function generateWhatsAppShareText(
       ? ', да будет благословенна её память и да покоится она в Саду Эдемском.'
       : ', да будет благословенна его память и да покоится он в Саду Эдемском.';
 
-    return `🕯️ Светлая память – ${nameWithParent}${blessingSuffix}\n\n` +
+    return `🕯️ Светлая память – *${nameWithParent}*${blessingSuffix}\n\n` +
       `Приглашаем вас посетить страницу памяти, зажечь поминальную свечу, прочитать Мишнайот, Тегилим и законы во имя возвышения души и принять участие в увековечивании памяти.\n\n` +
       `${shortUrl}`;
   } else {
@@ -247,7 +247,7 @@ export function generateWhatsAppShareText(
       ? ', may her memory be a blessing and may she rest in the Garden of Eden.'
       : ', may his memory be a blessing and may he rest in the Garden of Eden.';
 
-    return `🕯️ In loving memory – ${nameWithParent}${blessingSuffix}\n\n` +
+    return `🕯️ In loving memory – *${nameWithParent}*${blessingSuffix}\n\n` +
       `We invite you to visit the memorial page, light a memorial candle, read Mishnayot, Psalms and Jewish laws for the elevation of the soul, and take part in preserving their memory.\n\n` +
       `${shortUrl}`;
   }
