@@ -226,37 +226,29 @@ export function generateWhatsAppShareText(
   const isMale = deceased.gender === 'male';
   const parentRel = formatParentRelation(deceased.gender, deceased.fatherName, deceased.motherName, lang, deceased);
 
-  if (lang === 'he') {
-    const nameWithParent = parentRel ? `${localizedName} ${parentRel}` : localizedName;
-    const blessingSuffix = isFemale ? 'זכרונה לברכה' : isMale ? 'זכרונו לברכה' : 'זכרונו/ה לברכה';
+  const nameWithParent = parentRel ? `${localizedName} ${parentRel}` : localizedName;
 
-    return `🕯️ לזכר עולמים – ${nameWithParent}\n\n` +
+  if (lang === 'he') {
+    const blessingSuffix = isFemale ? 'זכרונה לברכה ומנוחתה בגן עדן' : 'זכרונו לברכה ומנוחתו בגן עדן';
+
+    return `🕯️ לזכר עולמים – ${nameWithParent} ${blessingSuffix}\n\n` +
       `מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה, לקרוא משניות, תהלים והלכות לעילוי נשמה ולהשתתף בהנצחה.\n\n` +
-      `${blessingSuffix}\n\n` +
       `${shortUrl}`;
   } else if (lang === 'ru') {
-    const nameWithParent = parentRel ? `${localizedName} (${parentRel})` : localizedName;
     const blessingSuffix = isFemale
-      ? 'Да будет благословенна её память.'
-      : isMale
-        ? 'Да будет благословенна его память.'
-        : 'Да будет благословенна его/её память.';
+      ? ', да будет благословенна её память и да покоится она в Саду Эдемском.'
+      : ', да будет благословенна его память и да покоится он в Саду Эдемском.';
 
-    return `🕯️ Светлая память – ${nameWithParent}\n\n` +
+    return `🕯️ Светлая память – ${nameWithParent}${blessingSuffix}\n\n` +
       `Приглашаем вас посетить страницу памяти, зажечь поминальную свечу, прочитать Мишнайот, Тегилим и законы во имя возвышения души и принять участие в увековечивании памяти.\n\n` +
-      `${blessingSuffix}\n\n` +
       `${shortUrl}`;
   } else {
-    const nameWithParent = parentRel ? `${localizedName} (${parentRel})` : localizedName;
     const blessingSuffix = isFemale
-      ? 'May her memory be a blessing.'
-      : isMale
-        ? 'May his memory be a blessing.'
-        : 'May their memory be a blessing.';
+      ? ', may her memory be a blessing and may she rest in the Garden of Eden.'
+      : ', may his memory be a blessing and may he rest in the Garden of Eden.';
 
-    return `🕯️ In loving memory – ${nameWithParent}\n\n` +
+    return `🕯️ In loving memory – ${nameWithParent}${blessingSuffix}\n\n` +
       `We invite you to visit the memorial page, light a memorial candle, read Mishnayot, Psalms and Jewish laws for the elevation of the soul, and take part in preserving their memory.\n\n` +
-      `${blessingSuffix}\n\n` +
       `${shortUrl}`;
   }
 }

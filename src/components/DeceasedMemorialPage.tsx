@@ -235,7 +235,7 @@ export const DeceasedMemorialPage: React.FC<DeceasedMemorialPageProps> = ({ dece
       const localizedMother = getLocalizedMotherName(deceased, lang);
       const parentRel = formatParentRelation(deceased.gender, localizedFather, localizedMother, lang, deceased);
       const nameWithParent = parentRel 
-        ? (lang === 'he' ? `${localizedName} ${parentRel}` : `${localizedName} (${parentRel})`)
+        ? `${localizedName} ${parentRel}`
         : localizedName;
 
       const title = lang === 'he' 

@@ -860,33 +860,29 @@ Return a JSON object with a single string property "refinedNotes".`;
           const localizedMother = getLocalizedMotherName(enriched, reqLang);
           const parentRel = formatParentRelation(enriched.gender, localizedFather, localizedMother, reqLang, enriched);
 
-          let nameWithParent = localizedName;
-          if (parentRel) {
-            if (reqLang === 'he') {
-              nameWithParent = `${localizedName} ${parentRel}`;
-            } else {
-              nameWithParent = `${localizedName} (${parentRel})`;
-            }
-          }
+          const nameWithParent = parentRel ? `${localizedName} ${parentRel}` : localizedName;
 
           const isFemale = enriched.gender === 'female';
-          const isMale = enriched.gender === 'male';
 
           let title = '';
           let description = '';
 
           if (reqLang === 'ru') {
-            const blessingSuffix = isFemale ? 'Да будет благословенна её память.' : isMale ? 'Да будет благословенна его память.' : 'Да будет благословенна его/её память.';
-            title = `🕯️ Светлая память – ${nameWithParent}`;
-            description = `Приглашаем вас посетить страницу памяти, зажечь поминальную свечу, прочитать Мишнайот, Тегилим и законы во имя возвышения души и принять участие в увековечивании памяти. ${blessingSuffix}`;
+            const blessingSuffix = isFemale
+              ? ', да будет благословенна её память и да покоится она в Саду Эдемском.'
+              : ', да будет благословенна его память и да покоится он в Саду Эдемском.';
+            title = `🕯️ Светлая память – ${nameWithParent}${blessingSuffix}`;
+            description = `Приглашаем вас посетить страницу памяти, зажечь поминальную свечу, прочитать Мишнайот, Тегилим и законы во имя возвышения души и принять участие в увековечивании памяти.`;
           } else if (reqLang === 'en') {
-            const blessingSuffix = isFemale ? 'May her memory be a blessing.' : isMale ? 'May his memory be a blessing.' : 'May their memory be a blessing.';
-            title = `🕯️ In loving memory – ${nameWithParent}`;
-            description = `We invite you to visit the memorial page, light a memorial candle, read Mishnayot, Psalms and Jewish laws for the elevation of the soul, and take part in preserving their memory. ${blessingSuffix}`;
+            const blessingSuffix = isFemale
+              ? ', may her memory be a blessing and may she rest in the Garden of Eden.'
+              : ', may his memory be a blessing and may he rest in the Garden of Eden.';
+            title = `🕯️ In loving memory – ${nameWithParent}${blessingSuffix}`;
+            description = `We invite you to visit the memorial page, light a memorial candle, read Mishnayot, Psalms and Jewish laws for the elevation of the soul, and take part in preserving their memory.`;
           } else {
-            const blessingSuffix = isFemale ? 'זכרונה לברכה' : isMale ? 'זכרונו לברכה' : 'זכרונו/ה לברכה';
-            title = `🕯️ לזכר עולמים – ${nameWithParent}`;
-            description = `מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה, לקרוא משניות, תהלים והלכות לעילוי נשמה ולהשתתף בהנצחה. ${blessingSuffix}`;
+            const blessingSuffix = isFemale ? 'זכרונה לברכה ומנוחתה בגן עדן' : 'זכרונו לברכה ומנוחתו בגן עדן';
+            title = `🕯️ לזכר עולמים – ${nameWithParent} ${blessingSuffix}`;
+            description = `מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה, לקרוא משניות, תהלים והלכות לעילוי נשמה ולהשתתף בהנצחה.`;
           }
 
           const currentUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
