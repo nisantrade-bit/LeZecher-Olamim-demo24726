@@ -164,6 +164,7 @@ function getGeminiClient(): GoogleGenAI {
 
 async function startServer() {
   const app = express();
+  app.set('trust proxy', true);
 
   // Middleware to parse JSON payloads
   app.use(express.json({ limit: '10mb' }));
@@ -885,8 +886,14 @@ Return a JSON object with a single string property "refinedNotes".`;
             description = `מזמינים אתכם לבקר בדף הזיכרון, להדליק נר נשמה, לקרוא משניות, תהלים והלכות לעילוי נשמה ולהשתתף בהנצחה.`;
           }
 
-          const currentUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-          const baseUrl = `${req.protocol}://${req.get('host')}`;
+          const rawHost = String(req.headers['x-forwarded-host'] || req.headers['host'] || '');
+          const host = (rawHost.includes('127.0.0.1') || rawHost.includes('localhost') || !rawHost)
+            ? 'ais-dev-4bypu7y5kugifnljuaqhdv-525830218695.europe-west2.run.app'
+            : rawHost;
+          const rawProto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https');
+          const proto = (rawProto === 'http' && host.includes('run.app')) ? 'https' : rawProto;
+          const currentUrl = `${proto}://${host}${req.originalUrl}`;
+          const baseUrl = `${proto}://${host}`;
 
           let imageUrl = `${baseUrl}/og-banner.png`;
           const rawCandidate = [

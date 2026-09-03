@@ -909,7 +909,7 @@ function MainAppContent() {
 
   const handleResetDatabase = async () => {
     try {
-      const { error } = await safeDeleteAll('deceased');
+      const { error } = await safeDeleteAll('deceased', true);
       if (error && isMissingTableError(error)) {
         setSupabaseTableMissing(true);
       } else if (error) {

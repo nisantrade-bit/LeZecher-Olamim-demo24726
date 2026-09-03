@@ -279,8 +279,12 @@ async function findDeceasedRecord(supabase: any, rawId: string): Promise<any | n
 }
 
 function getBaseUrl(req: any): string {
-  const host = req?.headers?.host || req?.headers?.['x-forwarded-host'] || 'le-zecher-olamim-demo24726.vercel.app';
-  const proto = req?.headers?.['x-forwarded-proto'] || 'https';
+  const rawHost = req?.headers?.['x-forwarded-host'] || req?.headers?.host || '';
+  const host = (rawHost.includes('127.0.0.1') || rawHost.includes('localhost') || !rawHost)
+    ? 'ais-dev-4bypu7y5kugifnljuaqhdv-525830218695.europe-west2.run.app'
+    : rawHost;
+  const rawProto = req?.headers?.['x-forwarded-proto'] || 'https';
+  const proto = (rawProto === 'http' && host.includes('run.app')) ? 'https' : rawProto;
   return `${proto}://${host}`;
 }
 

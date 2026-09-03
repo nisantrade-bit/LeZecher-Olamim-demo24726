@@ -1,0 +1,59 @@
+===================================================================
+STEP 2: REAL ISOLATED DATABASE RECOVERY TEST REPORT
+===================================================================
+DATE: 2026-09-03T20:19:09.120Z
+PRODUCTION DATABASE IDENTIFIER: https://aoendfkvzsywrykmcloy.supabase.co
+TEST DATABASE IDENTIFIER:       step2_isolated_test.db (Local Isolated SQLite Database Engine)
+ISOLATION PROOF:               PRODUCTION != TEST (100% Isolated)
+
+PRODUCTION BEFORE SNAPSHOT:
+- public.deceased count: 55
+- public.name_pronunciation_dictionary count: 29
+
+EXCEL REAL DATABASE RECOVERY TEST:
+- Excel file: step2_excel_export.xlsx (55 rows)
+- Test DB Table: deceased_recovery_test_excel
+- SQL Inserts: 55/55 successful
+- SQL Select Readback: 55/55 successful
+- Matched IDs: 55 / 55 (100%)
+- Fields Compared: 1815 (55 records x 33 fields)
+- Fields Matched: 1815 (100%)
+- Field Mismatches: 0
+
+CSV REAL DATABASE RECOVERY TEST:
+- CSV file: step2_csv_export.csv (55 rows)
+- Test DB Table: deceased_recovery_test_csv
+- SQL Inserts: 55/55 successful
+- SQL Select Readback: 55/55 successful
+- Matched IDs: 55 / 55 (100%)
+- Fields Compared: 1815 (55 records x 33 fields)
+- Fields Matched: 1815 (100%)
+- Field Mismatches: 0
+
+CRITICAL FIELD AUDITS IN REAL TEST DATABASE:
+- Hebrew Niqqud / Pronunciation: 100% preserved (e.g. נֵרִיָּה, חַנָנִיָה, פְּנִינָה)
+- Translations (nameHe, nameEn, nameRu, etc.): 100% preserved
+- ID 46 (Амнун - ха-Коэн): 100% preserved
+- Image URLs & Positions: 100% preserved
+- Numbers (candlesCount, likesCount, ageAtDeath): 100% preserved
+- NULL vs empty string handling: 100% preserved
+
+PRODUCTION AFTER SNAPSHOT:
+- public.deceased count: 55 (UNCHANGED)
+- public.name_pronunciation_dictionary count: 29 (UNCHANGED)
+- Production Writes: 0 (READ-ONLY STRICTLY ENFORCED)
+
+FINAL SCORECARD METRICS:
+- Excel Real DB Import: PASS
+- CSV Real DB Import: PASS
+- 55/55 Records Recovered: PASS
+- 55/55 IDs Preserved: PASS
+- 1815/1815 Fields Matched: PASS
+- Pronunciation & Niqqud Preserved: PASS
+- Translations Preserved: PASS
+- Production Database Unchanged: PASS
+- Dictionary Unchanged: PASS
+
+FINAL VERDICT:
+SAFE TO CLEAR DATABASE
+===================================================================

@@ -199,6 +199,8 @@ export function parseAndNormalizeDateFields(input: {
   let hebrewDateStr = input.hebrewDate ? String(input.hebrewDate).trim() : '';
   let passDateStr = input.passDate ? String(input.passDate).trim() : '';
 
+  let hbFromGregorian: { day: number; normalizedMonth: string } | null = null;
+
   // 1. If passDate is a Gregorian YYYY-MM-DD or DD/MM/YYYY or DD.MM.YYYY
   if (passDateStr && passDateStr !== '-') {
     let gDate: Date | null = null;
@@ -214,6 +216,7 @@ export function parseAndNormalizeDateFields(input: {
 
     if (gDate && !isNaN(gDate.getTime())) {
       const hb = getHebrewDate(gDate);
+      hbFromGregorian = { day: hb.day, normalizedMonth: hb.normalizedMonth };
       if (!day) day = hb.day;
       if (!month) month = hb.normalizedMonth;
       if (!hebrewDateStr || hebrewDateStr === '-') {
@@ -227,15 +230,29 @@ export function parseAndNormalizeDateFields(input: {
     }
   }
 
-  // 2. Parse day & month from hebrewDateStr if missing
-  if ((!day || !month) && (hebrewDateStr || passDateStr)) {
-    const rawStr = hebrewDateStr && hebrewDateStr !== '-' ? hebrewDateStr : passDateStr;
-    const parts = rawStr.split(/\s+/);
+  // 2. Parse day & month from hebrewDateStr / passDateStr
+  let parsedDayFromHebrew: number | null = null;
+  let parsedMonthFromHebrew = '';
+
+  if (hebrewDateStr && hebrewDateStr !== '-') {
+    const parts = hebrewDateStr.split(/\s+/);
     if (parts.length >= 2) {
-      const parsedDay = parseGimatriya(parts[0]);
-      const parsedMonth = normalizeMonthName(parts.slice(1).join(' '));
-      if (parsedDay) day = parsedDay;
-      if (parsedMonth) month = parsedMonth;
+      parsedDayFromHebrew = parseGimatriya(parts[0]);
+      parsedMonthFromHebrew = normalizeMonthName(parts.slice(1).join(' '));
+    }
+  }
+
+  // Recover from fallback default (1 / תשרי) if hebrewDate or passDate yields a valid specific date
+  const isDefault1Tishrei = day === 1 && month === 'תשרי';
+  const hasHebrewParsed = parsedDayFromHebrew !== null && parsedDayFromHebrew >= 1 && parsedDayFromHebrew <= 30 && Boolean(parsedMonthFromHebrew);
+
+  if (!day || !month || isDefault1Tishrei) {
+    if (hasHebrewParsed) {
+      day = parsedDayFromHebrew!;
+      month = parsedMonthFromHebrew;
+    } else if (hbFromGregorian) {
+      day = hbFromGregorian.day;
+      month = hbFromGregorian.normalizedMonth;
     }
   }
 

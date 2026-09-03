@@ -812,22 +812,24 @@ export async function safeDeleteAll(
   safetyGateConfirmed: boolean = false
 ): Promise<{ data: any; error: any }> {
   if (!isSupabaseConfigured()) return { data: [], error: null };
+
+  // STRICT HARDCODED TABLE WHITELIST PROTECTION
+  // Absolutely no other table can be bulk cleared by this function.
+  if (tableName !== 'deceased') {
+    const msg = `[SAFETY GATE BLOCKED] Bulk deletion / reset all is strictly forbidden on table "${tableName}". Only "deceased" table can be cleared.`;
+    console.error(msg);
+    return { data: null, error: { message: msg, code: 'TABLE_NOT_ALLOWED' } };
+  }
+
   if (!safetyGateConfirmed) {
     const msg = `[SAFETY GATE BLOCKED] Bulk deletion / reset all on table "${tableName}" is disabled by default to protect database records.`;
     console.warn(msg);
     return { data: null, error: { message: msg, code: 'SAFETY_GATE_BLOCKED' } };
   }
   try {
-    const { data, error } = await (supabase.from(tableName as any) as any)
+    const { data, error } = await (supabase.from('deceased' as any) as any)
       .delete()
       .neq('id', 0);
-
-    if (tableName === 'deceased') {
-      await (supabase.from('memorials' as any) as any)
-        .delete()
-        .neq('id', 0)
-        .catch(() => {});
-    }
 
     if (error) logSupabaseError('safeDeleteAll', error);
     return { data, error };

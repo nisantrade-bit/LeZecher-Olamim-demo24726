@@ -100,6 +100,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     let fatherHeIdx = -1, fatherEnIdx = -1, fatherRuIdx = -1;
     let motherHeIdx = -1, motherEnIdx = -1, motherRuIdx = -1;
     let notesHeIdx = -1, notesEnIdx = -1, notesRuIdx = -1;
+    let namePronunciationIdx = -1, fatherNamePronunciationIdx = -1, motherNamePronunciationIdx = -1;
     let manualFieldsIdx = -1;
     let dayIdx = -1;
     let monthIdx = -1;
@@ -126,15 +127,18 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         else if (c === 'namehe' || c === 'name_he') nameHeIdx = idx;
         else if (c === 'nameen' || c === 'name_en') nameEnIdx = idx;
         else if (c === 'nameru' || c === 'name_ru') nameRuIdx = idx;
+        else if (c === 'namepronunciation' || c === 'name_pronunciation') namePronunciationIdx = idx;
         else if ((c === 'name' || c.includes('full name') || c.includes('שם מלא') || c === 'שם' || c === 'имя') && !c.includes('father') && !c.includes('mother') && !c.includes('אב') && !c.includes('אם')) nameIdx = idx;
         else if (c === 'gender' || c.includes('sex') || c.includes('מין') || c.includes('пол')) genderIdx = idx;
         else if (c === 'fathernamehe' || c === 'father_name_he') fatherHeIdx = idx;
         else if (c === 'fathernameen' || c === 'father_name_en') fatherEnIdx = idx;
         else if (c === 'fathernameru' || c === 'father_name_ru') fatherRuIdx = idx;
+        else if (c === 'fathernamepronunciation' || c === 'father_name_pronunciation') fatherNamePronunciationIdx = idx;
         else if (c === 'fathername' || c === 'father_name' || c.includes('father name') || c.includes('father') || c.includes('שם אב') || c.includes('שם האב')) fatherIdx = idx;
         else if (c === 'mothernamehe' || c === 'mother_name_he') motherHeIdx = idx;
         else if (c === 'mothernameen' || c === 'mother_name_en') motherEnIdx = idx;
         else if (c === 'mothernameru' || c === 'mother_name_ru') motherRuIdx = idx;
+        else if (c === 'mothernamepronunciation' || c === 'mother_name_pronunciation') motherNamePronunciationIdx = idx;
         else if (c === 'mothername' || c === 'mother_name' || c.includes('mother name') || c.includes('mother') || c.includes('שם אם') || c.includes('שם האם')) motherIdx = idx;
         else if (c === 'passdate' || c.includes('pass_date') || c.includes('pass date') || c.includes('תאריך פטירה')) passDateIdx = idx;
         else if (c === 'hebrewdate' || c.includes('hebrew_date') || c.includes('hebrew date') || c.includes('תאריך עברי')) hebrewDateIdx = idx;
@@ -208,6 +212,9 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       const rawNotesHe = notesHeIdx !== -1 ? row[notesHeIdx] : undefined;
       const rawNotesEn = notesEnIdx !== -1 ? row[notesEnIdx] : undefined;
       const rawNotesRu = notesRuIdx !== -1 ? row[notesRuIdx] : undefined;
+      const rawNamePronunciation = namePronunciationIdx !== -1 ? row[namePronunciationIdx] : undefined;
+      const rawFatherNamePronunciation = fatherNamePronunciationIdx !== -1 ? row[fatherNamePronunciationIdx] : undefined;
+      const rawMotherNamePronunciation = motherNamePronunciationIdx !== -1 ? row[motherNamePronunciationIdx] : undefined;
       const rawManualFields = manualFieldsIdx !== -1 ? row[manualFieldsIdx] : undefined;
 
       if (!rawName) continue; // skip empty names
@@ -328,6 +335,9 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         notesHe: rawNotesHe,
         notesEn: rawNotesEn,
         notesRu: rawNotesRu,
+        namePronunciation: rawNamePronunciation,
+        fatherNamePronunciation: rawFatherNamePronunciation,
+        motherNamePronunciation: rawMotherNamePronunciation,
         manualFields: parsedManualFields
       };
 
@@ -675,6 +685,9 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
           item.notesHe || '',
           item.notesEn || '',
           item.notesRu || '',
+          item.namePronunciation || '',
+          item.fatherNamePronunciation || '',
+          item.motherNamePronunciation || '',
           item.manualFields && Array.isArray(item.manualFields) && item.manualFields.length > 0 ? item.manualFields.join(';') : ''
         ];
       });
