@@ -23,9 +23,9 @@ import { getUpcomingYahrzeits, requestNotificationPermission, sendYahrzeitNotifi
 import { motion, AnimatePresence } from 'framer-motion';
 import INITIAL_DATABASE from '../database.json';
 
-import { supabase, isSupabaseConfigured, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById, normalizeFetchedRecord, uploadMemorialImage } from './utils/supabase';
+import { supabase, isSupabaseConfigured, isSupabaseStorageUrl, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById, normalizeFetchedRecord, uploadMemorialImage } from './utils/supabase';
 import { normalizeImageTo3x4, fileToDataUrl } from './utils/imageUtils';
-export { supabase, isSupabaseConfigured, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById, normalizeFetchedRecord };
+export { supabase, isSupabaseConfigured, isSupabaseStorageUrl, cleanAndDeduplicateSupabase, isMissingTableError, SUPABASE_SETUP_SQL, safeUpsert, safeEq, safeDelete, safeDeleteAll, safeSelect, safeIlike, safeTextSearch, safeSearch, safeInsert, sanitizeRecord, fetchMemorialCardById, normalizeFetchedRecord };
 
 const SEED_DATABASE: Deceased[] = [];
 
@@ -764,6 +764,15 @@ function MainAppContent() {
       supabaseRecords.map(async (item) => {
         const rawImg = item.image || item.imageUrl || item.photoUrl || item.photo;
         if (rawImg && typeof rawImg === 'string' && rawImg.trim() !== '' && rawImg.trim() !== '-') {
+          // If image is ALREADY hosted in Supabase Storage, preserve existing URL and skip redundant re-upload
+          if (isSupabaseStorageUrl(rawImg)) {
+            const cleanUrl = rawImg.trim();
+            item.image = cleanUrl;
+            item.imageUrl = cleanUrl;
+            item.photoUrl = cleanUrl;
+            item.photo = cleanUrl;
+            return;
+          }
           try {
             const normalizedFile = await normalizeImageTo3x4(rawImg, `import_${item.id}.jpg`);
             let publicUrl: string | null = null;

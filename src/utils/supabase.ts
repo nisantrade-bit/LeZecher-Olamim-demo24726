@@ -22,6 +22,34 @@ export function isSupabaseConfigured(): boolean {
 }
 
 /**
+ * Helper to identify if an image URL is ALREADY hosted in Supabase Storage.
+ * Prevents redundant download -> normalize -> upload cycles during import.
+ */
+export function isSupabaseStorageUrl(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === '-') return false;
+  
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('//')) {
+    return false;
+  }
+
+  if (
+    trimmed.includes('/storage/v1/object/public/') ||
+    trimmed.includes('/storage/v1/object/sign/') ||
+    trimmed.includes('/memorial-images/')
+  ) {
+    return true;
+  }
+  
+  if (envUrl && trimmed.includes(envUrl)) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * Uploads a memorial photo file to Supabase Storage bucket.
  * Cleans the filename to pure ASCII characters, verifies image existence,
  * and handles any storage errors gracefully without blocking card saving.
