@@ -392,10 +392,6 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
   copy.hebrewDate = normDate.hebrewDate || null;
   copy.passDate = normDate.passDate || null;
 
-  if (!copy.bio && copy.notes) {
-    copy.bio = copy.notes;
-  }
-
   // 2. Main Sanitization Pass:
   // - Remove any undefined properties
   // - Convert empty or whitespace-only string fields to null
@@ -471,13 +467,14 @@ export function normalizeFetchedRecord(item: any): any {
     }
   }
 
-  // Bio & Notes mapping
-  const bioVal = item.bio || item.notes;
-  if (bioVal && typeof bioVal === 'string' && bioVal !== '-') {
-    item.bio = bioVal;
-    if (!item.notes || item.notes === '-') {
-      item.notes = bioVal;
-    }
+  // Bio & Notes normalization - keep independent
+  if (typeof item.bio === 'string') {
+    const trimmedBio = item.bio.trim();
+    item.bio = (trimmedBio === '-' || trimmedBio === '') ? '' : trimmedBio;
+  }
+  if (typeof item.notes === 'string') {
+    const trimmedNotes = item.notes.trim();
+    item.notes = (trimmedNotes === '-' || trimmedNotes === '') ? '' : trimmedNotes;
   }
 
   // Hebrew Date, Pass Date, Day & Month standardization

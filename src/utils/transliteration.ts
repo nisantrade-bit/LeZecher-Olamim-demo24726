@@ -985,12 +985,12 @@ export function enrichDeceasedTranslations(item: Deceased): Deceased {
   if (!manualSet.has('nameHe')) result.nameHe = result.nameHe || result.name || '';
   if (!manualSet.has('nameEn')) result.nameEn = result.nameEn || result.name || '';
   if (!manualSet.has('nameRu')) result.nameRu = result.nameRu || result.name || '';
-  if (!manualSet.has('fatherNameHe')) result.fatherNameHe = result.fatherNameHe || result.fatherName || '-';
-  if (!manualSet.has('fatherNameEn')) result.fatherNameEn = result.fatherNameEn || result.fatherName || '-';
-  if (!manualSet.has('fatherNameRu')) result.fatherNameRu = result.fatherNameRu || result.fatherName || '-';
-  if (!manualSet.has('motherNameHe')) result.motherNameHe = result.motherNameHe || result.motherName || '-';
-  if (!manualSet.has('motherNameEn')) result.motherNameEn = result.motherNameEn || result.motherName || '-';
-  if (!manualSet.has('motherNameRu')) result.motherNameRu = result.motherNameRu || result.motherName || '-';
+  if (!manualSet.has('fatherNameHe')) result.fatherNameHe = result.fatherNameHe || result.fatherName || '';
+  if (!manualSet.has('fatherNameEn')) result.fatherNameEn = result.fatherNameEn || result.fatherName || '';
+  if (!manualSet.has('fatherNameRu')) result.fatherNameRu = result.fatherNameRu || result.fatherName || '';
+  if (!manualSet.has('motherNameHe')) result.motherNameHe = result.motherNameHe || result.motherName || '';
+  if (!manualSet.has('motherNameEn')) result.motherNameEn = result.motherNameEn || result.motherName || '';
+  if (!manualSet.has('motherNameRu')) result.motherNameRu = result.motherNameRu || result.motherName || '';
 
   // 6. Enforce script sanitization only for non-manual fields
   if (!manualSet.has('nameHe')) result.nameHe = sanitizeHebrewScript(result.nameHe);
@@ -1018,33 +1018,36 @@ export function enrichDeceasedTranslations(item: Deceased): Deceased {
 }
 
 export function sanitizeHebrewScript(text: string): string {
-  if (!text || text === '-') return text || '-';
+  if (!text) return '';
+  if (text === '-') return '-';
   const res = text
     .replace(/[\u0400-\u04FF]/g, '')
     .replace(/[a-zA-Z]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  return res || '-';
+  return res;
 }
 
 export function sanitizeRussianScript(text: string): string {
-  if (!text || text === '-') return text || '-';
+  if (!text) return '';
+  if (text === '-') return '-';
   const res = text
     .replace(/[\u0590-\u05FF]/g, '')
     .replace(/[a-zA-Z]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  return res || '-';
+  return res;
 }
 
 export function sanitizeEnglishScript(text: string): string {
-  if (!text || text === '-') return text || '-';
+  if (!text) return '';
+  if (text === '-') return '-';
   const res = text
     .replace(/[\u0590-\u05FF]/g, '')
     .replace(/[\u0400-\u04FF]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  return res || '-';
+  return res;
 }
 
 /**
@@ -1070,10 +1073,6 @@ export function translateDeceasedListClientSide(list: Deceased[], targetLang: La
 
     return {
       ...enriched,
-      name: getLocalizedName(enriched, targetLang),
-      fatherName: getLocalizedFatherName(enriched, targetLang),
-      motherName: getLocalizedMotherName(enriched, targetLang),
-      notes: getLocalizedNotes(enriched, targetLang),
       month: localizedMonth
     };
   });

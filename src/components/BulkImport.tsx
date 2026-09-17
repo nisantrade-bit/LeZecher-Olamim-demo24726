@@ -279,8 +279,9 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
 
       const hebrewDateVal = rawHebrewDate || `${dayNum} ${normalizedMonth}`;
       const passDateVal = rawPassDate || hebrewDateVal;
-      const bioVal = rawBio || rawNotes || '-';
-      const imgVal = rawImageUrl || rawPhotoUrl || rawImage || '-';
+      const cleanBio = rawBio || undefined;
+      const cleanNotes = rawNotes || undefined;
+      const cleanImg = rawImageUrl || rawPhotoUrl || rawImage || undefined;
 
       let parsedManualFields: string[] | undefined = undefined;
       if (rawManualFields && String(rawManualFields).trim()) {
@@ -305,20 +306,20 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         id: parsedId !== undefined ? Number(parsedId) : (undefined as any),
         name: rawName,
         gender,
-        fatherName: sanitizeParentName(rawFather) || '-',
-        motherName: sanitizeParentName(rawMother) || '-',
+        fatherName: sanitizeParentName(rawFather) || undefined,
+        motherName: sanitizeParentName(rawMother) || undefined,
         day: dayNum,
         month: normalizedMonth,
         hebrewDate: hebrewDateVal,
         passDate: passDateVal,
         birthDate: rawBirthDate || undefined,
         contactPhone: rawPhone || undefined,
-        notes: bioVal,
-        bio: bioVal,
-        image: imgVal,
-        imageUrl: imgVal,
-        photoUrl: imgVal,
-        photo: imgVal,
+        notes: cleanNotes,
+        bio: cleanBio,
+        image: cleanImg,
+        imageUrl: cleanImg,
+        photoUrl: cleanImg,
+        photo: cleanImg,
         imagePosition: (rawImagePos as any) || undefined,
         candlesCount: Number(parsedCandles),
         likesCount: Number(parsedLikes),
@@ -360,7 +361,8 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         const arrayToProcess = Array.isArray(parsed) ? parsed : [parsed];
         const importedList: Deceased[] = arrayToProcess.map((item, idx) => {
           const img = item.imageUrl || item.image || item.photoUrl || item.photo || item.image_url || item.photo_url || undefined;
-          const bioVal = item.bio || item.notes || item.story || undefined;
+          const cleanBio = item.bio || item.story || undefined;
+          const cleanNotes = item.notes || undefined;
           const hebDate = item.hebrewDate || item.hebrew_date || (item.day && item.month ? `${item.day} ${item.month}` : undefined);
           const passDateVal = item.passDate || item.pass_date || hebDate;
 
@@ -388,15 +390,15 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
             id: item.id !== undefined && item.id !== null && String(item.id).trim() !== '' ? Number(item.id) : (undefined as any),
             name: String(item.name || item.nameHe || item.nameEn || item.nameRu || '').trim(),
             gender: (String(item.gender || '').toLowerCase().includes('f') || String(item.gender || '').includes('נקבה') ? 'female' : 'male') as Gender,
-            fatherName: sanitizeParentName(item.fatherName || item.father_name || item.fatherNameHe || ''),
-            motherName: sanitizeParentName(item.motherName || item.mother_name || item.motherNameHe || ''),
+            fatherName: sanitizeParentName(item.fatherName || item.father_name) || undefined,
+            motherName: sanitizeParentName(item.motherName || item.mother_name) || undefined,
             day: Number(item.day || 1),
             month: normalizeMonthName(item.month || 'תשרי'),
             hebrewDate: hebDate,
             passDate: passDateVal,
             contactPhone: item.contactPhone || item.phone || undefined,
-            notes: bioVal,
-            bio: bioVal,
+            notes: cleanNotes,
+            bio: cleanBio,
             image: img,
             imageUrl: img,
             photoUrl: img,
@@ -651,7 +653,8 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       const rows = translatedList.map(item => {
         const hebDate = item.hebrewDate || (item.day && item.month ? `${item.day} ${item.month}` : '');
         const pDate = item.passDate || hebDate;
-        const bioText = item.bio || item.notes || '';
+        const bioText = item.bio || '';
+        const notesText = item.notes || '';
         const imgUrl = item.imageUrl || item.image || item.photoUrl || item.photo || '';
 
         return [
@@ -664,7 +667,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
           hebDate,
           item.birthDate || '',
           bioText,
-          item.notes || bioText,
+          notesText,
           imgUrl,
           imgUrl,
           imgUrl,

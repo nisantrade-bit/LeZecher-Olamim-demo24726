@@ -106,7 +106,8 @@ export function exportSingleLanguageCsv(deceasedList: Deceased[], lang: Language
   translatedList.forEach(item => {
     const hebDate = item.hebrewDate || (item.day && item.month ? `${item.day} ${item.month}` : '');
     const pDate = item.passDate || hebDate;
-    const bioText = item.bio || item.notes || '';
+    const bioText = item.bio || '';
+    const notesText = item.notes || '';
     const imgUrl = item.imageUrl || item.image || item.photoUrl || item.photo || '';
     const candles = item.candlesCount !== undefined ? item.candlesCount : 0;
     const likes = item.likesCount !== undefined ? item.likesCount : 0;
@@ -121,7 +122,7 @@ export function exportSingleLanguageCsv(deceasedList: Deceased[], lang: Language
       escapeCsvCell(hebDate),
       escapeCsvCell(item.birthDate || ''),
       escapeCsvCell(bioText),
-      escapeCsvCell(item.notes || bioText),
+      escapeCsvCell(notesText),
       escapeCsvCell(imgUrl),
       escapeCsvCell(imgUrl),
       escapeCsvCell(imgUrl),
