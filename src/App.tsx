@@ -814,10 +814,11 @@ function MainAppContent() {
     // Sync to Supabase if configured
     if (isSupabaseConfigured()) {
       try {
-        let { data, error } = await supabase.from('deceased').upsert(supabaseRecords, { onConflict: 'id' });
+        const payloadToSync = supabaseRecords.map(item => sanitizeRecord(item));
+        let { data, error } = await supabase.from('deceased').upsert(payloadToSync, { onConflict: 'id' });
         if (error) {
           console.warn("[Supabase Import Notice] Upsert with onConflict failed, retrying plain upsert:", error);
-          const fallbackRes = await supabase.from('deceased').upsert(supabaseRecords);
+          const fallbackRes = await supabase.from('deceased').upsert(payloadToSync);
           if (!fallbackRes.error) {
             error = null;
             data = fallbackRes.data;
