@@ -382,6 +382,13 @@ function MainAppContent() {
     }
   };
 
+  // Security guard: If user is not admin and activeTab is 'import', force switch to 'calendar'
+  useEffect(() => {
+    if (activeTab === 'import' && !isAdmin) {
+      setActiveTab('calendar');
+    }
+  }, [activeTab, isAdmin]);
+
   // Mobile drawer / sheet state for adding deceased
   const [isMobileFormOpen, setIsMobileFormOpen] = useState<boolean>(false);
 
@@ -742,6 +749,7 @@ function MainAppContent() {
 
   // Save or update deceased record directly in Supabase & LocalStorage
   const handleSaveDeceased = async (deceasedInput: Deceased) => {
+    if (!isAdmin) return;
     const deceased = sanitizeRecord(enrichDeceasedTranslations(deceasedInput));
     
     // Enforce duplicate match by Name + FatherName if existing ID not found
@@ -826,6 +834,7 @@ function MainAppContent() {
 
   // Delete a deceased record from Supabase & LocalStorage
   const handleDeleteDeceased = async (id: number) => {
+    if (!isAdmin) return;
     // Update local state & LocalStorage
     const updated = masterList.filter(d => Number(d.id) !== Number(id));
 
@@ -872,6 +881,7 @@ function MainAppContent() {
 
   // Bulk import deceased records with direct Supabase insert/upsert & fallback local state
   const handleImportDeceased = async (newList: Deceased[]) => {
+    if (!isAdmin) return;
     const currentDb = masterList || [];
 
     // Step 1: Clean duplicates inside the imported file itself
@@ -990,6 +1000,7 @@ function MainAppContent() {
 
   // Clean and deduplicate current database in Supabase and local storage
   const handleCleanDuplicates = async () => {
+    if (!isAdmin) return;
     try {
       if (isSupabaseConfigured()) {
         const { count, deleted } = await cleanAndDeduplicateSupabase();
@@ -1049,6 +1060,7 @@ function MainAppContent() {
   };
 
   const handleResolveDuplicateGroup = async (groupItems: Deceased[]) => {
+    if (!isAdmin) return;
     const toDelete = groupItems.slice(1);
     for (const item of toDelete) {
       await handleDeleteDeceased(item.id);
@@ -1056,6 +1068,7 @@ function MainAppContent() {
   };
 
   const handleResetDatabase = async () => {
+    if (!isAdmin) return;
     try {
       const { error } = await safeDeleteAll('deceased', true);
       if (error && isMissingTableError(error)) {
@@ -1324,7 +1337,7 @@ function MainAppContent() {
         )}
 
         {/* Duplicate Entries Alert Banner */}
-        {getDuplicateGroups().length > 0 && (
+        {isAdmin && getDuplicateGroups().length > 0 && (
           <div className="mb-6 bg-[#FAF5EC] border border-amber-300 px-5 py-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-[#3B2F2F] font-sans shadow-xs relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#5D6D53]"></div>
             <div className="flex items-center gap-3">
@@ -1455,10 +1468,10 @@ function MainAppContent() {
                     ? 'bg-[#5D6D53] text-white shadow-xs font-bold' 
                     : 'text-[#6B5E53] hover:text-[#3B2F2F] hover:bg-[#FAF5EC]'
                 }`}
-                title={t.importBulk}
+                title={lang === 'he' ? (isAdmin ? 'ייבוא וגיבוי' : 'גיבוי וייצוא') : t.importBulk}
               >
                 <FileDown className="w-4 h-4 shrink-0" />
-                <span>{t.importBulk}</span>
+                <span>{lang === 'he' ? (isAdmin ? 'ייבוא וגיבוי' : 'גיבוי וייצוא') : t.importBulk}</span>
               </button>
             </div>
 
@@ -1493,7 +1506,8 @@ function MainAppContent() {
                   lang={lang} 
                   onImport={handleImportDeceased} 
                   deceasedList={displayedList}
-                  onCleanDuplicates={handleCleanDuplicates}
+                  onCleanDuplicates={isAdmin ? handleCleanDuplicates : undefined}
+                  isAdmin={isAdmin}
                 />
               )}
             </div>
@@ -1501,48 +1515,50 @@ function MainAppContent() {
 
           {/* Side Control Column (Form / Actions) */}
           <div className="space-y-6">
-            {!editingDeceased ? (
-              <MemorialForm 
-                lang={lang} 
-                onSave={handleSaveDeceased} 
-                editingDeceased={editingDeceased}
-                onCancel={editingDeceased ? () => setEditingDeceased(null) : undefined}
-              />
-            ) : (
-              <div className="bg-[#F8F4EC] border border-[#D8CFC0] p-6 rounded-2xl text-center space-y-3 shadow-xs relative overflow-hidden text-[#3B2F2F]">
-                <h4 className="text-xs uppercase text-[#5D6D53] tracking-widest font-bold font-sans">
-                  {lang === 'he' ? 'מצב עריכה פעיל' : lang === 'ru' ? 'Режим редактирования' : 'Edit Mode Active'}
-                </h4>
-                <p className="text-sm text-[#6B5E53]">
-                  {lang === 'he' 
-                    ? 'אנא השלם את עריכת פרטי הנפטר בחלון הפופאפ המרכזי' 
-                    : lang === 'ru'
-                      ? 'Пожалуйста, заполните форму редактирования в центральном окне'
-                      : 'Please complete editing the memorial details in the main popup window.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setEditingDeceased(null)}
-                  className="bg-[#EFE8DC] hover:bg-[#E8E2D5] text-[#3B2F2F] border border-[#D8CFC0] text-xs px-3 py-1.5 rounded-lg transition-all cursor-pointer font-sans font-semibold"
-                >
-                  {lang === 'he' ? 'ביטול עריכה' : lang === 'ru' ? 'Отмена' : 'Cancel Edit'}
-                </button>
-              </div>
-            )}
-
-            {/* Quick stats panel if not editing */}
-            {!editingDeceased && (
-              <div className="bg-[#F8F4EC] border border-[#D8CFC0] p-5 rounded-2xl text-center space-y-2 relative overflow-hidden shadow-xs text-[#3B2F2F]">
-                <h4 className="text-xs uppercase text-[#5D6D53] tracking-widest font-bold font-sans">
-                  {lang === 'he' ? 'סה"כ נפטרים במאגר' : lang === 'ru' ? 'Всего записей' : 'Total Memorials'}
-                </h4>
-                <p className="text-3xl font-serif font-bold text-[#3B2F2F] leading-none">
-                  {displayedList.length}
-                </p>
-                <div className="text-[10px] text-[#6B5E53] font-sans flex items-center justify-center gap-1">
-                  <Sparkles className="w-3 h-3 text-[#D4AF37]" />
-                  <span>{lang === 'he' ? 'יהי זכרם ברוך' : lang === 'ru' ? 'Пусть их память будет благословением' : 'May their memory be a blessing'}</span>
+            {isAdmin ? (
+              !editingDeceased ? (
+                <MemorialForm 
+                  lang={lang} 
+                  onSave={handleSaveDeceased} 
+                  editingDeceased={editingDeceased}
+                  onCancel={editingDeceased ? () => setEditingDeceased(null) : undefined}
+                />
+              ) : (
+                <div className="bg-[#F8F4EC] border border-[#D8CFC0] p-6 rounded-2xl text-center space-y-3 shadow-xs relative overflow-hidden text-[#3B2F2F]">
+                  <h4 className="text-xs uppercase text-[#5D6D53] tracking-widest font-bold font-sans">
+                    {lang === 'he' ? 'מצב עריכה פעיל' : lang === 'ru' ? 'Режим редактирования' : 'Edit Mode Active'}
+                  </h4>
+                  <p className="text-sm text-[#6B5E53]">
+                    {lang === 'he' 
+                      ? 'אנא השלם את עריכת פרטי הנפטר בחלון הפופאפ המרכזי' 
+                      : lang === 'ru'
+                        ? 'Пожалуйста, заполните форму редактирования в центральном окне'
+                        : 'Please complete editing the memorial details in the main popup window.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setEditingDeceased(null)}
+                    className="bg-[#EFE8DC] hover:bg-[#E8E2D5] text-[#3B2F2F] border border-[#D8CFC0] text-xs px-3 py-1.5 rounded-lg transition-all cursor-pointer font-sans font-semibold"
+                  >
+                    {lang === 'he' ? 'ביטול עריכה' : lang === 'ru' ? 'Отмена' : 'Cancel Edit'}
+                  </button>
                 </div>
+              )
+            ) : null}
+
+            {/* Quick stats panel */}
+            <div className="bg-[#F8F4EC] border border-[#D8CFC0] p-5 rounded-2xl text-center space-y-2 relative overflow-hidden shadow-xs text-[#3B2F2F]">
+              <h4 className="text-xs uppercase text-[#5D6D53] tracking-widest font-bold font-sans">
+                {lang === 'he' ? 'סה"כ נפטרים במאגר' : lang === 'ru' ? 'Всего записей' : 'Total Memorials'}
+              </h4>
+              <p className="text-3xl font-serif font-bold text-[#3B2F2F] leading-none">
+                {displayedList.length}
+              </p>
+              <div className="text-[10px] text-[#6B5E53] font-sans flex items-center justify-center gap-1">
+                <Sparkles className="w-3 h-3 text-[#D4AF37]" />
+                <span>{lang === 'he' ? 'יהי זכרם ברוך' : lang === 'ru' ? 'Пусть их память будет благословением' : 'May their memory be a blessing'}</span>
+              </div>
+              {isAdmin && !editingDeceased && (
                 <button
                   type="button"
                   onClick={() => setShowResetConfirm(true)}
@@ -1550,8 +1566,8 @@ function MainAppContent() {
                 >
                   {lang === 'he' ? 'איפוס המערכת ומחיקת כל השמות' : lang === 'ru' ? 'Сбросить систему и удалить все имена' : 'Reset System & Delete All Names'}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -1561,16 +1577,17 @@ function MainAppContent() {
             deceased={selectedDeceased}
             lang={lang}
             onClose={() => setSelectedDeceased(null)}
-            onEdit={(dec) => {
+            onEdit={isAdmin ? (dec) => {
               setEditingDeceased(dec);
               setSelectedDeceased(null);
-            }}
-            onDelete={handleDeleteDeceased}
+            } : undefined}
+            onDelete={isAdmin ? handleDeleteDeceased : undefined}
+            isAdmin={isAdmin}
           />
         )}
 
         {/* Dedicated Editing Modal Overlay */}
-        {editingDeceased && (
+        {isAdmin && editingDeceased && (
           <div className="fixed inset-0 bg-[#3B2F2F]/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-[#F8F4EC] border border-[#D8CFC0] rounded-3xl w-full max-w-xl shadow-xl relative">
               <MemorialForm 
@@ -1587,7 +1604,7 @@ function MainAppContent() {
         )}
 
         {/* Custom Reset Confirmation Modal */}
-        {showResetConfirm && (
+        {isAdmin && showResetConfirm && (
           <div className="fixed inset-0 bg-[#3B2F2F]/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 font-sans">
             <div className="bg-[#FFFDF8] border border-red-300 max-w-md w-full rounded-3xl p-6 shadow-xl relative space-y-4 text-[#3B2F2F]">
               <div className="flex items-center gap-3 text-red-600">
@@ -1626,7 +1643,7 @@ function MainAppContent() {
         )}
 
         {/* Duplicates Manager Modal */}
-        {showDuplicatesManager && (
+        {isAdmin && showDuplicatesManager && (
           <div className="fixed inset-0 bg-[#3B2F2F]/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 font-sans">
             <div className="bg-[#FFFDF8] border border-[#D8CFC0] max-w-2xl w-full rounded-3xl p-6 shadow-xl relative space-y-4 max-h-[85vh] overflow-y-auto text-[#3B2F2F]">
               <button
@@ -1686,17 +1703,19 @@ function MainAppContent() {
         )}
 
         {/* Mobile Floating Action Button (FAB) */}
-        <button
-          onClick={() => setIsMobileFormOpen(true)}
-          className="lg:hidden fixed bottom-18 right-4 z-40 bg-[#5D6D53] hover:bg-[#4F5D46] text-white font-bold p-3.5 rounded-full shadow-lg flex items-center gap-2 border border-[#5D6D53] cursor-pointer transition-transform active:scale-95"
-          title={lang === 'he' ? 'הוסף נפטר' : 'Add Memorial'}
-        >
-          <Plus className="w-6 h-6 stroke-[2.5]" />
-          <span className="text-xs font-bold pl-1 hidden sm:inline">{lang === 'he' ? 'הוסף נפטר' : 'Add Name'}</span>
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setIsMobileFormOpen(true)}
+            className="lg:hidden fixed bottom-18 right-4 z-40 bg-[#5D6D53] hover:bg-[#4F5D46] text-white font-bold p-3.5 rounded-full shadow-lg flex items-center gap-2 border border-[#5D6D53] cursor-pointer transition-transform active:scale-95"
+            title={lang === 'he' ? 'הוסף נפטר' : 'Add Memorial'}
+          >
+            <Plus className="w-6 h-6 stroke-[2.5]" />
+            <span className="text-xs font-bold pl-1 hidden sm:inline">{lang === 'he' ? 'הוסף נפטר' : 'Add Name'}</span>
+          </button>
+        )}
 
         {/* Mobile Form Bottom Sheet / Modal */}
-        {isMobileFormOpen && (
+        {isAdmin && isMobileFormOpen && (
           <div className="fixed inset-0 bg-[#3B2F2F]/60 backdrop-blur-sm z-50 flex items-end justify-center sm:items-center p-0 sm:p-4">
             <div className="bg-[#F8F4EC] border-t-2 sm:border-2 border-[#D8CFC0] rounded-t-3xl sm:rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-4 relative shadow-xl animate-in slide-in-from-bottom duration-300">
               <div className="flex items-center justify-between pb-3 border-b border-[#E8E2D5] mb-3">
@@ -1754,15 +1773,17 @@ function MainAppContent() {
             <span className="text-[10px] font-sans">{t.quick30Grid}</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('import')}
-            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'import' ? 'text-[#5D6D53] font-bold scale-105' : 'text-[#6B5E53] hover:text-[#3B2F2F]'
-            }`}
-          >
-            <FileDown className="w-5 h-5" />
-            <span className="text-[10px] font-sans">{t.importBulk}</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('import')}
+              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all cursor-pointer ${
+                activeTab === 'import' ? 'text-[#5D6D53] font-bold scale-105' : 'text-[#6B5E53] hover:text-[#3B2F2F]'
+              }`}
+            >
+              <FileDown className="w-5 h-5" />
+              <span className="text-[10px] font-sans">{t.importBulk}</span>
+            </button>
+          )}
         </div>
 
         {/* Admin Auth Modal */}

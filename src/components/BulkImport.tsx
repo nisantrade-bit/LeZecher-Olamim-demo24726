@@ -17,9 +17,10 @@ interface BulkImportProps {
   onImport: (newList: Deceased[]) => void;
   deceasedList: Deceased[];
   onCleanDuplicates?: () => void;
+  isAdmin?: boolean;
 }
 
-export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceasedList, onCleanDuplicates }) => {
+export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceasedList, onCleanDuplicates, isAdmin = false }) => {
   const t = translations[lang];
 
   const [pasteText, setPasteText] = useState('');
@@ -349,6 +350,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
   };
 
   const handleImportText = () => {
+    if (!isAdmin) return;
     if (!pasteText.trim()) {
       setFeedback({ type: 'error', message: lang === 'he' ? 'אנא הדבק טקסט קודם כל' : 'Please paste some text first' });
       return;
@@ -458,6 +460,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) return;
     const file = e.target.files?.[0];
     if (!file) return;
     readAndProcessFile(file);
@@ -465,6 +468,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
   };
 
   const readAndProcessFile = (file: File) => {
+    if (!isAdmin) return;
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
     
     if (fileExtension === 'json') {
@@ -626,6 +630,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
   };
 
   const handleDrop = (e: React.DragEvent) => {
+    if (!isAdmin) return;
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -637,6 +642,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
 
   // Excel exporting function (Single language data content with strict Supabase English headers)
   const handleExportExcel = () => {
+    if (!isAdmin) return;
     if (!deceasedList || deceasedList.length === 0) {
       setFeedback({ 
         type: 'error', 
@@ -799,70 +805,73 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
             <Upload className="w-6 h-6 text-[#c8a96e]" />
             <div>
               <h3 className="text-xl font-serif font-bold text-[#c8a96e]">
-                {t.importTitle}
+                {isAdmin ? t.importTitle : (lang === 'he' ? 'גיבוי וייצוא נתונים' : lang === 'ru' ? 'Экспорт и резервное копирование' : 'Database Export & Backup')}
               </h3>
               <p className="text-xs text-gray-400 font-sans mt-0.5">
                 {lang === 'he' 
-                  ? `ניהול, יבוא וייצוא רשומות הנפטרים (${deceasedList.length} נפטרים במאגר)`
-                  : `Manage, import, and export memorial database records (${deceasedList.length} records in database)`}
+                  ? (isAdmin ? `ניהול, יבוא וייצוא רשומות הנפטרים (${deceasedList.length} נפטרים במאגר)` : `הורדה וייצוא של רשומות הנפטרים במאגר (${deceasedList.length} נפטרים)`)
+                  : (isAdmin ? `Manage, import, and export memorial database records (${deceasedList.length} records in database)` : `Export and download memorial database records (${deceasedList.length} records)`)}
               </p>
             </div>
           </div>
 
-          {/* Clean, dedicated Export Action Box */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Excel Export Button */}
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              className="text-xs font-semibold text-emerald-300 hover:text-emerald-100 flex items-center gap-2 bg-emerald-950/60 hover:bg-emerald-900/80 px-3.5 py-2 rounded-lg border border-emerald-500/50 hover:border-emerald-400 transition-all font-sans cursor-pointer shadow-md"
-              title={lang === 'he' ? 'הורדה ב-Excel' : lang === 'ru' ? 'Скачать Excel' : 'Download Excel'}
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <span>{lang === 'he' ? 'הורדה ב-Excel' : lang === 'ru' ? 'Скачать Excel' : 'Download Excel'}</span>
-            </button>
-
-            {/* CSV Export Button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (!deceasedList || deceasedList.length === 0) {
-                  setFeedback({
-                    type: 'error',
-                    message: lang === 'he' ? 'אין נתונים במאגר להורדה' : 'No records in database to export'
-                  });
-                  return;
-                }
-                exportSingleLanguageCsv(deceasedList, lang);
-                setFeedback({
-                  type: 'success',
-                  message: lang === 'he' 
-                    ? `קובץ CSV הורד בהצלחה (${deceasedList.length} רשומות)!`
-                    : lang === 'ru'
-                    ? `Файл CSV успешно скачан (${deceasedList.length} записей)!`
-                    : `CSV file downloaded successfully (${deceasedList.length} records)!`
-                });
-              }}
-              className="text-xs font-semibold text-sky-300 hover:text-sky-100 flex items-center gap-2 bg-sky-950/60 hover:bg-sky-900/80 px-3.5 py-2 rounded-lg border border-sky-500/50 hover:border-sky-400 transition-all font-sans cursor-pointer shadow-md"
-              title={lang === 'he' ? 'הורדה ב-CSV' : lang === 'ru' ? 'Скачать CSV' : 'Download CSV'}
-            >
-              <FileText className="w-4 h-4 text-sky-400" />
-              <span>{lang === 'he' ? 'הורדה ב-CSV' : lang === 'ru' ? 'Скачать CSV' : 'Download CSV'}</span>
-            </button>
-
-            {/* Smart Clean Duplicates Button */}
-            {onCleanDuplicates && (
+          {/* Clean, dedicated Export Action Box (Admin Only) */}
+          {isAdmin && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Excel Export Button */}
               <button
                 type="button"
-                onClick={onCleanDuplicates}
-                className="text-xs font-medium text-amber-300 hover:text-amber-100 flex items-center gap-1.5 bg-amber-950/40 hover:bg-amber-900/60 px-3 py-2 rounded-lg border border-amber-500/40 hover:border-amber-400 transition-all font-sans cursor-pointer"
-                title={lang === 'he' ? 'זיהוי וניקוי כפילויות חכם במאגר הנפטרים' : 'Smart deduplicate database records'}
+                onClick={handleExportExcel}
+                className="text-xs font-semibold text-emerald-300 hover:text-emerald-100 flex items-center gap-2 bg-emerald-950/60 hover:bg-emerald-900/80 px-3.5 py-2 rounded-lg border border-emerald-500/50 hover:border-emerald-400 transition-all font-sans cursor-pointer shadow-md"
+                title={lang === 'he' ? 'הורדה ב-Excel' : lang === 'ru' ? 'Скачать Excel' : 'Download Excel'}
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>{lang === 'he' ? 'ניקוי כפילויות' : lang === 'ru' ? 'Удалить дубликаты' : 'Clean Duplicates'}</span>
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <span>{lang === 'he' ? 'הורדה ב-Excel' : lang === 'ru' ? 'Скачать Excel' : 'Download Excel'}</span>
               </button>
-            )}
-          </div>
+
+              {/* CSV Export Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isAdmin) return;
+                  if (!deceasedList || deceasedList.length === 0) {
+                    setFeedback({
+                      type: 'error',
+                      message: lang === 'he' ? 'אין נתונים במאגר להורדה' : 'No records in database to export'
+                    });
+                    return;
+                  }
+                  exportSingleLanguageCsv(deceasedList, lang);
+                  setFeedback({
+                    type: 'success',
+                    message: lang === 'he' 
+                      ? `קובץ CSV הורד בהצלחה (${deceasedList.length} רשומות)!`
+                      : lang === 'ru'
+                      ? `Файл CSV успешно скачан (${deceasedList.length} записей)!`
+                      : `CSV file downloaded successfully (${deceasedList.length} records)!`
+                  });
+                }}
+                className="text-xs font-semibold text-sky-300 hover:text-sky-100 flex items-center gap-2 bg-sky-950/60 hover:bg-sky-900/80 px-3.5 py-2 rounded-lg border border-sky-500/50 hover:border-sky-400 transition-all font-sans cursor-pointer shadow-md"
+                title={lang === 'he' ? 'הורדה ב-CSV' : lang === 'ru' ? 'Скачать CSV' : 'Download CSV'}
+              >
+                <FileText className="w-4 h-4 text-sky-400" />
+                <span>{lang === 'he' ? 'הורדה ב-CSV' : lang === 'ru' ? 'Скачать CSV' : 'Download CSV'}</span>
+              </button>
+
+              {/* Smart Clean Duplicates Button */}
+              {onCleanDuplicates && (
+                <button
+                  type="button"
+                  onClick={onCleanDuplicates}
+                  className="text-xs font-medium text-amber-300 hover:text-amber-100 flex items-center gap-1.5 bg-amber-950/40 hover:bg-amber-900/60 px-3 py-2 rounded-lg border border-amber-500/40 hover:border-amber-400 transition-all font-sans cursor-pointer"
+                  title={lang === 'he' ? 'זיהוי וניקוי כפילויות חכם במאגר הנפטרים' : 'Smart deduplicate database records'}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{lang === 'he' ? 'ניקוי כפילויות' : lang === 'ru' ? 'Удалить дубликаты' : 'Clean Duplicates'}</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -882,97 +891,109 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         </div>
       )}
 
-      <div className="space-y-6">
-        {/* CSV/Excel File Upload Option */}
-        <div className="font-sans">
-          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-            <label className="text-xs uppercase tracking-wider text-[#c8a96e] font-semibold">
-              {lang === 'he' ? 'אפשרות 1: העלאת קובץ Excel / CSV (מומלץ ביותר)' : lang === 'ru' ? 'Вариант 1: Загрузить файл Excel / CSV (Рекомендуется)' : 'Option 1: Upload Excel / CSV File (Recommended)'}
-            </label>
-            {/* Download Sample Template Buttons */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleDownloadExcelSample}
-                className="text-xs text-emerald-300 hover:text-emerald-100 flex items-center gap-1 bg-emerald-950/50 hover:bg-emerald-900/70 px-2.5 py-1 rounded border border-emerald-700/60 hover:border-emerald-500 transition-all cursor-pointer"
-                title={lang === 'he' ? 'הורדת קובץ Excel לדוגמה' : lang === 'ru' ? 'Скачать образец Excel' : 'Download sample Excel template'}
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{lang === 'he' ? 'הורד דוגמה (Excel)' : lang === 'ru' ? 'Скачать образец (Excel)' : 'Download Sample (Excel)'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadCsvSample}
-                className="text-xs text-sky-300 hover:text-sky-100 flex items-center gap-1 bg-sky-950/50 hover:bg-sky-900/70 px-2.5 py-1 rounded border border-sky-700/60 hover:border-sky-500 transition-all cursor-pointer"
-                title={lang === 'he' ? 'הורדת קובץ CSV לדוגמה' : lang === 'ru' ? 'Скачать образец CSV' : 'Download sample CSV template'}
-              >
-                <Download className="w-3.5 h-3.5 text-sky-400" />
-                <span>{lang === 'he' ? 'הורד דוגמה (CSV)' : lang === 'ru' ? 'Скачать образец (CSV)' : 'Download Sample (CSV)'}</span>
-              </button>
-            </div>
-          </div>
-
-          <div
-            onDragEnter={handleDrag}
-            onDragOver={handleDrag}
-            onDragLeave={handleDrag}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-4 cursor-pointer text-center transition-all ${
-              dragActive 
-                ? 'border-[#c8a96e] bg-[#c8a96e]/10' 
-                : 'border-[#c8a96e]/30 hover:border-[#c8a96e]/60 bg-[#0d0d0d] hover:bg-[#c8a96e]/5'
-            }`}
-          >
-            <Upload className="w-8 h-8 text-[#c8a96e]/60 group-hover:text-[#c8a96e] mb-2" />
-            <p className="text-xs text-gray-300 font-medium mb-1">
-              {lang === 'he' ? 'גרור ושחרר קובץ Excel או CSV כאן או לחץ לבחירת קובץ' : 'Drag & drop Excel or CSV file here or click to browse'}
-            </p>
-            <span className="text-[10px] text-gray-500 max-w-sm leading-tight">
-              {lang === 'he' 
-                ? 'תומך בקבצי .xlsx, .xls ו-.csv (עמודות: id, name, gender, fatherName, motherName, passDate, hebrewDate, bio, imageUrl, candlesCount)' 
-                : lang === 'ru'
-                ? 'Поддерживает файлы .xlsx, .xls и .csv (колонки: id, name, gender, fatherName, motherName, passDate, hebrewDate, bio, imageUrl, candlesCount)'
-                : 'Supports .xlsx, .xls, and .csv formats (columns: id, name, gender, fatherName, motherName, passDate, hebrewDate, bio, imageUrl, candlesCount)'}
-            </span>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              accept=".csv,.xlsx,.xls"
-              className="hidden"
-            />
-          </div>
+      {/* Download Sample Template Section (Available for everyone) */}
+      <div className="bg-[#0d0d0d] p-4 rounded-xl border border-[#c8a96e]/20 mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 font-sans">
+        <div>
+          <span className="text-xs font-bold text-[#c8a96e] block">
+            {lang === 'he' ? 'הורדת תבניות דוגמה (Sample Templates):' : lang === 'ru' ? 'Скачать образцы шаблонов:' : 'Download Sample Templates:'}
+          </span>
+          <p className="text-[11px] text-gray-400">
+            {lang === 'he' ? 'תבניות קובץ במבנה המדויק של המערכת לצורך גיבוי או בדיקה' : 'Template files matching exact database structure'}
+          </p>
         </div>
-
-        <div className="flex items-center my-4 font-sans">
-          <div className="flex-1 border-t border-[#c8a96e]/10"></div>
-          <span className="px-3 text-xs text-gray-500 font-semibold uppercase">{lang === 'he' ? 'או' : 'OR'}</span>
-          <div className="flex-1 border-t border-[#c8a96e]/10"></div>
-        </div>
-
-        {/* Text Area Quick Paste Option */}
-        <div className="font-sans">
-          <label className="block text-xs uppercase tracking-wider text-[#c8a96e] mb-2 font-semibold">
-            {t.bulkPasteLabel}
-          </label>
-          <textarea
-            value={pasteText}
-            onChange={(e) => setPasteText(e.target.value)}
-            placeholder={t.bulkPastePlaceholder}
-            rows={5}
-            className="w-full bg-[#0d0d0d] border border-[#c8a96e]/30 focus:border-[#c8a96e] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 outline-none transition-all font-mono resize-none leading-relaxed"
-          />
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleImportText}
-            className="mt-3 w-full bg-[#c8a96e]/10 hover:bg-[#c8a96e]/20 border border-[#c8a96e]/40 hover:border-[#c8a96e] text-[#c8a96e] font-semibold py-2 px-4 rounded-lg transition-all text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            onClick={handleDownloadExcelSample}
+            className="text-xs text-emerald-300 hover:text-emerald-100 flex items-center gap-1 bg-emerald-950/50 hover:bg-emerald-900/70 px-3 py-1.5 rounded border border-emerald-700/60 hover:border-emerald-500 transition-all cursor-pointer"
+            title={lang === 'he' ? 'הורדת קובץ Excel לדוגמה' : lang === 'ru' ? 'Скачать образец Excel' : 'Download sample Excel template'}
           >
-            <Clipboard className="w-4 h-4" />
-            {t.importButton}
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{lang === 'he' ? 'הורד דוגמה (Excel)' : lang === 'ru' ? 'Скачать образец (Excel)' : 'Download Sample (Excel)'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadCsvSample}
+            className="text-xs text-sky-300 hover:text-sky-100 flex items-center gap-1 bg-sky-950/50 hover:bg-sky-900/70 px-3 py-1.5 rounded border border-sky-700/60 hover:border-sky-500 transition-all cursor-pointer"
+            title={lang === 'he' ? 'הורדת קובץ CSV לדוגמה' : lang === 'ru' ? 'Скачать образец CSV' : 'Download sample CSV template'}
+          >
+            <Download className="w-3.5 h-3.5 text-sky-400" />
+            <span>{lang === 'he' ? 'הורד דוגמה (CSV)' : lang === 'ru' ? 'Скачать образец (CSV)' : 'Download Sample (CSV)'}</span>
           </button>
         </div>
       </div>
+
+      {/* Admin-only Import Section */}
+      {isAdmin && (
+        <div className="space-y-6">
+          {/* CSV/Excel File Upload Option */}
+          <div className="font-sans">
+            <label className="block text-xs uppercase tracking-wider text-[#c8a96e] font-semibold mb-2">
+              {lang === 'he' ? 'אפשרות 1: העלאת קובץ Excel / CSV (מומלץ ביותר)' : lang === 'ru' ? 'Вариант 1: Загрузить файл Excel / CSV (Рекомендуется)' : 'Option 1: Upload Excel / CSV File (Recommended)'}
+            </label>
+
+            <div
+              onDragEnter={handleDrag}
+              onDragOver={handleDrag}
+              onDragLeave={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-4 cursor-pointer text-center transition-all ${
+                dragActive 
+                  ? 'border-[#c8a96e] bg-[#c8a96e]/10' 
+                  : 'border-[#c8a96e]/30 hover:border-[#c8a96e]/60 bg-[#0d0d0d] hover:bg-[#c8a96e]/5'
+              }`}
+            >
+              <Upload className="w-8 h-8 text-[#c8a96e]/60 group-hover:text-[#c8a96e] mb-2" />
+              <p className="text-xs text-gray-300 font-medium mb-1">
+                {lang === 'he' ? 'גרור ושחרר קובץ Excel או CSV כאן או לחץ לבחירת קובץ' : 'Drag & drop Excel or CSV file here or click to browse'}
+              </p>
+              <span className="text-[10px] text-gray-500 max-w-sm leading-tight">
+                {lang === 'he' 
+                  ? 'תומך בקבצי .xlsx, .xls ו-.csv (עמודות: id, name, gender, fatherName, motherName, passDate, hebrewDate, bio, imageUrl, candlesCount)' 
+                  : lang === 'ru'
+                  ? 'Поддерживает файлы .xlsx, .xls и .csv (колонки: id, name, gender, fatherName, motherName, passDate, hebrewDate, bio, imageUrl, candlesCount)'
+                  : 'Supports .xlsx, .xls, and .csv formats (columns: id, name, gender, fatherName, motherName, passDate, hebrewDate, bio, imageUrl, candlesCount)'}
+              </span>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".csv,.xlsx,.xls"
+                className="hidden"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center my-4 font-sans">
+            <div className="flex-1 border-t border-[#c8a96e]/10"></div>
+            <span className="px-3 text-xs text-gray-500 font-semibold uppercase">{lang === 'he' ? 'או' : 'OR'}</span>
+            <div className="flex-1 border-t border-[#c8a96e]/10"></div>
+          </div>
+
+          {/* Text Area Quick Paste Option */}
+          <div className="font-sans">
+            <label className="block text-xs uppercase tracking-wider text-[#c8a96e] mb-2 font-semibold">
+              {t.bulkPasteLabel}
+            </label>
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder={t.bulkPastePlaceholder}
+              rows={5}
+              className="w-full bg-[#0d0d0d] border border-[#c8a96e]/30 focus:border-[#c8a96e] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 outline-none transition-all font-mono resize-none leading-relaxed"
+            />
+            <button
+              type="button"
+              onClick={handleImportText}
+              className="mt-3 w-full bg-[#c8a96e]/10 hover:bg-[#c8a96e]/20 border border-[#c8a96e]/40 hover:border-[#c8a96e] text-[#c8a96e] font-semibold py-2 px-4 rounded-lg transition-all text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Clipboard className="w-4 h-4" />
+              {t.importButton}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

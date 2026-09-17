@@ -21,11 +21,12 @@ interface MemorialDetailsModalProps {
   deceased: Deceased;
   lang: Language;
   onClose: () => void;
-  onEdit: (deceased: Deceased) => void;
-  onDelete: (id: number) => void;
+  onEdit?: (deceased: Deceased) => void;
+  onDelete?: (id: number) => void;
+  isAdmin?: boolean;
 }
 
-export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ deceased, lang, onClose, onEdit, onDelete }) => {
+export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ deceased, lang, onClose, onEdit, onDelete, isAdmin = false }) => {
   if (!deceased || !deceased.name || deceased.name.trim() === '' || deceased.name === 'undefined') {
     return (
       <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
@@ -983,25 +984,29 @@ export const MemorialDetailsModal: React.FC<MemorialDetailsModalProps> = ({ dece
         </div>
 
         {/* Bottom Actions Footer */}
-        {!showConfirmDelete && (
+        {(!showConfirmDelete && isAdmin && (onEdit || onDelete)) && (
           <div className="bg-[#F8F2E4] border-t border-[#E8E2D5] px-6 py-4 flex gap-3 font-sans">
-            <button
-              type="button"
-              onClick={() => onEdit(deceased)}
-              className="flex-1 bg-[#5D6D53] hover:bg-[#4F5D46] text-white py-2 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-            >
-              <Edit className="w-4 h-4" />
-              <span>{t.edit}</span>
-            </button>
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(deceased)}
+                className="flex-1 bg-[#5D6D53] hover:bg-[#4F5D46] text-white py-2 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Edit className="w-4 h-4" />
+                <span>{t.edit}</span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => setShowConfirmDelete(true)}
-              className="px-4 py-2 border border-red-300 hover:border-red-500 hover:bg-red-50 text-red-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
-              title={t.delete}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => setShowConfirmDelete(true)}
+                className="px-4 py-2 border border-red-300 hover:border-red-500 hover:bg-red-50 text-red-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                title={t.delete}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         )}
       </div>
