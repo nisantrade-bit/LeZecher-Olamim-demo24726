@@ -361,9 +361,11 @@ export function sanitizeRecordForSupabase<T extends Record<string, any>>(record:
     }
   }
 
-  // Handle photo property alias
-  if (copy.photo) {
-    if (!copy.image) copy.image = copy.photo;
+  // Handle photo property alias and ensure unsupported 'photo' column is NEVER sent to Supabase
+  if ('photo' in copy) {
+    if (!copy.image && copy.photo) copy.image = copy.photo;
+    if (!copy.imageUrl && copy.photo) copy.imageUrl = copy.photo;
+    if (!copy.photoUrl && copy.photo) copy.photoUrl = copy.photo;
     delete copy.photo;
   }
 
