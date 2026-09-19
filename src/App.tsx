@@ -518,12 +518,12 @@ function MainAppContent() {
 
   // Helper to merge urlDeceasedFromPayload into any loaded list
   const mergeWithUrlPayload = (list: Deceased[]): Deceased[] => {
-    let clean = deduplicateSingleList(list);
+    let clean = deduplicateSingleList(list.map(r => normalizeFetchedRecord(r)));
     if (urlDeceasedFromPayload) {
-      const enrichedPayload = enrichDeceasedTranslations(urlDeceasedFromPayload);
+      const enrichedPayload = enrichDeceasedTranslations(normalizeFetchedRecord(urlDeceasedFromPayload));
       clean = smartMergeDeceasedLists(clean, [enrichedPayload]);
     }
-    return clean;
+    return clean.map(r => normalizeFetchedRecord(r));
   };
 
   // Load database on mount directly from Supabase, with local storage & fallback merging
@@ -539,7 +539,7 @@ function MainAppContent() {
           if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              localRecords = filterOutMockRecords(parsed);
+              localRecords = filterOutMockRecords(parsed.map((r: any) => normalizeFetchedRecord(r)));
             }
           }
         } catch (e) {
@@ -550,9 +550,9 @@ function MainAppContent() {
         if ((window as any).__OFFLINE_DATABASE_DATA__) {
           const offlineData = (window as any).__OFFLINE_DATABASE_DATA__;
           let merged = smartMergeDeceasedLists([], localRecords);
-          merged = smartMergeDeceasedLists(merged, Array.isArray(offlineData) ? offlineData : []);
+          merged = smartMergeDeceasedLists(merged, Array.isArray(offlineData) ? offlineData.map((r: any) => normalizeFetchedRecord(r)) : []);
           merged = mergeWithUrlPayload(merged);
-          const finalData = filterOutMockRecords(deduplicateSingleList(merged));
+          const finalData = filterOutMockRecords(deduplicateSingleList(merged.map((r: any) => normalizeFetchedRecord(r))));
           setMasterList(finalData);
           try {
             localStorage.setItem('eternal_db', JSON.stringify(finalData));
@@ -568,11 +568,11 @@ function MainAppContent() {
             if (error && isMissingTableError(error)) {
               setSupabaseTableMissing(true);
             } else if (!error && Array.isArray(data)) {
-              supabaseRecords = filterOutMockRecords(data as Deceased[]);
+              supabaseRecords = filterOutMockRecords((data as Deceased[]).map(record => normalizeFetchedRecord(record)));
             } else {
               const res = await safeSelect('deceased');
               if (!res.error && Array.isArray(res.data)) {
-                supabaseRecords = filterOutMockRecords(res.data as Deceased[]);
+                supabaseRecords = filterOutMockRecords((res.data as Deceased[]).map(record => normalizeFetchedRecord(record)));
               }
             }
           } catch (err) {
@@ -661,7 +661,27 @@ function MainAppContent() {
         try {
           const cachedList = JSON.parse(cachedStr) as Deceased[];
           if (isListInTargetLanguage(cachedList, lang)) {
-            setDisplayedList(cachedList);
+            // Synchronize date fields from normalized masterList to prevent stale cached translations from overriding normalized dates
+            const masterMap = new Map<number | string, Deceased>();
+            masterList.forEach(m => {
+              if (m && m.id !== undefined && m.id !== null) {
+                masterMap.set(Number(m.id) || m.id, m);
+              }
+            });
+            const normalizedCachedList = cachedList.map(item => {
+              const masterItem = masterMap.get(Number(item.id) || item.id);
+              if (masterItem) {
+                return {
+                  ...item,
+                  day: masterItem.day,
+                  month: masterItem.month,
+                  hebrewDate: masterItem.hebrewDate,
+                  passDate: masterItem.passDate
+                };
+              }
+              return normalizeFetchedRecord(item);
+            });
+            setDisplayedList(normalizedCachedList);
             return;
           } else {
             localStorage.removeItem(`eternal_db_translated_${lang}`);
