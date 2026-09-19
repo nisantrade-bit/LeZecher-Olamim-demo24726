@@ -65,7 +65,9 @@ export function isKnownHebrewMonth(name: string): boolean {
     const withoutBet = clean.substring(1);
     const knownExactBases = [
       "תשרי", "חשון", "חשוון", "מרחשון", "מרחשוון", "כסלו", "טבת", "שבט",
-      "אדר", "אדר א", "אדר ב", "ניסן", "אייר", "סיון", "סיוון", "תמוז", "אב", "אלול"
+      "אדר", "אדר א", "אדר ב", "ניסן", "אייר", "סיון", "סיוון", "תמוז", "אב", "אלול",
+      "adar", "adar i", "adar ii", "adar 1", "adar 2",
+      "адар", "адар i", "адар ii", "адар 1", "адар 2"
     ];
     if (knownExactBases.includes(withoutBet)) {
       clean = withoutBet;
@@ -77,9 +79,14 @@ export function isKnownHebrewMonth(name: string): boolean {
   if (clean === "כסלו" || clean.includes("kislev") || clean.includes("кислев")) return true;
   if (clean === "טבת" || clean.includes("tevet") || clean.includes("тевет")) return true;
   if (clean === "שבט" || clean.includes("shevat") || clean.includes("shvat") || clean.includes("шват")) return true;
-  if (clean === "אדר א" || clean === "אדר א׳" || clean.includes("adar i") || clean.includes("адар i") || clean.includes("адар 1")) return true;
-  if (clean === "אדר ב" || clean === "אדר ב׳" || clean.includes("adar ii") || clean.includes("адар ii") || clean.includes("адар 2")) return true;
-  if (clean === "אדר" || clean === "adar" || clean === "адар") return true;
+  
+  // Adar II checked FIRST with exact match
+  if (["אדר ב", "adar ii", "adar 2", "адар ii", "адар 2"].includes(clean)) return true;
+  // Adar I checked SECOND with exact match
+  if (["אדר א", "adar i", "adar 1", "адар i", "адар 1"].includes(clean)) return true;
+  // Plain Adar checked THIRD with exact match
+  if (["אדר", "adar", "адар"].includes(clean)) return true;
+
   if (clean === "ניסן" || clean.includes("nisan") || clean.includes("нисан")) return true;
   if (clean === "אייר" || clean.includes("iyar") || clean.includes("ияр")) return true;
   if (clean === "סיון" || clean === "סיוון" || clean.includes("sivan") || clean.includes("сиван")) return true;
@@ -102,7 +109,9 @@ export function normalizeMonthName(name: string): string {
     const withoutBet = clean.substring(1);
     const knownExactBases = [
       "תשרי", "חשון", "חשוון", "מרחשון", "מרחשוון", "כסלו", "טבת", "שבט",
-      "אדר", "אדר א", "אדר ב", "ניסן", "אייר", "סיון", "סיוון", "תמוז", "אב", "אלול"
+      "אדר", "אדר א", "אדר ב", "ניסן", "אייר", "סיון", "סיוון", "תמוז", "אב", "אלול",
+      "adar", "adar i", "adar ii", "adar 1", "adar 2",
+      "адар", "адар i", "адар ii", "адар 1", "адар 2"
     ];
     if (knownExactBases.includes(withoutBet)) {
       clean = withoutBet;
@@ -114,9 +123,14 @@ export function normalizeMonthName(name: string): string {
   if (clean === "כסלו" || clean.includes("kislev") || clean.includes("кислев")) return "כסלו";
   if (clean === "טבת" || clean.includes("tevet") || clean.includes("тевет")) return "טבת";
   if (clean === "שבט" || clean.includes("shevat") || clean.includes("shvat") || clean.includes("шват")) return "שבט";
-  if (clean === "אדר א" || clean === "אדר א׳" || clean.includes("adar i") || clean.includes("адар i") || clean.includes("адар 1")) return "אדר א׳";
-  if (clean === "אדר ב" || clean === "אדר ב׳" || clean.includes("adar ii") || clean.includes("адар ii") || clean.includes("адар 2")) return "אדר ב׳";
-  if (clean === "אדר" || clean === "adar" || clean === "адар") return "אדר ב׳";
+
+  // Adar II checked FIRST with exact match
+  if (["אדר ב", "adar ii", "adar 2", "адар ii", "адар 2"].includes(clean)) return "אדר ב׳";
+  // Adar I checked SECOND with exact match
+  if (["אדר א", "adar i", "adar 1", "адар i", "адар 1"].includes(clean)) return "אדר א׳";
+  // Plain Adar checked THIRD with exact match (normalizes to Adar II by historical convention)
+  if (["אדר", "adar", "адар"].includes(clean)) return "אדר ב׳";
+
   if (clean === "ניסן" || clean.includes("nisan") || clean.includes("нисан")) return "ניסן";
   if (clean === "אייר" || clean.includes("iyar") || clean.includes("ияр")) return "אייר";
   if (clean === "סיון" || clean === "סיוון" || clean.includes("sivan") || clean.includes("сиван")) return "סיון";
