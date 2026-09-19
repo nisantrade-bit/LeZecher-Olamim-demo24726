@@ -54,30 +54,79 @@ export const HEBREW_MONTHS_RU = [
 ];
 
 /**
+ * Checks if a string is a recognized Hebrew month name (or translation)
+ */
+export function isKnownHebrewMonth(name: string): boolean {
+  if (!name || !name.trim()) return false;
+  let clean = name.replace(/['"״׳`’“”]/g, '').trim().toLowerCase();
+
+  // Strip leading preposition 'ב' if followed by an exact recognized Hebrew month base
+  if (clean.startsWith('ב') && clean.length > 2) {
+    const withoutBet = clean.substring(1);
+    const knownExactBases = [
+      "תשרי", "חשון", "חשוון", "מרחשון", "מרחשוון", "כסלו", "טבת", "שבט",
+      "אדר", "אדר א", "אדר ב", "ניסן", "אייר", "סיון", "סיוון", "תמוז", "אב", "אלול"
+    ];
+    if (knownExactBases.includes(withoutBet)) {
+      clean = withoutBet;
+    }
+  }
+
+  if (clean === "תשרי" || clean.includes("tishr") || clean.includes("тишрей")) return true;
+  if (clean === "חשון" || clean === "חשוון" || clean === "מרחשון" || clean === "מרחשוון" || clean.includes("heshvan") || clean.includes("cheshvan") || clean.includes("хешван")) return true;
+  if (clean === "כסלו" || clean.includes("kislev") || clean.includes("кислев")) return true;
+  if (clean === "טבת" || clean.includes("tevet") || clean.includes("тевет")) return true;
+  if (clean === "שבט" || clean.includes("shevat") || clean.includes("shvat") || clean.includes("шват")) return true;
+  if (clean === "אדר א" || clean === "אדר א׳" || clean.includes("adar i") || clean.includes("адар i") || clean.includes("адар 1")) return true;
+  if (clean === "אדר ב" || clean === "אדר ב׳" || clean.includes("adar ii") || clean.includes("адар ii") || clean.includes("адар 2")) return true;
+  if (clean === "אדר" || clean === "adar" || clean === "адар") return true;
+  if (clean === "ניסן" || clean.includes("nisan") || clean.includes("нисан")) return true;
+  if (clean === "אייר" || clean.includes("iyar") || clean.includes("ияр")) return true;
+  if (clean === "סיון" || clean === "סיוון" || clean.includes("sivan") || clean.includes("сиван")) return true;
+  if (clean === "תמוז" || clean.includes("tamuz") || clean.includes("tammuz") || clean.includes("таммуз")) return true;
+  if (clean === "אב" || clean === "av" || clean === "ав" || clean === "מנחם אב") return true;
+  if (clean === "אלול" || clean.includes("elul") || clean.includes("элул")) return true;
+
+  return false;
+}
+
+/**
  * Normalizes input month name to the canonical Hebrew spelling
  */
 export function normalizeMonthName(name: string): string {
   if (!name) return "תשרי";
-  const clean = name.replace(/['"״׳]/g, '').trim().toLowerCase();
+  let clean = name.replace(/['"״׳`’“”]/g, '').trim().toLowerCase();
+
+  // Strip leading preposition 'ב' if followed by an exact recognized Hebrew month base
+  if (clean.startsWith('ב') && clean.length > 2) {
+    const withoutBet = clean.substring(1);
+    const knownExactBases = [
+      "תשרי", "חשון", "חשוון", "מרחשון", "מרחשוון", "כסלו", "טבת", "שבט",
+      "אדר", "אדר א", "אדר ב", "ניסן", "אייר", "סיון", "סיוון", "תמוז", "אב", "אלול"
+    ];
+    if (knownExactBases.includes(withoutBet)) {
+      clean = withoutBet;
+    }
+  }
   
-  if (clean.includes("תשרי") || clean.includes("tishr") || clean.includes("тишрей")) return "תשרי";
-  if (clean.includes("חשון") || clean.includes("חשוון") || clean.includes("מרחשון") || clean.includes("מרחשוון") || clean.includes("heshvan") || clean.includes("cheshvan") || clean.includes("хешван")) return "חשוון";
-  if (clean.includes("כסלו") || clean.includes("kislev") || clean.includes("кислев")) return "כסלו";
-  if (clean.includes("טבת") || clean.includes("tevet") || clean.includes("тевет")) return "טבת";
-  if (clean.includes("שבט") || clean.includes("shevat") || clean.includes("shvat") || clean.includes("шват")) return "שבט";
-  if (clean.includes("אדר א") || clean.includes("adar i") || clean.includes("адар i") || clean.includes("адар 1")) return "אדר א׳";
-  if (clean.includes("אדר ב") || clean.includes("adar ii") || clean.includes("адар ii") || clean.includes("адар 2")) return "אדר ב׳";
+  if (clean === "תשרי" || clean.includes("tishr") || clean.includes("тишрей")) return "תשרי";
+  if (clean === "חשון" || clean === "חשוון" || clean === "מרחשון" || clean === "מרחשוון" || clean.includes("heshvan") || clean.includes("cheshvan") || clean.includes("хешван")) return "חשוון";
+  if (clean === "כסלו" || clean.includes("kislev") || clean.includes("кислев")) return "כסלו";
+  if (clean === "טבת" || clean.includes("tevet") || clean.includes("тевет")) return "טבת";
+  if (clean === "שבט" || clean.includes("shevat") || clean.includes("shvat") || clean.includes("шват")) return "שבט";
+  if (clean === "אדר א" || clean === "אדר א׳" || clean.includes("adar i") || clean.includes("адар i") || clean.includes("адар 1")) return "אדר א׳";
+  if (clean === "אדר ב" || clean === "אדר ב׳" || clean.includes("adar ii") || clean.includes("адар ii") || clean.includes("адар 2")) return "אדר ב׳";
   if (clean === "אדר" || clean === "adar" || clean === "адар") return "אדר ב׳";
-  if (clean.includes("ניסן") || clean.includes("nisan") || clean.includes("нисан")) return "ניסן";
-  if (clean.includes("אייר") || clean.includes("iyar") || clean.includes("ияр")) return "אייר";
-  if (clean.includes("סיון") || clean.includes("סיוון") || clean.includes("sivan") || clean.includes("сиван")) return "סיון";
-  if (clean.includes("תמוז") || clean.includes("tamuz") || clean.includes("tammuz") || clean.includes("таммуз")) return "תמוז";
-  if (clean === "אב" || clean === "av" || clean === "ав" || clean.includes("מנחם אב")) return "אב";
-  if (clean.includes("אלול") || clean.includes("elul") || clean.includes("элул")) return "אלול";
+  if (clean === "ניסן" || clean.includes("nisan") || clean.includes("нисан")) return "ניסן";
+  if (clean === "אייר" || clean.includes("iyar") || clean.includes("ияр")) return "אייר";
+  if (clean === "סיון" || clean === "סיוון" || clean.includes("sivan") || clean.includes("сиван")) return "סיון";
+  if (clean === "תמוז" || clean.includes("tamuz") || clean.includes("tammuz") || clean.includes("таммуз")) return "תמוז";
+  if (clean === "אב" || clean === "av" || clean === "ав" || clean === "מנחם אב") return "אב";
+  if (clean === "אלול" || clean.includes("elul") || clean.includes("элул")) return "אלול";
   
-  // Default fallback if we can find a partial match
+  // Default fallback if we can find an exact match in HEBREW_MONTHS_HE
   for (const m of HEBREW_MONTHS_HE) {
-    if (m.includes(clean) || clean.includes(m)) return m;
+    if (m === clean) return m;
   }
   
   return "תשרי"; // Safe fallback
@@ -148,7 +197,7 @@ export function gimatriya(num: number): string {
  */
 export function parseGimatriya(text: string): number | null {
   if (!text) return null;
-  const clean = text.replace(/['"״׳]/g, '').trim();
+  const clean = text.replace(/['"״׳`’“”]/g, '').trim();
   
   // Try standard number first
   const num = parseInt(clean, 10);
@@ -158,7 +207,8 @@ export function parseGimatriya(text: string): number | null {
   const specialMap: { [key: string]: number } = {
     'טו': 15, 'טז': 16, 'יא': 11, 'יב': 12, 'יג': 13, 'יד': 14,
     'יז': 17, 'יח': 18, 'יט': 19, 'כא': 21, 'כב': 22, 'כג': 23,
-    'כד': 24, 'כה': 25, 'כו': 26, 'כז': 27, 'כח': 28, 'כט': 29
+    'כד': 24, 'כה': 25, 'כו': 26, 'כז': 27, 'כח': 28, 'כט': 29,
+    'ל': 30
   };
   if (specialMap[clean]) return specialMap[clean];
 
@@ -192,22 +242,77 @@ export function parseAndNormalizeDateFields(input: {
   month: string;
   hebrewDate: string;
   passDate: string;
+  isValidDate: boolean;
+  invalidReason?: string;
 } {
-  let day = input.day ? Number(input.day) : 0;
-  if (isNaN(day)) day = 0;
-  let month = input.month ? normalizeMonthName(input.month) : '';
-  let hebrewDateStr = input.hebrewDate ? String(input.hebrewDate).trim() : '';
-  let passDateStr = input.passDate ? String(input.passDate).trim() : '';
+  const rawDayStr = input.day !== undefined && input.day !== null ? String(input.day).trim() : '';
+  const rawMonthStr = input.month !== undefined && input.month !== null ? String(input.month).trim() : '';
+  const rawHebrewDateStr = input.hebrewDate !== undefined && input.hebrewDate !== null ? String(input.hebrewDate).trim() : '';
+  const rawPassDateStr = input.passDate !== undefined && input.passDate !== null ? String(input.passDate).trim() : '';
 
+  let day: number | null = null;
+  let month = '';
+  let hebrewDateStr = rawHebrewDateStr;
+  let passDateStr = rawPassDateStr;
+  let isExplicitInvalid = false;
+  let invalidReason: string | undefined = undefined;
+
+  // 1. Evaluate explicit day input
+  if (rawDayStr !== '') {
+    const parsedDay = parseGimatriya(rawDayStr);
+    if (parsedDay !== null && parsedDay >= 1 && parsedDay <= 30) {
+      day = parsedDay;
+    } else {
+      isExplicitInvalid = true;
+      invalidReason = `Explicit day "${rawDayStr}" is out of valid range (1..30)`;
+    }
+  }
+
+  // 2. Evaluate explicit month input
+  if (rawMonthStr !== '') {
+    if (isKnownHebrewMonth(rawMonthStr)) {
+      month = normalizeMonthName(rawMonthStr);
+    } else {
+      isExplicitInvalid = true;
+      if (!invalidReason) {
+        invalidReason = `Explicit month "${rawMonthStr}" is not a recognized Hebrew month`;
+      }
+    }
+  }
+
+  // 3. Evaluate explicit hebrewDate string
+  if (rawHebrewDateStr !== '' && rawHebrewDateStr !== '-') {
+    const parts = rawHebrewDateStr.split(/\s+/);
+    let parsedDayFromHebrew: number | null = null;
+    let parsedMonthFromHebrew = '';
+    if (parts.length >= 2) {
+      parsedDayFromHebrew = parseGimatriya(parts[0]);
+      if (isKnownHebrewMonth(parts.slice(1).join(' '))) {
+        parsedMonthFromHebrew = normalizeMonthName(parts.slice(1).join(' '));
+      }
+    }
+
+    if (parsedDayFromHebrew !== null && parsedDayFromHebrew >= 1 && parsedDayFromHebrew <= 30 && parsedMonthFromHebrew) {
+      // Canonical valid hebrewDate string can supply day and month if no explicit invalid error occurred
+      if (!isExplicitInvalid) {
+        day = parsedDayFromHebrew;
+        month = parsedMonthFromHebrew;
+      }
+    } else if (day === null && !isExplicitInvalid) {
+      // hebrewDate was explicitly given but cannot be parsed, and no valid day was given
+      isExplicitInvalid = true;
+      invalidReason = `Invalid hebrewDate string: "${rawHebrewDateStr}"`;
+    }
+  }
+
+  // 4. Evaluate Gregorian passDate
   let hbFromGregorian: { day: number; normalizedMonth: string } | null = null;
-
-  // 1. If passDate is a Gregorian YYYY-MM-DD or DD/MM/YYYY or DD.MM.YYYY
-  if (passDateStr && passDateStr !== '-') {
+  if (rawPassDateStr !== '' && rawPassDateStr !== '-') {
     let gDate: Date | null = null;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(passDateStr)) {
-      gDate = new Date(passDateStr);
-    } else if (/^\d{1,2}[\/\.]\d{1,2}[\/\.]\d{4}$/.test(passDateStr)) {
-      const parts = passDateStr.split(/[\/\.]/);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(rawPassDateStr)) {
+      gDate = new Date(rawPassDateStr);
+    } else if (/^\d{1,2}[\/\.]\d{1,2}[\/\.]\d{4}$/.test(rawPassDateStr)) {
+      const parts = rawPassDateStr.split(/[\/\.]/);
       const d = parseInt(parts[0], 10);
       const m = parseInt(parts[1], 10) - 1;
       const y = parseInt(parts[2], 10);
@@ -217,61 +322,46 @@ export function parseAndNormalizeDateFields(input: {
     if (gDate && !isNaN(gDate.getTime())) {
       const hb = getHebrewDate(gDate);
       hbFromGregorian = { day: hb.day, normalizedMonth: hb.normalizedMonth };
-      if (!day) day = hb.day;
-      if (!month) month = hb.normalizedMonth;
-      if (!hebrewDateStr || hebrewDateStr === '-') {
-        hebrewDateStr = `${gimatriya(hb.day)} ${hb.normalizedMonth}`;
-      }
-      // Standardize passDate to YYYY-MM-DD format
       const yyyy = gDate.getFullYear();
       const mm = String(gDate.getMonth() + 1).padStart(2, '0');
       const dd = String(gDate.getDate()).padStart(2, '0');
       passDateStr = `${yyyy}-${mm}-${dd}`;
+    } else if (rawPassDateStr.length > 5) {
+      // Invalid explicit passDate
+      if (day === null && !isExplicitInvalid) {
+        isExplicitInvalid = true;
+        invalidReason = `Invalid Gregorian passDate: "${rawPassDateStr}"`;
+      }
     }
   }
 
-  // 2. Parse day & month from hebrewDateStr / passDateStr
-  let parsedDayFromHebrew: number | null = null;
-  let parsedMonthFromHebrew = '';
-
-  if (hebrewDateStr && hebrewDateStr !== '-') {
-    const parts = hebrewDateStr.split(/\s+/);
-    if (parts.length >= 2) {
-      parsedDayFromHebrew = parseGimatriya(parts[0]);
-      parsedMonthFromHebrew = normalizeMonthName(parts.slice(1).join(' '));
-    }
-  }
-
-  // Recover from fallback default (1 / תשרי) if hebrewDate or passDate yields a valid specific date
-  const isDefault1Tishrei = day === 1 && month === 'תשרי';
-  const hasHebrewParsed = parsedDayFromHebrew !== null && parsedDayFromHebrew >= 1 && parsedDayFromHebrew <= 30 && Boolean(parsedMonthFromHebrew);
-
-  if (!day || !month || isDefault1Tishrei) {
-    if (hasHebrewParsed) {
-      day = parsedDayFromHebrew!;
-      month = parsedMonthFromHebrew;
-    } else if (hbFromGregorian) {
-      day = hbFromGregorian.day;
+  // 5. Fallback from Gregorian conversion ONLY when no explicit input was provided and no explicit error occurred
+  if (day === null && !isExplicitInvalid && hbFromGregorian) {
+    day = hbFromGregorian.day;
+    if (!month) {
       month = hbFromGregorian.normalizedMonth;
     }
   }
 
-  // Fallbacks if still incomplete
-  if (!day || day < 1 || day > 30) day = 1;
-  if (!month) month = 'תשרי';
+  // Final structural fallbacks for type safety (default 1 Tishrei if completely missing)
+  const isValidDate = !isExplicitInvalid;
+  const finalDay = day !== null && day >= 1 && day <= 30 ? day : 1;
+  const finalMonth = month ? month : 'תשרי';
 
   if (!hebrewDateStr || hebrewDateStr === '-') {
-    hebrewDateStr = `${gimatriya(day)} ${month}`;
+    hebrewDateStr = `${gimatriya(finalDay)} ${finalMonth}`;
   }
   if (!passDateStr) {
     passDateStr = '-';
   }
 
   return {
-    day,
-    month,
+    day: finalDay,
+    month: finalMonth,
     hebrewDate: hebrewDateStr,
-    passDate: passDateStr
+    passDate: passDateStr,
+    isValidDate,
+    invalidReason
   };
 }
 

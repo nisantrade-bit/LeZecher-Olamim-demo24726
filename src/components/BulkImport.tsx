@@ -6,7 +6,7 @@
 import React, { useState, useRef } from 'react';
 import { Deceased, Gender, Language } from '../types';
 import { translations, sanitizeParentName } from '../utils/translations';
-import { normalizeMonthName } from '../utils/hebrewDate';
+import { normalizeMonthName, parseAndNormalizeDateFields } from '../utils/hebrewDate';
 import { Download, Upload, Clipboard, CheckCircle, AlertTriangle, FileSpreadsheet, Sparkles, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { downloadDeceasedCsv, exportCombined3LanguageCsv, exportSingleLanguageCsv, CANONICAL_EXCEL_CSV_HEADERS } from '../utils/csvExport';
@@ -76,8 +76,8 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
   };
 
   // Convert parsed lines into structured Deceased items with thorough validation and dynamic header matching
-  const processLines = (rows: string[][]): Deceased[] => {
-    if (!rows || rows.length === 0) return [];
+  const processLines = (rows: string[][]): { list: Deceased[]; rejectedCount: number; rejectedReasons: string[] } => {
+    if (!rows || rows.length === 0) return { list: [], rejectedCount: 0, rejectedReasons: [] };
 
     let idIdx = -1;
     let nameIdx = -1;
@@ -172,6 +172,8 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
     }
 
     const result: Deceased[] = [];
+    const rejectedReasons: string[] = [];
+    let rejectedCount = 0;
 
     for (let index = startRow; index < rows.length; index++) {
       const row = rows[index];
@@ -220,6 +222,21 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
 
       if (!rawName) continue; // skip empty names
 
+      const dateNorm = parseAndNormalizeDateFields({
+        day: rawDay,
+        month: rawMonth,
+        hebrewDate: rawHebrewDate,
+        passDate: rawPassDate
+      });
+
+      if (!dateNorm.isValidDate) {
+        rejectedCount++;
+        const lineNum = index + 1;
+        const reasonStr = dateNorm.invalidReason || (lang === 'he' ? 'תאריך פגום' : 'Invalid date');
+        rejectedReasons.push(`שורה ${lineNum}: ${reasonStr}`);
+        continue;
+      }
+
       // Parse ID integer (only if explicitly provided in source)
       let parsedId: number | undefined = undefined;
       if (rawIdStr) {
@@ -261,25 +278,10 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         gender = 'female';
       }
 
-      let dayNum = 1;
-      const dayDigits = rawDay.replace(/\D/g, '');
-      if (dayDigits) {
-        const parsed = parseInt(dayDigits, 10);
-        if (!isNaN(parsed) && parsed >= 1 && parsed <= 30) dayNum = parsed;
-      } else if (rawHebrewDate || rawPassDate) {
-        const match = (rawHebrewDate || rawPassDate).match(/\b([1-9]|[12][0-9]|30)\b/);
-        if (match) dayNum = parseInt(match[1], 10);
-      }
-
-      let normalizedMonth = 'תשרי';
-      if (rawMonth) {
-        normalizedMonth = normalizeMonthName(rawMonth);
-      } else if (rawHebrewDate || rawPassDate) {
-        normalizedMonth = normalizeMonthName(rawHebrewDate || rawPassDate);
-      }
-
-      const hebrewDateVal = rawHebrewDate || `${dayNum} ${normalizedMonth}`;
-      const passDateVal = rawPassDate || hebrewDateVal;
+      const dayNum = dateNorm.day;
+      const normalizedMonth = dateNorm.month;
+      const hebrewDateVal = rawHebrewDate || dateNorm.hebrewDate;
+      const passDateVal = rawPassDate || dateNorm.passDate;
       const cleanBio = rawBio || undefined;
       const cleanNotes = rawNotes || undefined;
       const cleanImg = rawImageUrl || rawPhotoUrl || rawImage || undefined;
@@ -346,7 +348,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       result.push(newItem);
     }
 
-    return result;
+    return { list: result, rejectedCount, rejectedReasons };
   };
 
   const handleImportText = () => {
@@ -361,12 +363,30 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
       try {
         const parsed = JSON.parse(trimmed);
         const arrayToProcess = Array.isArray(parsed) ? parsed : [parsed];
-        const importedList: Deceased[] = arrayToProcess.map((item, idx) => {
-          const img = item.imageUrl || item.image || item.photoUrl || item.photo || item.image_url || item.photo_url || undefined;
-          const cleanBio = item.bio || item.story || undefined;
-          const cleanNotes = item.notes || undefined;
+        const importedList: Deceased[] = [];
+        const rejectedReasons: string[] = [];
+        let rejectedCount = 0;
+
+        arrayToProcess.forEach((item, idx) => {
+          const itemNum = idx + 1;
+          const rawName = String(item.name || item.nameHe || item.nameEn || item.nameRu || '').trim();
+          if (!rawName) return;
+
           const hebDate = item.hebrewDate || item.hebrew_date || (item.day && item.month ? `${item.day} ${item.month}` : undefined);
-          const passDateVal = item.passDate || item.pass_date || hebDate;
+          const rawPassDateVal = item.passDate || item.pass_date || hebDate;
+          const dateNorm = parseAndNormalizeDateFields({
+            day: item.day,
+            month: item.month,
+            hebrewDate: hebDate,
+            passDate: rawPassDateVal
+          });
+
+          if (!dateNorm.isValidDate) {
+            rejectedCount++;
+            const reasonStr = dateNorm.invalidReason || (lang === 'he' ? 'תאריך פגום' : 'Invalid date');
+            rejectedReasons.push(`רשומה ${itemNum}: ${reasonStr}`);
+            return;
+          }
 
           let mf: string[] | undefined = undefined;
           const rawMf = item.manualFields || item.manual_fields;
@@ -388,16 +408,20 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
           }
           if (mf && mf.length === 0) mf = undefined;
 
-          return {
+          const img = item.imageUrl || item.image || item.photoUrl || item.photo || item.image_url || item.photo_url || undefined;
+          const cleanBio = item.bio || item.story || undefined;
+          const cleanNotes = item.notes || undefined;
+
+          const cleanItem: Deceased = {
             id: item.id !== undefined && item.id !== null && String(item.id).trim() !== '' ? Number(item.id) : (undefined as any),
-            name: String(item.name || item.nameHe || item.nameEn || item.nameRu || '').trim(),
+            name: rawName,
             gender: (String(item.gender || '').toLowerCase().includes('f') || String(item.gender || '').includes('נקבה') ? 'female' : 'male') as Gender,
             fatherName: sanitizeParentName(item.fatherName || item.father_name) || undefined,
             motherName: sanitizeParentName(item.motherName || item.mother_name) || undefined,
-            day: Number(item.day || 1),
-            month: normalizeMonthName(item.month || 'תשרי'),
-            hebrewDate: hebDate,
-            passDate: passDateVal,
+            day: dateNorm.day,
+            month: dateNorm.month,
+            hebrewDate: item.hebrewDate || item.hebrew_date || dateNorm.hebrewDate,
+            passDate: item.passDate || item.pass_date || dateNorm.passDate,
             contactPhone: item.contactPhone || item.phone || undefined,
             notes: cleanNotes,
             bio: cleanBio,
@@ -422,14 +446,31 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
             notesRu: item.notesRu,
             manualFields: mf
           };
-        }).filter(item => Boolean(item.name));
+
+          importedList.push(cleanItem);
+        });
 
         if (importedList.length > 0) {
           onImport(importedList);
           setPasteText('');
-          setFeedback({ 
-            type: 'success', 
-            message: t.importSuccess.replace('{count}', importedList.length.toString()) 
+          if (rejectedCount > 0) {
+            const warningMsg = lang === 'he'
+              ? `נקלטו ${importedList.length} נפטרים בהצלחה. ${rejectedCount} רשומות נדחו (${rejectedReasons.slice(0, 3).join('; ')}).`
+              : `Imported ${importedList.length} successfully. ${rejectedCount} records rejected (${rejectedReasons.slice(0, 3).join('; ')}).`;
+            setFeedback({ type: 'warning', message: warningMsg });
+          } else {
+            setFeedback({ 
+              type: 'success', 
+              message: t.importSuccess.replace('{count}', importedList.length.toString()) 
+            });
+          }
+          return;
+        } else if (rejectedCount > 0) {
+          setFeedback({
+            type: 'error',
+            message: lang === 'he'
+              ? `כל ${rejectedCount} הרשומות נדחו בשל תאריכים פגומים (${rejectedReasons.slice(0, 3).join('; ')}).`
+              : `All ${rejectedCount} records were rejected (${rejectedReasons.slice(0, 3).join('; ')}).`
           });
           return;
         }
@@ -438,22 +479,33 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
 
     try {
       const rows = parseCSV(pasteText);
-      const importedList = processLines(rows);
+      const { list: importedList, rejectedCount, rejectedReasons } = processLines(rows);
 
       if (importedList.length === 0) {
         setFeedback({ 
           type: 'error', 
-          message: lang === 'he' ? 'לא נמצאו שורות תקינות לייבוא. אנא ודא שהמבנה נכון ושיום הפטירה הוא מספר בין 1 ל-30.' : 'No valid lines found for import. Ensure day is between 1 and 30.' 
+          message: lang === 'he' 
+            ? `לא נמצאו שורות תקינות לייבוא (${rejectedCount} נדחו). אנא ודא שהמבנה נכון ושיום הפטירה הוא בין 1 ל-30.` 
+            : `No valid lines found for import (${rejectedCount} rejected). Ensure day is between 1 and 30.` 
         });
         return;
       }
 
       onImport(importedList);
       setPasteText('');
-      setFeedback({ 
-        type: 'success', 
-        message: t.importSuccess.replace('{count}', importedList.length.toString()) 
-      });
+      if (rejectedCount > 0) {
+        setFeedback({
+          type: 'warning',
+          message: lang === 'he'
+            ? `נקלטו ${importedList.length} נפטרים בהצלחה. ${rejectedCount} שורות נדחו (${rejectedReasons.slice(0, 3).join('; ')}).`
+            : `Imported ${importedList.length} successfully. ${rejectedCount} lines rejected (${rejectedReasons.slice(0, 3).join('; ')}).`
+        });
+      } else {
+        setFeedback({ 
+          type: 'success', 
+          message: t.importSuccess.replace('{count}', importedList.length.toString()) 
+        });
+      }
     } catch (err) {
       setFeedback({ type: 'error', message: t.importError });
     }
@@ -478,7 +530,31 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
           const text = event.target?.result as string;
           const parsed = JSON.parse(text);
           const arrayToProcess = Array.isArray(parsed) ? parsed : [parsed];
-          const importedList: Deceased[] = arrayToProcess.map((item, idx) => {
+          const importedList: Deceased[] = [];
+          const rejectedReasons: string[] = [];
+          let rejectedCount = 0;
+
+          arrayToProcess.forEach((item, idx) => {
+            const itemNum = idx + 1;
+            const rawName = String(item.name || item.nameHe || item.nameEn || item.nameRu || '').trim();
+            if (!rawName) return;
+
+            const hebDate = item.hebrewDate || item.hebrew_date || (item.day && item.month ? `${item.day} ${item.month}` : undefined);
+            const rawPassDateVal = item.passDate || item.pass_date || hebDate;
+            const dateNorm = parseAndNormalizeDateFields({
+              day: item.day,
+              month: item.month,
+              hebrewDate: hebDate,
+              passDate: rawPassDateVal
+            });
+
+            if (!dateNorm.isValidDate) {
+              rejectedCount++;
+              const reasonStr = dateNorm.invalidReason || (lang === 'he' ? 'תאריך פגום' : 'Invalid date');
+              rejectedReasons.push(`רשומה ${itemNum}: ${reasonStr}`);
+              return;
+            }
+
             let mf: string[] | undefined = undefined;
             const rawMf = item.manualFields || item.manual_fields;
             if (rawMf) {
@@ -499,14 +575,16 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
             }
             if (mf && mf.length === 0) mf = undefined;
 
-            return {
+            const cleanItem: Deceased = {
               id: item.id !== undefined && item.id !== null && String(item.id).trim() !== '' ? Number(item.id) : (undefined as any),
-              name: String(item.name || item.nameHe || item.nameEn || item.nameRu || ''),
+              name: rawName,
               gender: (item.gender === 'female' ? 'female' : 'male') as Gender,
               fatherName: sanitizeParentName(item.fatherName || ''),
               motherName: sanitizeParentName(item.motherName || ''),
-              day: Number(item.day || 1),
-              month: normalizeMonthName(item.month || 'תשרי'),
+              day: dateNorm.day,
+              month: dateNorm.month,
+              hebrewDate: item.hebrewDate || item.hebrew_date || dateNorm.hebrewDate,
+              passDate: item.passDate || item.pass_date || dateNorm.passDate,
               contactPhone: item.contactPhone || undefined,
               notes: item.notes || undefined,
               image: item.image || item.imageUrl || item.photoUrl || item.photo || undefined,
@@ -529,21 +607,34 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
               notesRu: item.notesRu,
               manualFields: mf
             };
-          }).filter(item => Boolean(item.name));
+
+            importedList.push(cleanItem);
+          });
 
           if (importedList.length === 0) {
             setFeedback({ 
               type: 'error', 
-              message: lang === 'he' ? 'לא נמצאו נתונים תקינים בקובץ ה-JSON.' : 'No valid records found in the JSON file.' 
+              message: lang === 'he' 
+                ? `לא נמצאו נתונים תקינים בקובץ ה-JSON (${rejectedCount} נדחו).` 
+                : `No valid records found in JSON (${rejectedCount} rejected).` 
             });
             return;
           }
 
           onImport(importedList);
-          setFeedback({ 
-            type: 'success', 
-            message: t.importSuccess.replace('{count}', importedList.length.toString()) 
-          });
+          if (rejectedCount > 0) {
+            setFeedback({
+              type: 'warning',
+              message: lang === 'he'
+                ? `נקלטו ${importedList.length} נפטרים בהצלחה. ${rejectedCount} רשומות נדחו (${rejectedReasons.slice(0, 3).join('; ')}).`
+                : `Imported ${importedList.length} successfully. ${rejectedCount} rejected (${rejectedReasons.slice(0, 3).join('; ')}).`
+            });
+          } else {
+            setFeedback({ 
+              type: 'success', 
+              message: t.importSuccess.replace('{count}', importedList.length.toString()) 
+            });
+          }
         } catch (err) {
           setFeedback({ type: 'error', message: t.importError });
         }
@@ -569,20 +660,31 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
               : []
           );
           
-          const importedList = processLines(stringRows);
+          const { list: importedList, rejectedCount, rejectedReasons } = processLines(stringRows);
           if (importedList.length === 0) {
             setFeedback({ 
               type: 'error', 
-              message: lang === 'he' ? 'לא נמצאו שורות תקינות בקובץ האקסל. ודא שהמבנה תקין (שם, מין, שם אב, שם אם, יום פטירה, חודש עברי, טלפון, הערות)' : 'No valid records found in the Excel file.' 
+              message: lang === 'he' 
+                ? `לא נמצאו שורות תקינות בקובץ האקסל (${rejectedCount} נדחו). ודא שהמבנה תקין (שם, מין, שם אב, שם אם, יום פטירה, חודש עברי, טלפון, הערות).` 
+                : `No valid records found in Excel (${rejectedCount} rejected).` 
             });
             return;
           }
 
           onImport(importedList);
-          setFeedback({ 
-            type: 'success', 
-            message: t.importSuccess.replace('{count}', importedList.length.toString()) 
-          });
+          if (rejectedCount > 0) {
+            setFeedback({
+              type: 'warning',
+              message: lang === 'he'
+                ? `נקלטו ${importedList.length} נפטרים בהצלחה. ${rejectedCount} שורות נדחו (${rejectedReasons.slice(0, 3).join('; ')}).`
+                : `Imported ${importedList.length} successfully. ${rejectedCount} lines rejected (${rejectedReasons.slice(0, 3).join('; ')}).`
+            });
+          } else {
+            setFeedback({ 
+              type: 'success', 
+              message: t.importSuccess.replace('{count}', importedList.length.toString()) 
+            });
+          }
         } catch (err) {
           console.error("Excel processing error:", err);
           setFeedback({ type: 'error', message: t.importError });
@@ -596,21 +698,32 @@ export const BulkImport: React.FC<BulkImportProps> = ({ lang, onImport, deceased
         try {
           const text = event.target?.result as string;
           const rows = parseCSV(text);
-          const importedList = processLines(rows);
+          const { list: importedList, rejectedCount, rejectedReasons } = processLines(rows);
 
           if (importedList.length === 0) {
             setFeedback({ 
               type: 'error', 
-              message: lang === 'he' ? 'לא נמצאו שורות תקינות בקובץ.' : 'No valid records found in the file.' 
+              message: lang === 'he' 
+                ? `לא נמצאו שורות תקינות בקובץ (${rejectedCount} נדחו).` 
+                : `No valid records found in file (${rejectedCount} rejected).` 
             });
             return;
           }
 
           onImport(importedList);
-          setFeedback({ 
-            type: 'success', 
-            message: t.importSuccess.replace('{count}', importedList.length.toString()) 
-          });
+          if (rejectedCount > 0) {
+            setFeedback({
+              type: 'warning',
+              message: lang === 'he'
+                ? `נקלטו ${importedList.length} נפטרים בהצלחה. ${rejectedCount} שורות נדחו (${rejectedReasons.slice(0, 3).join('; ')}).`
+                : `Imported ${importedList.length} successfully. ${rejectedCount} lines rejected (${rejectedReasons.slice(0, 3).join('; ')}).`
+            });
+          } else {
+            setFeedback({ 
+              type: 'success', 
+              message: t.importSuccess.replace('{count}', importedList.length.toString()) 
+            });
+          }
         } catch (err) {
           setFeedback({ type: 'error', message: t.importError });
         }
