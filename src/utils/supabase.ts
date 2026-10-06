@@ -308,8 +308,45 @@ const SUPABASE_DECEASED_COLUMNS = new Set([
   'notesRu',
   'namePronunciation',
   'fatherNamePronunciation',
-  'motherNamePronunciation'
+  'motherNamePronunciation',
+  'manualFields',
+  'manual_fields'
 ]);
+
+/**
+ * Prepares record payload for Supabase database operations.
+ * Maps legacy manual_fields to canonical column manualFields, ensures JSON array format, and retains manualFields column.
+ */
+export function prepareDbPayload<T extends Record<string, any>>(record: T): T {
+  if (!record || typeof record !== 'object') return record;
+  const copy: any = { ...record };
+
+  if ('manual_fields' in copy) {
+    if (copy.manualFields === undefined) {
+      copy.manualFields = copy.manual_fields;
+    }
+    delete copy.manual_fields;
+  }
+
+  if ('manualFields' in copy) {
+    if (Array.isArray(copy.manualFields)) {
+      copy.manualFields = copy.manualFields;
+    } else if (typeof copy.manualFields === 'string') {
+      try {
+        const parsed = JSON.parse(copy.manualFields);
+        copy.manualFields = Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        copy.manualFields = [];
+      }
+    } else if (copy.manualFields === null || copy.manualFields === undefined) {
+      copy.manualFields = [];
+    } else {
+      copy.manualFields = [];
+    }
+  }
+
+  return copy as T;
+}
 
 /**
  * Sanitizes a record object before sending to Supabase insert, update, or upsert.
@@ -505,6 +542,33 @@ export function normalizeFetchedRecord(item: any): any {
     item.candlesCount = Number(item.candles_count);
   }
 
+  // Manual fields array normalization
+  const rawMf = item.manualFields !== undefined ? item.manualFields : item.manual_fields;
+  if (Array.isArray(rawMf)) {
+    item.manualFields = rawMf;
+  } else if (typeof rawMf === 'string') {
+    const trimmed = rawMf.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        item.manualFields = Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        item.manualFields = [];
+      }
+    } else if (trimmed.includes(';') || trimmed.includes(',')) {
+      item.manualFields = trimmed.split(/[;,]/).map((s: string) => s.trim()).filter(Boolean);
+    } else if (trimmed.length > 0) {
+      item.manualFields = [trimmed];
+    } else {
+      item.manualFields = [];
+    }
+  } else if (rawMf === null || rawMf === undefined) {
+    item.manualFields = [];
+  } else {
+    item.manualFields = [];
+  }
+  delete item.manual_fields;
+
   return item;
 }
 
@@ -677,9 +741,11 @@ export async function safeInsert(
     return copy;
   });
 
+  const dbPayload = sanitized.map(prepareDbPayload);
+
   try {
     const { data, error } = await (supabase.from(tableName as any) as any)
-      .insert(sanitized)
+      .insert(dbPayload)
       .select();
 
     if (error) {
@@ -719,10 +785,11 @@ export async function safeUpdate(
   }
 
   const sanitized = sanitizeRecordForSupabase(updateData);
+  const dbPayload = prepareDbPayload(sanitized);
 
   try {
     const { data, error } = await (supabase.from(tableName as any) as any)
-      .update(sanitized)
+      .update(dbPayload)
       .eq(column, cleanValue)
       .select();
 
@@ -757,10 +824,11 @@ export async function safeUpsert(
   if (arr.length === 0) return { data: [], error: null };
 
   const sanitized = arr.map(item => sanitizeRecordForSupabase(item));
+  const dbPayload = sanitized.map(prepareDbPayload);
 
   try {
     let { data, error } = await (supabase.from(tableName as any) as any)
-      .upsert(sanitized, { onConflict: 'id' })
+      .upsert(dbPayload, { onConflict: 'id' })
       .select();
 
     if (error) {
@@ -768,7 +836,7 @@ export async function safeUpsert(
       logSupabaseError('safeUpsert', error);
 
       const fallbackRes = await (supabase.from(tableName as any) as any)
-        .upsert(sanitized)
+        .upsert(dbPayload)
         .select();
 
       if (!fallbackRes.error) {
@@ -784,7 +852,7 @@ export async function safeUpsert(
     const altTable = tableName === 'deceased' ? 'memorials' : 'deceased';
     try {
       await (supabase.from(altTable as any) as any)
-        .upsert(sanitized, { onConflict: 'id' })
+        .upsert(dbPayload, { onConflict: 'id' })
         .catch(() => {});
     } catch (e) {}
 

@@ -169,35 +169,58 @@ export const NiqqudAssistant: React.FC<NiqqudAssistantProps> = ({
     let newVal = customVal;
     let insertedPos = start;
 
+    let baseIdx = -1;
     if (start !== end) {
-      newVal = customVal.slice(0, start) + char + customVal.slice(end);
-      insertedPos = start + char.length;
-    } else {
-      let baseIdx = -1;
-      if (start > 0) {
-        if (isNiqqud(customVal[start - 1])) {
-          let i = start - 1;
-          while (i >= 0 && isNiqqud(customVal[i])) i--;
-          baseIdx = i >= 0 ? i : -1;
-        } else {
-          baseIdx = start - 1;
+      for (let k = start; k < end; k++) {
+        if (isHebrewBase(customVal[k])) {
+          baseIdx = k;
+          break;
         }
-      } else if (customVal.length > 0) {
+      }
+    }
+
+    if (baseIdx === -1) {
+      if (start > 0) {
+        let i = start - 1;
+        while (i >= 0 && isNiqqud(customVal[i])) i--;
+        if (i >= 0 && isHebrewBase(customVal[i])) {
+          baseIdx = i;
+        }
+      } else if (customVal.length > 0 && isHebrewBase(customVal[0])) {
         baseIdx = 0;
       }
+    }
 
-      if (baseIdx !== -1) {
-        const markStart = baseIdx + 1;
-        let markEnd = markStart;
-        while (markEnd < customVal.length && isNiqqud(customVal[markEnd])) {
-          markEnd++;
-        }
-        newVal = customVal.slice(0, markStart) + char + customVal.slice(markEnd);
-        insertedPos = markStart + char.length;
-      } else {
-        newVal = customVal.slice(0, start) + char + customVal.slice(end);
-        insertedPos = start + char.length;
+    if (baseIdx !== -1) {
+      const markStart = baseIdx + 1;
+      let markEnd = markStart;
+      while (markEnd < customVal.length && isNiqqud(customVal[markEnd])) {
+        markEnd++;
       }
+      const existingMarks = customVal.slice(markStart, markEnd);
+      const hasDagesh = existingMarks.includes('\u05BC') || char === '\u05BC';
+      let shinSinDot = '';
+      if (char === '\u05C1' || char === '\u05C2') {
+        shinSinDot = char;
+      } else if (existingMarks.includes('\u05C1')) {
+        shinSinDot = '\u05C1';
+      } else if (existingMarks.includes('\u05C2')) {
+        shinSinDot = '\u05C2';
+      }
+
+      let vowelMark = '';
+      if (char !== '\u05BC' && char !== '\u05C1' && char !== '\u05C2') {
+        vowelMark = char;
+      } else {
+        vowelMark = existingMarks.replace(/[\u05BC\u05C1\u05C2]/g, '');
+      }
+
+      const updatedMarks = (hasDagesh ? '\u05BC' : '') + shinSinDot + vowelMark;
+      newVal = customVal.slice(0, markStart) + updatedMarks + customVal.slice(markEnd);
+      insertedPos = markStart + updatedMarks.length;
+    } else {
+      newVal = customVal.slice(0, start) + char + customVal.slice(end);
+      insertedPos = start + char.length;
     }
 
     setCustomVal(newVal);

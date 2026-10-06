@@ -23,9 +23,10 @@ const NAME_DICTIONARY: Record<string, { en: string; ru: string }> = {
   "שלמה": { en: "Solomon", ru: "Соломон" },
   "דניאל": { en: "Daniel", ru: "Даниэль" },
   "מיכאל": { en: "Michael", ru: "Михаил" },
+  "אוריאל": { en: "Uriel", ru: "Уриэль" },
   "גבריאל": { en: "Gabriel", ru: "Габриэль" },
   "אליהו": { en: "Elijah", ru: "Илья" },
-  "שמואל": { en: "Samuel", ru: "Самуил" },
+  "שמואל": { en: "Samuel", ru: "Шмуэль" },
   "בנימין": { en: "Benjamin", ru: "Вениамин" },
   "יהודה": { en: "Judah", ru: "Иуда" },
   "שמעון": { en: "Simeon", ru: "Шимон" },
@@ -906,15 +907,19 @@ export function enrichDeceasedTranslations(item: Deceased): Deceased {
   }
   const sourceNameForEn = result.nameHe || result.name;
   if (!manualSet.has('nameEn')) {
-    if (result.namePronunciation) {
-      result.nameEn = translatePronunciationToPhonetic(result.namePronunciation, 'en');
+    const isPronMatchesFull = result.namePronunciation &&
+      extractBaseHebrewLetters(result.namePronunciation) === extractBaseHebrewLetters(sourceNameForEn);
+    if (isPronMatchesFull) {
+      result.nameEn = translatePronunciationToPhonetic(result.namePronunciation!, 'en');
     } else if (!result.nameEn) {
       result.nameEn = isLatinText(result.name) ? result.name : translateText(sourceNameForEn, 'en');
     }
   }
   if (!manualSet.has('nameRu')) {
-    if (result.namePronunciation) {
-      result.nameRu = translatePronunciationToPhonetic(result.namePronunciation, 'ru');
+    const isPronMatchesFull = result.namePronunciation &&
+      extractBaseHebrewLetters(result.namePronunciation) === extractBaseHebrewLetters(sourceNameForEn);
+    if (isPronMatchesFull) {
+      result.nameRu = translatePronunciationToPhonetic(result.namePronunciation!, 'ru');
     } else if (!result.nameRu) {
       result.nameRu = isCyrillicText(result.name) ? result.name : translateText(sourceNameForEn, 'ru');
     }
@@ -927,15 +932,19 @@ export function enrichDeceasedTranslations(item: Deceased): Deceased {
     }
     const fSource = result.fatherNameHe || result.fatherName || '';
     if (!manualSet.has('fatherNameEn')) {
-      if (result.fatherNamePronunciation) {
-        result.fatherNameEn = translatePronunciationToPhonetic(result.fatherNamePronunciation, 'en');
+      const isPronMatchesFull = result.fatherNamePronunciation &&
+        extractBaseHebrewLetters(result.fatherNamePronunciation) === extractBaseHebrewLetters(fSource);
+      if (isPronMatchesFull) {
+        result.fatherNameEn = translatePronunciationToPhonetic(result.fatherNamePronunciation!, 'en');
       } else if (!result.fatherNameEn) {
         result.fatherNameEn = isLatinText(fSource) ? fSource : translateText(fSource, 'en');
       }
     }
     if (!manualSet.has('fatherNameRu')) {
-      if (result.fatherNamePronunciation) {
-        result.fatherNameRu = translatePronunciationToPhonetic(result.fatherNamePronunciation, 'ru');
+      const isPronMatchesFull = result.fatherNamePronunciation &&
+        extractBaseHebrewLetters(result.fatherNamePronunciation) === extractBaseHebrewLetters(fSource);
+      if (isPronMatchesFull) {
+        result.fatherNameRu = translatePronunciationToPhonetic(result.fatherNamePronunciation!, 'ru');
       } else if (!result.fatherNameRu) {
         result.fatherNameRu = isCyrillicText(fSource) ? fSource : translateText(fSource, 'ru');
       }
@@ -949,15 +958,19 @@ export function enrichDeceasedTranslations(item: Deceased): Deceased {
     }
     const mSource = result.motherNameHe || result.motherName || '';
     if (!manualSet.has('motherNameEn')) {
-      if (result.motherNamePronunciation) {
-        result.motherNameEn = translatePronunciationToPhonetic(result.motherNamePronunciation, 'en');
+      const isPronMatchesFull = result.motherNamePronunciation &&
+        extractBaseHebrewLetters(result.motherNamePronunciation) === extractBaseHebrewLetters(mSource);
+      if (isPronMatchesFull) {
+        result.motherNameEn = translatePronunciationToPhonetic(result.motherNamePronunciation!, 'en');
       } else if (!result.motherNameEn) {
         result.motherNameEn = isLatinText(mSource) ? mSource : translateText(mSource, 'en');
       }
     }
     if (!manualSet.has('motherNameRu')) {
-      if (result.motherNamePronunciation) {
-        result.motherNameRu = translatePronunciationToPhonetic(result.motherNamePronunciation, 'ru');
+      const isPronMatchesFull = result.motherNamePronunciation &&
+        extractBaseHebrewLetters(result.motherNamePronunciation) === extractBaseHebrewLetters(mSource);
+      if (isPronMatchesFull) {
+        result.motherNameRu = translatePronunciationToPhonetic(result.motherNamePronunciation!, 'ru');
       } else if (!result.motherNameRu) {
         result.motherNameRu = isCyrillicText(mSource) ? mSource : translateText(mSource, 'ru');
       }
@@ -1269,17 +1282,50 @@ export function transliterateVocalizedWord(word: string, targetLang: 'en' | 'ru'
       } else if (char === 'ד') {
         consonant = targetLang === 'ru' ? 'д' : 'd';
       } else if (char === 'ה') {
-        consonant = (j === word.length) ? (targetLang === 'ru' ? 'а' : 'ah') : (targetLang === 'ru' ? 'х' : 'h');
+        const isEnd = (j === word.length || word[j] === ' ' || word[j] === ')' || word[j] === '-');
+        const lastChar = res.slice(-1).toLowerCase();
+        if (hasDagesh) {
+          // Mapiq in Hei: Mapiq indicates consonantal Hei (e.g. גַּהּ -> Gah / Гах)
+          consonant = targetLang === 'ru' ? 'х' : 'h';
+        } else if (hasPatachOrKamatz || hasTzereOrSegol || hasHiriq || hasCholam || hasKubutz) {
+          consonant = targetLang === 'ru' ? 'х' : 'h';
+        } else if (isEnd && (lastChar === 'a' || lastChar === 'а')) {
+          // Silent final Hei after 'a'
+          consonant = '';
+        } else {
+          consonant = isEnd ? (targetLang === 'ru' ? 'а' : 'ah') : (targetLang === 'ru' ? 'х' : 'h');
+        }
       } else if (char === 'ו') {
-        if (hasDagesh || hasKubutz) consonant = targetLang === 'ru' ? 'у' : 'u';
-        else if (hasCholam) consonant = targetLang === 'ru' ? 'о' : 'o';
-        else consonant = (i > 0 && j < word.length) ? (targetLang === 'ru' ? 'о' : 'o') : (targetLang === 'ru' ? 'в' : 'v');
+        if (hasDagesh || hasKubutz) {
+          consonant = targetLang === 'ru' ? 'у' : 'u';
+        } else if (hasCholam) {
+          consonant = targetLang === 'ru' ? 'о' : 'o';
+        } else if (hasHiriq || hasPatachOrKamatz || hasTzereOrSegol || hasSheva) {
+          consonant = targetLang === 'ru' ? 'в' : 'v';
+        } else {
+          consonant = (i > 0 && j < word.length) ? (targetLang === 'ru' ? 'о' : 'o') : (targetLang === 'ru' ? 'в' : 'v');
+        }
       } else if (char === 'ז') {
         consonant = targetLang === 'ru' ? 'з' : 'z';
       } else if (char === 'ט' || char === 'ת') {
         consonant = targetLang === 'ru' ? 'т' : 't';
       } else if (char === 'י') {
-        consonant = (i === 0) ? (targetLang === 'ru' ? 'И' : 'Y') : (targetLang === 'ru' ? 'й' : 'i');
+        const hasVowelOnYod = hasPatachOrKamatz || hasTzereOrSegol || hasHiriq || hasCholam || hasKubutz;
+        const lastChar = res.slice(-1).toLowerCase();
+        const precededByI = (lastChar === 'i' || lastChar === 'и');
+        const precededByConsonant = /[b-df-hj-np-tv-zа-я]$/i.test(res) && !precededByI;
+
+        if (i > 0 && precededByI && !hasVowelOnYod) {
+          // Yod following Hiriq without its own vowel is part of Hiriq Male (silent)
+          consonant = '';
+        } else if (i > 0 && precededByConsonant && !hasVowelOnYod) {
+          // Yod following an unvocalized consonant in partial niqqud provides the 'i' / 'и' vowel
+          consonant = targetLang === 'ru' ? 'и' : 'i';
+        } else if (i === 0) {
+          consonant = targetLang === 'ru' ? 'И' : 'Y';
+        } else {
+          consonant = targetLang === 'ru' ? 'й' : 'i';
+        }
       } else if (char === 'כ' || char === 'ך') {
         consonant = hasDagesh || i === 0 ? (targetLang === 'ru' ? 'к' : 'k') : (targetLang === 'ru' ? 'х' : 'ch');
       } else if (char === 'ל') {

@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Deceased, Gender, Language } from '../types';
 import { translations, sanitizeParentName } from '../utils/translations';
 import { HEBREW_MONTHS_HE, HEBREW_MONTHS_EN, HEBREW_MONTHS_RU, normalizeMonthName } from '../utils/hebrewDate';
-import { translateDeceasedListClientSize, extractBaseHebrewLetters } from '../utils/transliteration';
+import { translateDeceasedListClientSize, extractBaseHebrewLetters, isHebrewText, isCyrillicText, isLatinText } from '../utils/transliteration';
 import { PlusCircle, Upload, X, Save, User, Sparkles, Loader2 } from 'lucide-react';
 import { uploadMemorialImage, isSupabaseConfigured } from '../utils/supabase';
 import { normalizeImageTo3x4, fileToDataUrl } from '../utils/imageUtils';
@@ -93,14 +93,26 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
 
   useEffect(() => {
     if (editingDeceased) {
-      setName(editingDeceased.name);
+      if (lang === 'he') {
+        setName(editingDeceased.nameHe || editingDeceased.name || '');
+        setFatherName(editingDeceased.fatherNameHe || editingDeceased.fatherName || '');
+        setMotherName(editingDeceased.motherNameHe || editingDeceased.motherName || '');
+        setNotes(editingDeceased.notesHe || editingDeceased.notes || '');
+      } else if (lang === 'en') {
+        setName(editingDeceased.nameEn || editingDeceased.nameHe || editingDeceased.name || '');
+        setFatherName(editingDeceased.fatherNameEn || editingDeceased.fatherNameHe || editingDeceased.fatherName || '');
+        setMotherName(editingDeceased.motherNameEn || editingDeceased.motherNameHe || editingDeceased.motherName || '');
+        setNotes(editingDeceased.notesEn || editingDeceased.notesHe || editingDeceased.notes || '');
+      } else if (lang === 'ru') {
+        setName(editingDeceased.nameRu || editingDeceased.nameHe || editingDeceased.name || '');
+        setFatherName(editingDeceased.fatherNameRu || editingDeceased.fatherNameHe || editingDeceased.fatherName || '');
+        setMotherName(editingDeceased.motherNameRu || editingDeceased.motherNameHe || editingDeceased.motherName || '');
+        setNotes(editingDeceased.notesRu || editingDeceased.notesHe || editingDeceased.notes || '');
+      }
       setGender(editingDeceased.gender);
-      setFatherName(editingDeceased.fatherName);
-      setMotherName(editingDeceased.motherName);
       setDay(editingDeceased.day);
       setMonth(normalizeMonthName(editingDeceased.month));
       setContactPhone(editingDeceased.contactPhone || '');
-      setNotes(editingDeceased.notes || '');
       setImageBase64(editingDeceased.image || '');
       setImagePosition(editingDeceased.imagePosition || 'center top');
       setAgeAtDeath(editingDeceased.ageAtDeath !== undefined ? editingDeceased.ageAtDeath : '');
@@ -112,7 +124,7 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       resetForm();
     }
     setErrors({});
-  }, [editingDeceased]);
+  }, [editingDeceased, lang]);
 
   const resetForm = () => {
     setName('');
@@ -280,148 +292,233 @@ export const MemorialForm: React.FC<MemorialFormProps> = ({ lang, onSave, editin
       notesRu: editingDeceased?.notesRu
     };
 
-    // Update current language's explicit values & mark as manual fields
-    if (lang === 'he') {
-      baseData.nameHe = name.trim();
-      manualSet.add('nameHe');
+    // Route field values based on actual script of input text rather than screen language alone,
+    // and compare against script-matching field when editing to reset dependent automatic translations cleanly.
+    const trimmedName = name.trim();
+    if (trimmedName) {
+      baseData.name = trimmedName;
+      if (isHebrewText(trimmedName)) {
+        baseData.nameHe = trimmedName;
+        manualSet.add('nameHe');
 
-      if (cleanFather) {
-        baseData.fatherNameHe = cleanFather;
-        manualSet.add('fatherNameHe');
+        if (editingDeceased) {
+          const prevHe = (editingDeceased.nameHe || editingDeceased.name || '').trim();
+          if (trimmedName !== prevHe) {
+            if (!manualSet.has('nameEn')) baseData.nameEn = undefined;
+            if (!manualSet.has('nameRu')) baseData.nameRu = undefined;
+          }
+        }
+      } else if (isLatinText(trimmedName)) {
+        baseData.nameEn = trimmedName;
+        manualSet.add('nameEn');
+
+        if (editingDeceased) {
+          const prevEn = (editingDeceased.nameEn || editingDeceased.name || '').trim();
+          if (trimmedName !== prevEn) {
+            if (!manualSet.has('nameHe')) baseData.nameHe = undefined;
+            if (!manualSet.has('nameRu')) baseData.nameRu = undefined;
+          }
+        }
+      } else if (isCyrillicText(trimmedName)) {
+        baseData.nameRu = trimmedName;
+        manualSet.add('nameRu');
+
+        if (editingDeceased) {
+          const prevRu = (editingDeceased.nameRu || editingDeceased.name || '').trim();
+          if (trimmedName !== prevRu) {
+            if (!manualSet.has('nameHe')) baseData.nameHe = undefined;
+            if (!manualSet.has('nameEn')) baseData.nameEn = undefined;
+          }
+        }
       } else {
-        baseData.fatherNameHe = undefined;
-        manualSet.delete('fatherNameHe');
-      }
-
-      if (cleanMother) {
-        baseData.motherNameHe = cleanMother;
-        manualSet.add('motherNameHe');
-      } else {
-        baseData.motherNameHe = undefined;
-        manualSet.delete('motherNameHe');
-      }
-
-      if (notes.trim()) {
-        baseData.notesHe = notes.trim();
-        manualSet.add('notesHe');
-      } else {
-        baseData.notesHe = undefined;
-        manualSet.delete('notesHe');
-      }
-
-      if (editingDeceased) {
-        if (name.trim() !== (editingDeceased.nameHe || editingDeceased.name)) {
-          if (!manualSet.has('nameEn')) baseData.nameEn = undefined;
-          if (!manualSet.has('nameRu')) baseData.nameRu = undefined;
-        }
-        if (cleanFather !== (editingDeceased.fatherNameHe || editingDeceased.fatherName)) {
-          if (!manualSet.has('fatherNameEn')) baseData.fatherNameEn = undefined;
-          if (!manualSet.has('fatherNameRu')) baseData.fatherNameRu = undefined;
-        }
-        if (cleanMother !== (editingDeceased.motherNameHe || editingDeceased.motherName)) {
-          if (!manualSet.has('motherNameEn')) baseData.motherNameEn = undefined;
-          if (!manualSet.has('motherNameRu')) baseData.motherNameRu = undefined;
-        }
-        if ((notes.trim() || undefined) !== (editingDeceased.notesHe || editingDeceased.notes || undefined)) {
-          if (!manualSet.has('notesEn')) baseData.notesEn = undefined;
-          if (!manualSet.has('notesRu')) baseData.notesRu = undefined;
-        }
-      }
-    } else if (lang === 'en') {
-      baseData.nameEn = name.trim();
-      manualSet.add('nameEn');
-
-      if (cleanFather) {
-        baseData.fatherNameEn = cleanFather;
-        manualSet.add('fatherNameEn');
-      } else {
-        baseData.fatherNameEn = undefined;
-        manualSet.delete('fatherNameEn');
-      }
-
-      if (cleanMother) {
-        baseData.motherNameEn = cleanMother;
-        manualSet.add('motherNameEn');
-      } else {
-        baseData.motherNameEn = undefined;
-        manualSet.delete('motherNameEn');
-      }
-
-      if (notes.trim()) {
-        baseData.notesEn = notes.trim();
-        manualSet.add('notesEn');
-      } else {
-        baseData.notesEn = undefined;
-        manualSet.delete('notesEn');
-      }
-
-      if (editingDeceased) {
-        if (name.trim() !== (editingDeceased.nameEn || editingDeceased.name)) {
-          if (!manualSet.has('nameHe')) baseData.nameHe = undefined;
-          if (!manualSet.has('nameRu')) baseData.nameRu = undefined;
-        }
-        if (cleanFather !== (editingDeceased.fatherNameEn || editingDeceased.fatherName)) {
-          if (!manualSet.has('fatherNameHe')) baseData.fatherNameHe = undefined;
-          if (!manualSet.has('fatherNameRu')) baseData.fatherNameRu = undefined;
-        }
-        if (cleanMother !== (editingDeceased.motherNameEn || editingDeceased.motherName)) {
-          if (!manualSet.has('motherNameHe')) baseData.motherNameHe = undefined;
-          if (!manualSet.has('motherNameRu')) baseData.motherNameRu = undefined;
-        }
-        if ((notes.trim() || undefined) !== (editingDeceased.notesEn || editingDeceased.notes || undefined)) {
-          if (!manualSet.has('notesHe')) baseData.notesHe = undefined;
-          if (!manualSet.has('notesRu')) baseData.notesRu = undefined;
-        }
-      }
-    } else if (lang === 'ru') {
-      baseData.nameRu = name.trim();
-      manualSet.add('nameRu');
-
-      if (cleanFather) {
-        baseData.fatherNameRu = cleanFather;
-        manualSet.add('fatherNameRu');
-      } else {
-        baseData.fatherNameRu = undefined;
-        manualSet.delete('fatherNameRu');
-      }
-
-      if (cleanMother) {
-        baseData.motherNameRu = cleanMother;
-        manualSet.add('motherNameRu');
-      } else {
-        baseData.motherNameRu = undefined;
-        manualSet.delete('motherNameRu');
-      }
-
-      if (notes.trim()) {
-        baseData.notesRu = notes.trim();
-        manualSet.add('notesRu');
-      } else {
-        baseData.notesRu = undefined;
-        manualSet.delete('notesRu');
-      }
-
-      if (editingDeceased) {
-        if (name.trim() !== (editingDeceased.nameRu || editingDeceased.name)) {
-          if (!manualSet.has('nameHe')) baseData.nameHe = undefined;
-          if (!manualSet.has('nameEn')) baseData.nameEn = undefined;
-        }
-        if (cleanFather !== (editingDeceased.fatherNameRu || editingDeceased.fatherName)) {
-          if (!manualSet.has('fatherNameHe')) baseData.fatherNameHe = undefined;
-          if (!manualSet.has('fatherNameEn')) baseData.fatherNameEn = undefined;
-        }
-        if (cleanMother !== (editingDeceased.motherNameRu || editingDeceased.motherName)) {
-          if (!manualSet.has('motherNameHe')) baseData.motherNameHe = undefined;
-          if (!manualSet.has('motherNameEn')) baseData.motherNameEn = undefined;
-        }
-        if ((notes.trim() || undefined) !== (editingDeceased.notesRu || editingDeceased.notes || undefined)) {
-          if (!manualSet.has('notesHe')) baseData.notesHe = undefined;
-          if (!manualSet.has('notesEn')) baseData.notesEn = undefined;
+        if (lang === 'he') {
+          baseData.nameHe = trimmedName;
+          manualSet.add('nameHe');
+          if (editingDeceased && trimmedName !== (editingDeceased.nameHe || '').trim()) {
+            if (!manualSet.has('nameEn')) baseData.nameEn = undefined;
+            if (!manualSet.has('nameRu')) baseData.nameRu = undefined;
+          }
+        } else if (lang === 'ru') {
+          baseData.nameRu = trimmedName;
+          manualSet.add('nameRu');
+          if (editingDeceased && trimmedName !== (editingDeceased.nameRu || '').trim()) {
+            if (!manualSet.has('nameHe')) baseData.nameHe = undefined;
+            if (!manualSet.has('nameEn')) baseData.nameEn = undefined;
+          }
+        } else {
+          baseData.nameEn = trimmedName;
+          manualSet.add('nameEn');
+          if (editingDeceased && trimmedName !== (editingDeceased.nameEn || '').trim()) {
+            if (!manualSet.has('nameHe')) baseData.nameHe = undefined;
+            if (!manualSet.has('nameRu')) baseData.nameRu = undefined;
+          }
         }
       }
     }
 
-    baseData.manualFields = manualSet.size > 0 ? Array.from(manualSet) : undefined;
+    if (cleanFather) {
+      baseData.fatherName = cleanFather;
+      if (isHebrewText(cleanFather)) {
+        baseData.fatherNameHe = cleanFather;
+        manualSet.add('fatherNameHe');
+
+        if (editingDeceased) {
+          const prevHe = (editingDeceased.fatherNameHe || editingDeceased.fatherName || '').trim();
+          if (cleanFather !== prevHe) {
+            if (!manualSet.has('fatherNameEn')) baseData.fatherNameEn = undefined;
+            if (!manualSet.has('fatherNameRu')) baseData.fatherNameRu = undefined;
+          }
+        }
+      } else if (isLatinText(cleanFather)) {
+        baseData.fatherNameEn = cleanFather;
+        manualSet.add('fatherNameEn');
+
+        if (editingDeceased) {
+          const prevEn = (editingDeceased.fatherNameEn || editingDeceased.fatherName || '').trim();
+          if (cleanFather !== prevEn) {
+            if (!manualSet.has('fatherNameHe')) baseData.fatherNameHe = undefined;
+            if (!manualSet.has('fatherNameRu')) baseData.fatherNameRu = undefined;
+          }
+        }
+      } else if (isCyrillicText(cleanFather)) {
+        baseData.fatherNameRu = cleanFather;
+        manualSet.add('fatherNameRu');
+
+        if (editingDeceased) {
+          const prevRu = (editingDeceased.fatherNameRu || editingDeceased.fatherName || '').trim();
+          if (cleanFather !== prevRu) {
+            if (!manualSet.has('fatherNameHe')) baseData.fatherNameHe = undefined;
+            if (!manualSet.has('fatherNameEn')) baseData.fatherNameEn = undefined;
+          }
+        }
+      } else {
+        if (lang === 'he') {
+          baseData.fatherNameHe = cleanFather;
+          manualSet.add('fatherNameHe');
+          if (editingDeceased && cleanFather !== (editingDeceased.fatherNameHe || '').trim()) {
+            if (!manualSet.has('fatherNameEn')) baseData.fatherNameEn = undefined;
+            if (!manualSet.has('fatherNameRu')) baseData.fatherNameRu = undefined;
+          }
+        } else if (lang === 'ru') {
+          baseData.fatherNameRu = cleanFather;
+          manualSet.add('fatherNameRu');
+          if (editingDeceased && cleanFather !== (editingDeceased.fatherNameRu || '').trim()) {
+            if (!manualSet.has('fatherNameHe')) baseData.fatherNameHe = undefined;
+            if (!manualSet.has('fatherNameEn')) baseData.fatherNameEn = undefined;
+          }
+        } else {
+          baseData.fatherNameEn = cleanFather;
+          manualSet.add('fatherNameEn');
+          if (editingDeceased && cleanFather !== (editingDeceased.fatherNameEn || '').trim()) {
+            if (!manualSet.has('fatherNameHe')) baseData.fatherNameHe = undefined;
+            if (!manualSet.has('fatherNameRu')) baseData.fatherNameRu = undefined;
+          }
+        }
+      }
+    } else {
+      baseData.fatherNameHe = undefined;
+      baseData.fatherNameEn = undefined;
+      baseData.fatherNameRu = undefined;
+      manualSet.delete('fatherNameHe');
+      manualSet.delete('fatherNameEn');
+      manualSet.delete('fatherNameRu');
+    }
+
+    if (cleanMother) {
+      baseData.motherName = cleanMother;
+      if (isHebrewText(cleanMother)) {
+        baseData.motherNameHe = cleanMother;
+        manualSet.add('motherNameHe');
+
+        if (editingDeceased) {
+          const prevHe = (editingDeceased.motherNameHe || editingDeceased.motherName || '').trim();
+          if (cleanMother !== prevHe) {
+            if (!manualSet.has('motherNameEn')) baseData.motherNameEn = undefined;
+            if (!manualSet.has('motherNameRu')) baseData.motherNameRu = undefined;
+          }
+        }
+      } else if (isLatinText(cleanMother)) {
+        baseData.motherNameEn = cleanMother;
+        manualSet.add('motherNameEn');
+
+        if (editingDeceased) {
+          const prevEn = (editingDeceased.motherNameEn || editingDeceased.motherName || '').trim();
+          if (cleanMother !== prevEn) {
+            if (!manualSet.has('motherNameHe')) baseData.motherNameHe = undefined;
+            if (!manualSet.has('motherNameRu')) baseData.motherNameRu = undefined;
+          }
+        }
+      } else if (isCyrillicText(cleanMother)) {
+        baseData.motherNameRu = cleanMother;
+        manualSet.add('motherNameRu');
+
+        if (editingDeceased) {
+          const prevRu = (editingDeceased.motherNameRu || editingDeceased.motherName || '').trim();
+          if (cleanMother !== prevRu) {
+            if (!manualSet.has('motherNameHe')) baseData.motherNameHe = undefined;
+            if (!manualSet.has('motherNameEn')) baseData.motherNameEn = undefined;
+          }
+        }
+      } else {
+        if (lang === 'he') {
+          baseData.motherNameHe = cleanMother;
+          manualSet.add('motherNameHe');
+          if (editingDeceased && cleanMother !== (editingDeceased.motherNameHe || '').trim()) {
+            if (!manualSet.has('motherNameEn')) baseData.motherNameEn = undefined;
+            if (!manualSet.has('motherNameRu')) baseData.motherNameRu = undefined;
+          }
+        } else if (lang === 'ru') {
+          baseData.motherNameRu = cleanMother;
+          manualSet.add('motherNameRu');
+          if (editingDeceased && cleanMother !== (editingDeceased.motherNameRu || '').trim()) {
+            if (!manualSet.has('motherNameHe')) baseData.motherNameHe = undefined;
+            if (!manualSet.has('motherNameEn')) baseData.motherNameEn = undefined;
+          }
+        } else {
+          baseData.motherNameEn = cleanMother;
+          manualSet.add('motherNameEn');
+          if (editingDeceased && cleanMother !== (editingDeceased.motherNameEn || '').trim()) {
+            if (!manualSet.has('motherNameHe')) baseData.motherNameHe = undefined;
+            if (!manualSet.has('motherNameRu')) baseData.motherNameRu = undefined;
+          }
+        }
+      }
+    } else {
+      baseData.motherNameHe = undefined;
+      baseData.motherNameEn = undefined;
+      baseData.motherNameRu = undefined;
+      manualSet.delete('motherNameHe');
+      manualSet.delete('motherNameEn');
+      manualSet.delete('motherNameRu');
+    }
+
+    const trimmedNotes = notes.trim();
+    if (trimmedNotes) {
+      if (isHebrewText(trimmedNotes)) {
+        baseData.notesHe = trimmedNotes;
+        baseData.notes = trimmedNotes;
+        manualSet.add('notesHe');
+      } else if (isCyrillicText(trimmedNotes)) {
+        baseData.notesRu = trimmedNotes;
+        manualSet.add('notesRu');
+      } else if (isLatinText(trimmedNotes)) {
+        baseData.notesEn = trimmedNotes;
+        manualSet.add('notesEn');
+      } else {
+        if (lang === 'he') { baseData.notesHe = trimmedNotes; manualSet.add('notesHe'); }
+        else if (lang === 'ru') { baseData.notesRu = trimmedNotes; manualSet.add('notesRu'); }
+        else { baseData.notesEn = trimmedNotes; manualSet.add('notesEn'); }
+      }
+    } else {
+      baseData.notesHe = undefined;
+      baseData.notesEn = undefined;
+      baseData.notesRu = undefined;
+      manualSet.delete('notesHe');
+      manualSet.delete('notesEn');
+      manualSet.delete('notesRu');
+    }
+
+    baseData.manualFields = Array.from(manualSet);
 
     onSave(baseData);
     if (!editingDeceased) {
